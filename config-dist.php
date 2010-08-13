@@ -65,7 +65,7 @@ $CFG->dboptions = array(
 // automatically in installer, you have to uncomment and modify value
 // on the next line if you are creating config.php manually.
 //
-// $CFG->passwordsaltmain = 'a_very_long_random_string_of_characters#@6&*1';
+$CFG->passwordsaltmain = '';
 //
 // After changing the main salt you have to copy old value into one
 // of the following settings - this allows migration to the new salt
