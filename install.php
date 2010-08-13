@@ -62,7 +62,7 @@ if (function_exists('date_default_timezone_set') and function_exists('date_defau
 if (version_compare(phpversion(), "5.2.0") < 0) {
     $phpversion = phpversion();
     // do NOT localise - lang strings would not work here and we CAN not move it after installib
-    echo "Sorry, Moodle 2.0 requires PHP 5.2.8 or later (currently using version $phpversion).<br />";
+    echo "Sorry, Moodle 2.0 requires PHP 5.2.6 or later (currently using version $phpversion).<br />";
     echo "Please upgrade your server software or install latest Moodle 1.9.x instead.";
     die;
 }
@@ -486,7 +486,7 @@ if ($config->stage == INSTALL_DATABASETYPE) {
 
 
 if ($config->stage == INSTALL_ENVIRONMENT or $config->stage == INSTALL_PATHS) {
-    $version_fail = (version_compare(phpversion(), "5.2.8") < 0);
+    $version_fail = (version_compare(phpversion(), "5.2.6") < 0);
     $curl_fail    = ($lang !== 'en' and !extension_loaded('curl')); // needed for lang pack download
     $zip_fail     = ($lang !== 'en' and !extension_loaded('zip'));  // needed for lang pack download
 
@@ -499,7 +499,7 @@ if ($config->stage == INSTALL_ENVIRONMENT or $config->stage == INSTALL_PATHS) {
 
         echo '<div id="envresult"><dl>';
         if ($version_fail) {
-            $a = (object)array('needed'=>'5.2.8', 'current'=>phpversion());
+            $a = (object)array('needed'=>'5.2.6', 'current'=>phpversion());
             echo '<dt>'.get_string('phpversion', 'install').'</dt><dd>'.get_string('environmentrequireversion', 'admin', $a).'</dd>';
         }
         if ($curl_fail) {
