@@ -56,16 +56,12 @@
 
     } else if ($delete and confirm_sesskey()) {              // Delete a selected user, after confirmation
 
-        if (!has_capability('moodle/user:delete', $sitecontext)) {
-            print_error('nopermissions', 'error', '', 'delete a user');
-        }
+        require_capability('moodle/user:delete', $sitecontext);
 
-        if (!$user = $DB->get_record('user', array('id'=>$delete))) {
-            print_error('nousers', 'error');
-        }
+        $user = $DB->get_record('user', array('id'=>$delete), '*', MUST_EXIST);
 
-        if (is_primary_admin($user->id)) {
-            print_error('nopermissions', 'error', '', 'delete the primary admin user');
+        if (is_siteadmin($user->id)) {
+            print_error('useradminodelete', 'error');
         }
 
         if ($confirm != md5($delete)) {
@@ -103,7 +99,7 @@
         }
         $aclrecord = $DB->get_record('mnet_sso_access_control', array('username'=>$user->username, 'mnet_host_id'=>$user->mnethostid));
         if (empty($aclrecord)) {
-            $aclrecord = new object();
+            $aclrecord = new stdClass();
             $aclrecord->mnet_host_id = $user->mnethostid;
             $aclrecord->username = $user->username;
             $aclrecord->accessctrl = $accessctrl;
@@ -199,9 +195,7 @@
             $users = $nusers;
         }
 
-        $mainadmin = get_admin();
-
-        $override = new object();
+        $override = new stdClass();
         $override->firstname = 'firstname';
         $override->lastname = 'lastname';
         $fullnamelanguage = get_string('fullnamedisplay', '', $override);
@@ -218,11 +212,11 @@
         $table->align = array ("left", "left", "left", "left", "left", "center", "center", "center");
         $table->width = "95%";
         foreach ($users as $user) {
-            if ($user->username == 'guest') {
-                continue; // do not dispaly dummy new user and guest here
+            if (isguestuser($user)) {
+                continue; // do not display guest here
             }
 
-            if ($user->id == $USER->id) {
+            if ($user->id == $USER->id or is_siteadmin($user)) {
                 $deletebutton = "";
             } else {
                 if (has_capability('moodle/user:delete', $sitecontext)) {
@@ -232,7 +226,7 @@
                 }
             }
 
-            if (has_capability('moodle/user:update', $sitecontext) and ($user->id==$USER->id or $user->id != $mainadmin->id) and !is_mnet_remote_user($user)) {
+            if (has_capability('moodle/user:update', $sitecontext) and (is_siteadmin($USER) or !is_siteadmin($user)) and !is_mnet_remote_user($user)) {
                 $editbutton = "<a href=\"$securewwwroot/user/editadvanced.php?id=$user->id&amp;course=$site->id\">$stredit</a>";
                 if ($user->confirmed == 0) {
                     $confirmbutton = "<a href=\"user.php?confirmuser=$user->id&amp;sesskey=".sesskey()."\">" . get_string('confirm') . "</a>";

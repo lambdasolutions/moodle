@@ -1,16 +1,19 @@
 <?php
 /**
-* script for bulk user multy enrol operations
+* script for bulk user multi enrol operations
 */
+
+die('this needs to be rewritten to use new enrol framework, sorry');  //TODO: MDL-24064
+
 require_once('../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
-$processed = optional_param('processed', '', PARAM_CLEAN);
+$processed = optional_param('processed', '', PARAM_BOOL);
 $sort = optional_param('sort', 'fullname', PARAM_ALPHA); //Sort by full name
 $dir  = optional_param('dir', 'asc', PARAM_ALPHA);       //Order to sort (ASC)
 
 require_login();
 admin_externalpage_setup('userbulk');
-require_capability('moodle/user:delete', get_context_instance(CONTEXT_SYSTEM));
+require_capability('moodle/role:assign', get_context_instance(CONTEXT_SYSTEM)); //TODO: use some enrol cap
 $return = $CFG->wwwroot.'/'.$CFG->admin.'/user/user_bulk.php';
 //If no users selected then return to user_bulk.php
 if (empty($SESSION->bulk_users)) {
@@ -75,7 +78,7 @@ if(!empty($processed)) {
     for ( $i = 0; $i < $total; $i++ )
     {
         $param = "selected".$i;
-        $info = optional_param($param, '', PARAM_CLEAN);
+        $info = optional_param($param, '', PARAM_SEQUENCE);
         /**
          * user id:    ids[0]
          * course id:  ids[1]
@@ -84,7 +87,7 @@ if(!empty($processed)) {
         $ids = explode(',', $info);
         if(!empty($ids[2])) {
             $context = get_context_instance(CONTEXT_COURSE, $ids[1]);
-            role_assign(5, $ids[0], $context->id);
+            role_assign(5, $ids[0], $context->id); //TODO: horrible!!
         } else {
             if( empty($ids[1] ) ) {
                 continue;
@@ -93,7 +96,7 @@ if(!empty($processed)) {
             role_unassign(5, $ids[0], $context->id);
         }
     }
-    redirect($return, get_string('changessaved'));
+    redirect($return, get_string('changessaved')); //TODO: horrible!!
 }
 
 //Form beginning

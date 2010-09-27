@@ -46,6 +46,12 @@ if (file_exists($configfile)) {
 define('CLI_SCRIPT', false); // prevents some warnings later
 define('AJAX_SCRIPT', false); // prevents some warnings later
 
+// Servers should define a default timezone in php.ini, but if they don't then make sure something is defined.
+// This is a quick hack.  Ideally we should ask the admin for a value.  See MDL-22625 for more on this.
+if (function_exists('date_default_timezone_set') and function_exists('date_default_timezone_get')) {
+    @date_default_timezone_set(@date_default_timezone_get());
+}
+
 // make sure PHP errors are displayed - helps with diagnosing of problems
 @error_reporting(E_ALL);
 @ini_set('display_errors', '1');
@@ -190,13 +196,13 @@ ini_set('include_path', $CFG->libdir.'/zend' . PATH_SEPARATOR . ini_get('include
 require('version.php');
 $CFG->target_release = $release;
 
-$SESSION = new object();
+$SESSION = new stdClass();
 $SESSION->lang = $CFG->lang;
 
-$USER = new object();
+$USER = new stdClass();
 $USER->id = 0;
 
-$COURSE = new object();
+$COURSE = new stdClass();
 $COURSE->id = 0;
 
 $SITE = $COURSE;
@@ -304,11 +310,15 @@ if ($config->stage == INSTALL_DOWNLOADLANG) {
             $hint_dataroot = get_string('pathsroparentdataroot', 'install', $a);
             $config->stage = INSTALL_PATHS;
         } else {
-            if (!make_upload_directory('lang', false)) {
+            if (!install_init_dataroot($CFG->dataroot, $CFG->directorypermissions)) {
                 $hint_dataroot = get_string('pathserrcreatedataroot', 'install', $a);
                 $config->stage = INSTALL_PATHS;
             }
         }
+
+    } else if (!install_init_dataroot($CFG->dataroot, $CFG->directorypermissions)) {
+        $hint_dataroot = get_string('pathserrcreatedataroot', 'install', $a);
+        $config->stage = INSTALL_PATHS;
     }
 
     if (empty($hint_dataroot) and !is_writable($CFG->dataroot)) {
@@ -344,12 +354,8 @@ if ($config->stage == INSTALL_DATABASETYPE) {
 if ($config->stage == INSTALL_DOWNLOADLANG) {
     $downloaderror = '';
 
-// Create necessary lang dir
-    if (!make_upload_directory('lang', false)) {
-        $downloaderror = get_string('cannotcreatelangdir', 'error');
-
-// Download and install lang component
-    } else if ($cd = new component_installer('http://download.moodle.org', 'langpack/2.0', $CFG->lang.'.zip', 'languages.md5', 'lang')) {
+// Download and install lang component, lang dir was already created in install_init_dataroot
+    if ($cd = new component_installer('http://download.moodle.org', 'langpack/2.0', $CFG->lang.'.zip', 'languages.md5', 'lang')) {
         if ($cd->install() == COMPONENT_ERROR) {
             if ($cd->get_error() == 'remotedownloaderror') {
                 $a = new stdClass();
@@ -368,11 +374,6 @@ if ($config->stage == INSTALL_DOWNLOADLANG) {
             }
         }
     }
-    // switch the string_manager instance to stop using install/lang/
-    $CFG->early_install_lang = false;
-    $CFG->langotherroot      = $CFG->dataroot.'/lang';
-    $CFG->langlocalroot      = $CFG->dataroot.'/lang';
-    get_string_manager(true);
 
     if ($downloaderror !== '') {
         install_print_header($config, get_string('language'), get_string('langdownloaderror', 'install', $CFG->lang), $downloaderror);
@@ -385,6 +386,12 @@ if ($config->stage == INSTALL_DOWNLOADLANG) {
             $config->stage = INSTALL_DATABASE;
         }
     }
+
+    // switch the string_manager instance to stop using install/lang/
+    $CFG->early_install_lang = false;
+    $CFG->langotherroot      = $CFG->dataroot.'/lang';
+    $CFG->langlocalroot      = $CFG->dataroot.'/lang';
+    get_string_manager(true);
 }
 
 
@@ -452,7 +459,6 @@ if ($config->stage == INSTALL_DATABASETYPE) {
                                   get_string('databasetypehead', 'install'),
                                   get_string('databasetypesub', 'install'));
 
-    // TODO: move this PHP5 code to lib/installib.php so that this file parses in PHP4
     $databases = array('mysqli' => moodle_database::get_driver_instance('mysqli', 'native'),
                        'pgsql'  => moodle_database::get_driver_instance('pgsql',  'native'),
                        'oci'    => moodle_database::get_driver_instance('oci',    'native'),

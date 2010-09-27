@@ -20,11 +20,11 @@
  * A subclass of repository, which is used to download a file from a specific url
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage url
+ * @copyright  2009 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(dirname(__FILE__).'/locallib.php');
@@ -67,7 +67,7 @@ class repository_url extends repository {
         $strname     = get_string('rename', 'repository_url');
         $strurl      = get_string('url', 'repository_url');
         if ($this->options['ajax']) {
-            $url = new stdclass;
+            $url = new stdClass();
             $url->label = $strurl.': ';
             $url->id   = 'fileurl';
             $url->type = 'text';
@@ -117,7 +117,7 @@ EOD;
                 $ret['list'][] = array(
                     'title'=>$filename,
                     'source'=>$this->file_url,
-                    'thumbnail' => $OUTPUT->pix_url(file_extension_icon($filename, 32))
+                    'thumbnail' => $OUTPUT->pix_url(file_extension_icon($filename, 32))->out(false)
                     );
             }
         }

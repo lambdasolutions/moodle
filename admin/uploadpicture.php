@@ -117,18 +117,21 @@ exit;
  *
  * @param string $dir where to create the temp directory.
  * @param string $prefix prefix for the temp directory name (default '')
- * @param string $mode permissions for the temp directory (default 700)
  *
  * @return string The full path to the temp directory.
  */
-function my_mktempdir($dir, $prefix='', $mode=0700) {
+function my_mktempdir($dir, $prefix='') {
+    global $CFG;
+
     if (substr($dir, -1) != '/') {
         $dir .= '/';
     }
 
     do {
         $path = $dir.$prefix.mt_rand(0, 9999999);
-    } while (!mkdir($path, $mode));
+    } while (file_exists($path));
+
+    check_dir_exists($path);
 
     return $path;
 }
@@ -206,7 +209,7 @@ function process_file ($file, $userfield, $overwrite) {
 
     // userfield names are safe, so don't quote them.
     if (!($user = $DB->get_record('user', array ($userfield => $uservalue, 'deleted' => 0)))) {
-        $a = new Object();
+        $a = new stdClass();
         $a->userfield = clean_param($userfield, PARAM_CLEANHTML);
         $a->uservalue = clean_param($uservalue, PARAM_CLEANHTML);
         echo $OUTPUT->notification(get_string('uploadpicture_usernotfound', 'admin', $a));

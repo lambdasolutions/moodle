@@ -98,7 +98,7 @@
 /// user wants simple frame&js-less mode
 
     $start    = optional_param('start', time(), PARAM_INT);
-    $message  = optional_param('message', '', PARAM_CLEAN);
+    $message  = optional_param('message', '', PARAM_CLEAN); //TODO: this is wrong we must use text_format() instead
     $format   = optional_param('format', FORMAT_MOODLE, PARAM_INT);
     $refresh  = optional_param('refresh', '', PARAM_RAW);
     $last     = optional_param('last', 0, PARAM_INT);
@@ -228,7 +228,7 @@
 
     $allmessages = array();
     $playbeep = false;
-    $options = new object();
+    $options = new stdClass();
     $options->para = false;
     $options->newlines = true;
 
@@ -263,7 +263,7 @@
                 '<span class="time">['.$time.']</span>: '.
                 '<span class="content">'.$printmessage.'</span></div>';
             $i=0;
-            $sortkey = $message->timecreated."$i"; // we need string bacause we would run out of int range
+            $sortkey = $message->timecreated."$i"; // we need string because we would run out of int range
             while (array_key_exists($sortkey, $allmessages)) {
                 $i++;
                 $sortkey = $message->timecreated."$i";
@@ -285,7 +285,7 @@
                 '<span class="time">['.$time.']</span>: '.
                 '<span class="content">'.$printmessage.'</span></div>';
             $i=0;
-            $sortkey = $message->timecreated."$i"; // we need string bacause we would run out of int range
+            $sortkey = $message->timecreated."$i"; // we need string because we would run out of int range
             while (array_key_exists($sortkey, $allmessages)) {
                 $i++;
                 $sortkey = $message->timecreated."$i";
@@ -293,7 +293,7 @@
             $allmessages[$sortkey] = $printmessage;
         }
     }
-    /*Get still to be read message, use message/lib.php funtion*/
+    /*Get still to be read message, use message/lib.php function*/
     $messages = message_get_popup_messages($USER->id, $userid);
     if ($messages) {
         foreach ($messages as $message) {
@@ -308,7 +308,7 @@
                 '<span class="time">['.$time.']</span>: '.
                 '<span class="content">'.$printmessage.'</span></div>';
             $i=0;
-            $sortkey = $message->timecreated."$i"; // we need string bacause we would run out of int range
+            $sortkey = $message->timecreated."$i"; // we need string because we would run out of int range
             while (array_key_exists($sortkey, $allmessages)) {
                 $i++;
                 $sortkey = $message->timecreated."$i";
@@ -331,7 +331,7 @@
                 '<span class="time">['.$time.']</span>: '.
                 '<span class="content">'.$printmessage.'</span></div>';
             $i=0;
-            $sortkey = $message->timecreated."$i"; // we need string bacause we would run out of int range
+            $sortkey = $message->timecreated."$i"; // we need string because we would run out of int range
             while (array_key_exists($sortkey, $allmessages)) {
                 $i++;
                 $sortkey = $message->timecreated."$i";
@@ -343,9 +343,8 @@
             $messageid = $message->id;
             unset($message->id);
             $message->timeread = time();
-            if ($DB->insert_record('message_read', $message)) {
-                $DB->delete_records('message', array('id'=>$messageid));
-            }
+            $DB->insert_record('message_read', $message);
+            $DB->delete_records('message', array('id'=>$messageid));
             if ($message->timecreated < $start) {
                 $start = $message->timecreated; // move start back so that we see all current history
             }

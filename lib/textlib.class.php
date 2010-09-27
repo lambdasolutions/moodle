@@ -73,6 +73,9 @@ function textlib_get_instance() {
     /// tables when using internal functions
         make_upload_directory('temp/typo3temp/cs');
 
+    /// Make sure typo is using our dir permissions
+        $GLOBALS['TYPO3_CONF_VARS']['BE']['folderCreateMask'] = decoct($CFG->directorypermissions);
+
     /// Default mask for Typo
         $GLOBALS['TYPO3_CONF_VARS']['BE']['fileCreateMask'] = $CFG->directorypermissions;
 
@@ -461,5 +464,20 @@ class textlib {
             }
         }
         return implode(' ', $words);
+    }
+
+    /**
+     * Locale aware sorting, the key associations are kept, values are sorted alphabetically.
+     * @param array $arr array to be sorted
+     * @param string $lang moodle language
+     * @return void, modifies parameter
+     */
+    function asort(array &$arr) {
+        if (function_exists('collator_asort')) {
+            $coll = collator_create(get_string('locale', 'langconfig'));
+            collator_asort($coll, $arr);
+        } else {
+            asort($arr, SORT_LOCALE_STRING);
+        }
     }
 }

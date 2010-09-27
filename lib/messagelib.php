@@ -68,7 +68,7 @@ function message_send($eventdata) {
     }
 
     // Create the message object
-    $savemessage = new object();
+    $savemessage = new stdClass();
     $savemessage->useridfrom        = $eventdata->userfrom->id;
     $savemessage->useridto          = $eventdata->userto->id;
     $savemessage->subject           = $eventdata->subject;
@@ -95,12 +95,10 @@ function message_send($eventdata) {
         }
     }
 
-    // if we are suposed to do something with this message
+    // if we are supposed to do something with this message
     // No processor for this message, mark it as read
     if ($processor == "") {  //this user cleared all the preferences
         $savemessage->timeread = time();
-        $messageid = $message->id;
-        unset($message->id);
         $DB->insert_record('message_read', $savemessage);
 
     } else {                        // Process the message
@@ -136,9 +134,8 @@ function message_send($eventdata) {
 
             //if there is no more processors that want to process this we can move message to message_read
             if ( $DB->count_records('message_working', array('unreadmessageid' => $messageid)) == 0){
-                if ($DB->insert_record('message_read', $savemessage)) {
-                    $DB->delete_records('message', array('id' => $messageid));
-                }
+                $DB->insert_record('message_read', $savemessage);
+                $DB->delete_records('message', array('id' => $messageid));
             }
     }
 
@@ -170,7 +167,7 @@ function message_update_providers($component='moodle') {
                 continue;
 
             } else {                                // Update existing one
-                $provider = new object();
+                $provider = new stdClass();
                 $provider->id         = $dbproviders[$messagename]->id;
                 $provider->capability = $fileprovider['capability'];
                 $DB->update_record('message_providers', $provider);
@@ -180,7 +177,7 @@ function message_update_providers($component='moodle') {
 
         } else {             // New message provider, add it
 
-            $provider = new object();
+            $provider = new stdClass();
             $provider->name       = $messagename;
             $provider->component  = $component;
             $provider->capability = $fileprovider['capability'];
@@ -263,6 +260,7 @@ function message_get_providers_from_file($component) {
  * @param $component - examples: 'moodle', 'mod/forum', 'block/quiz_results'
  */
 function message_uninstall($component) {
+    global $DB;
     return $DB->delete_records('message_providers', array('component' => $component));
 }
 

@@ -19,7 +19,7 @@ class mod_glossary_mod_form extends moodleform_mod {
         if (!empty($CFG->formatstringstriptags)) {
             $mform->setType('name', PARAM_TEXT);
         } else {
-            $mform->setType('name', PARAM_CLEAN);
+            $mform->setType('name', PARAM_CLEANHTML);
         }
         $mform->addRule('name', null, 'required', null, 'client');
 
@@ -125,7 +125,9 @@ class mod_glossary_mod_form extends moodleform_mod {
         }
 
 //-------------------------------------------------------------------------------
-        
+
+        $this->standard_grading_coursemodule_elements();
+
         $this->standard_coursemodule_elements();
 
 //-------------------------------------------------------------------------------

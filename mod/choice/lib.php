@@ -70,6 +70,7 @@ $CHOICE_DISPLAY = array (CHOICE_DISPLAY_HORIZONTAL   => get_string('displayhoriz
 function choice_user_outline($course, $user, $mod, $choice) {
     global $DB;
     if ($answer = $DB->get_record('choice_answers', array('choiceid' => $choice->id, 'userid' => $user->id))) {
+        $result = new stdClass();
         $result->info = "'".format_string(choice_get_option_text($choice, $answer->optionid))."'";
         $result->time = $answer->timemodified;
         return $result;
@@ -88,6 +89,7 @@ function choice_user_outline($course, $user, $mod, $choice) {
 function choice_user_complete($course, $user, $mod, $choice) {
     global $DB;
     if ($answer = $DB->get_record('choice_answers', array("choiceid" => $choice->id, "userid" => $user->id))) {
+        $result = new stdClass();
         $result->info = "'".format_string(choice_get_option_text($choice, $answer->optionid))."'";
         $result->time = $answer->timemodified;
         echo get_string("answered", "choice").": $result->info. ".get_string("updated", '', userdate($result->time));
@@ -117,21 +119,21 @@ function choice_add_instance($choice) {
     }
 
     //insert answers
-    if ($choice->id = $DB->insert_record("choice", $choice)) {
-        foreach ($choice->option as $key => $value) {
-            $value = trim($value);
-            if (isset($value) && $value <> '') {
-                $option = new object();
-                $option->text = $value;
-                $option->choiceid = $choice->id;
-                if (isset($choice->limit[$key])) {
-                    $option->maxanswers = $choice->limit[$key];
-                }
-                $option->timemodified = time();
-                $DB->insert_record("choice_options", $option);
+    $choice->id = $DB->insert_record("choice", $choice);
+    foreach ($choice->option as $key => $value) {
+        $value = trim($value);
+        if (isset($value) && $value <> '') {
+            $option = new stdClass();
+            $option->text = $value;
+            $option->choiceid = $choice->id;
+            if (isset($choice->limit[$key])) {
+                $option->maxanswers = $choice->limit[$key];
             }
+            $option->timemodified = time();
+            $DB->insert_record("choice_options", $option);
         }
     }
+
     return $choice->id;
 }
 
@@ -159,7 +161,7 @@ function choice_update_instance($choice) {
     //update, delete or insert answers
     foreach ($choice->option as $key => $value) {
         $value = trim($value);
-        $option = new object();
+        $option = new stdClass();
         $option->text = $value;
         $option->choiceid = $choice->id;
         if (isset($choice->limit[$key])) {
@@ -352,7 +354,7 @@ function prepare_choice_show_results($choice, $course, $cm, $allresponses, $forc
         if (array_key_exists($optionid, $allresponses)) {
             $display->options[$optionid]->user = $allresponses[$optionid]; //->user;
             $totaluser += count($allresponses[$optionid]);
-    }
+        }
     }
     unset($display->option);
     unset($display->maxanswers);
@@ -415,7 +417,7 @@ function prepare_choice_show_results($choice, $course, $cm, $allresponses, $forc
             if ($choice->showunanswered) {
                 echo "<td class=\"col$count data\" >";
                 // added empty row so that when the next iteration is empty,
-                // we do not get <table></table> erro from w3c validator
+                // we do not get <table></table> error from w3c validator
                 // MDL-7861
                 echo "<table class=\"choiceresponse\"><tr><td></td></tr>";
                 if (!empty($allresponses[0])) {
@@ -437,7 +439,7 @@ function prepare_choice_show_results($choice, $course, $cm, $allresponses, $forc
                     echo '<td class="col'.$count.' data" >';
 
                     // added empty row so that when the next iteration is empty,
-                    // we do not get <table></table> erro from w3c validator
+                    // we do not get <table></table> error from w3c validator
                     // MDL-7861
                     echo '<table class="choiceresponse"><tr><td></td></tr>';
                     if (isset($allresponses[$optionid])) {
@@ -504,9 +506,9 @@ function prepare_choice_show_results($choice, $course, $cm, $allresponses, $forc
                 echo "</form></div>";
             }
             break;
-                }
+    }
     return $display;
-            }
+}
 
 /**
  * @global object
@@ -665,7 +667,7 @@ function choice_reset_course_form_defaults($course) {
 }
 
 /**
- * Actual implementation of the rest coures functionality, delete all the
+ * Actual implementation of the reset course functionality, delete all the
  * choice responses for course $data->courseid.
  *
  * @global object
@@ -681,8 +683,8 @@ function choice_reset_userdata($data) {
 
     if (!empty($data->reset_choice)) {
         $choicessql = "SELECT ch.id
-                         FROM {choice} ch
-                        WHERE ch.course=?";
+                       FROM {choice} ch
+                       WHERE ch.course=?";
 
         $DB->delete_records_select('choice_answers', "choiceid IN ($choicessql)", array($data->courseid));
         $status[] = array('component'=>$componentstr, 'item'=>get_string('removeresponses', 'choice'), 'error'=>false);
@@ -739,9 +741,6 @@ function choice_get_response_data($choice, $cm, $groupmode) {
                 unset($allresponses[0][$response->userid]);   // Remove from unanswered column
             }
         }
-    }
-    if (empty($allresponses[0])) {
-        unset($allresponses[0]);
     }
     return $allresponses;
 }

@@ -41,7 +41,8 @@ $handlers = array(
     'portfolio_send' => array (
         'handlerfile'      => '/lib/portfolio.php',
         'handlerfunction'  => 'portfolio_handle_event',    // argument to call_user_func(), could be an array
-        'schedule'         => 'cron'
+        'schedule'         => 'cron',
+        'internal'         => 0,
     ),
 
 
@@ -67,8 +68,8 @@ course_category_deleted - object course_categories table record
 
 course_created - object course table record
 course_updated - object course table record
-course_content_removed - object course table record
-course_deleted - object course table record
+course_content_removed - object course table record + context property
+course_deleted - object course table record + context property
 
 user_enrolled - object record from user_enrolments table + courseid,enrol
 user_unenrol_modified - object record from user_enrolments table + courseid,enrol

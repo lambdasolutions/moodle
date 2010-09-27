@@ -39,8 +39,7 @@ require_once($CFG->dirroot . '/admin/registration/forms.php');
 require_once($CFG->dirroot . '/webservice/lib.php');
 require_once($CFG->dirroot . '/admin/registration/lib.php');
 
-admin_externalpage_setup('registration');
-
+admin_externalpage_setup('registrationindex');
 
 $huburl = optional_param('huburl', '', PARAM_URL);
 $password = optional_param('password', '', PARAM_TEXT);
@@ -111,7 +110,7 @@ if ($update and confirm_sesskey()) {
     //update the registration
     $function = 'hub_update_site_info';
     $siteinfo = $registrationmanager->get_site_info($huburl);
-    $params = array($siteinfo);
+    $params = array('siteinfo' => $siteinfo);
     $serverurl = $huburl . "/local/hub/webservice/webservices.php";
     require_once($CFG->dirroot . "/webservice/xmlrpc/lib.php");
     $xmlrpcclient = new webservice_xmlrpc_client($serverurl, $registeredhub->token);
@@ -133,7 +132,7 @@ if (!empty($fromform) and empty($update) and confirm_sesskey()) {
         if (empty($unconfirmedhub)) {
             //we save the token into the communication table in order to have a reference
             $unconfirmedhub = new stdClass();
-            $unconfirmedhub->token = md5(uniqid(rand(), 1));
+            $unconfirmedhub->token = get_site_identifier();
             $unconfirmedhub->huburl = $huburl;
             $unconfirmedhub->hubname = $hubname;
             $unconfirmedhub->confirmed = 0;

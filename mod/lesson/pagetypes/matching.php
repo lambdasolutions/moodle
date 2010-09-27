@@ -132,9 +132,9 @@ class lesson_page_type_matching extends lesson_page {
     }
 
     public function check_answer() {
-        global $CFG;
+        global $CFG, $PAGE;
 
-        $formattextdefoptions = new object();
+        $formattextdefoptions = new stdClass();
         $formattextdefoptions->noclean = true;
         $formattextdefoptions->para = false;
 
@@ -481,7 +481,7 @@ class lesson_display_answer_form_matching extends moodleform {
                 $mform->addElement('select', 'response['.$answer->id.']', format_text($answer->answer,$answer->answerformat,$options), $responseoptions);
                 $mform->setType('response['.$answer->id.']', PARAM_TEXT);
                 if (isset($USER->modattempts[$lessonid])) {
-                    $mform->setDefault('response['.$answer->id.']', htmlspecialchars(trim($answers[$useranswers[$t]]->response)));
+                    $mform->setDefault('response['.$answer->id.']', htmlspecialchars(trim($answers[$useranswers[$i]]->response))); //TODO: this is suspicious
                 } else {
                     $mform->setDefault('response['.$answer->id.']', 'answeroption');
                 }

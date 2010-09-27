@@ -24,12 +24,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-if (isset($_SERVER['REMOTE_ADDR'])) {
-    error_log("admin/cli/maintenance.php can not be called from web server!");
-    exit;
-}
+define('CLI_SCRIPT', true);
 
-require_once dirname(dirname(dirname(__FILE__))).'/config.php';
+require(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once($CFG->libdir.'/clilib.php');      // cli only functions
 
 
@@ -43,8 +40,7 @@ if ($unrecognized) {
 }
 
 if ($options['help']) {
-
-$help =
+    $help =
 "Maintenance mode settings.
 Current status displayed if not option specified.
 
@@ -53,7 +49,8 @@ Options:
 --disable             Disable maintenance mode
 -h, --help            Print out this help
 
-Example: \$sudo -u wwwrun /usr/bin/php admin/cli/maintenance.php
+Example:
+\$sudo -u www-data /usr/bin/php admin/cli/maintenance.php
 "; //TODO: localize - to be translated later when everything is finished
 
     echo $help;

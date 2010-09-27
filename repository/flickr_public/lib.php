@@ -22,11 +22,11 @@
  * flickr photos from this plugin
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage flickr_public
+ * @copyright  2009 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once($CFG->libdir.'/flickrlib.php');
@@ -129,32 +129,32 @@ class repository_flickr_public extends repository {
     public function print_login() {
         if ($this->options['ajax']) {
             $ret = array();
-            $fulltext = new stdclass;
+            $fulltext = new stdClass();
             $fulltext->label = get_string('fulltext', 'repository_flickr_public').': ';
             $fulltext->id    = 'el_fulltext';
             $fulltext->type = 'text';
             $fulltext->name = 'flickr_fulltext';
 
-            $tag = new stdclass;
+            $tag = new stdClass();
             $tag->label = get_string('tag', 'repository_flickr_public').': ';
             $tag->id    = 'el_tag';
             $tag->type = 'text';
             $tag->name = 'flickr_tag';
 
-            $email_field = new stdclass;
+            $email_field = new stdClass();
             $email_field->label = get_string('username', 'repository_flickr_public').': ';
             $email_field->id    = 'account';
             $email_field->type = 'text';
             $email_field->name = 'flickr_account';
 
-            $commercial = new stdclass;
+            $commercial = new stdClass();
             $commercial->label = get_string('commercialuse', 'repository_flickr_public').': ';
             $commercial->id    = 'flickr_commercial_id';
             $commercial->type  = 'checkbox';
             $commercial->name  = 'flickr_commercial';
             $commercial->value = 'yes';
 
-            $modification = new stdclass;
+            $modification = new stdClass();
             $modification->label = get_string('modification', 'repository_flickr_public').': ';
             $modification->id    = 'flickr_modification_id';
             $modification->type  = 'checkbox';

@@ -65,7 +65,7 @@ class pgsql_native_moodle_database extends moodle_database {
     /**
      * Returns more specific database driver type
      * Note: can be used before connect()
-     * @return string db type mysql, pgsql, postgres7
+     * @return string db type mysqli, pgsql, oci, mssql, sqlsrv
      */
     protected function get_dbtype() {
         return 'pgsql';
@@ -177,14 +177,14 @@ class pgsql_native_moodle_database extends moodle_database {
         $result = pg_query($this->pgsql, $sql);
         $this->query_end($result);
 
-        $this->bytea_oid = pg_fetch_result($result, 0);
+        $this->bytea_oid = pg_fetch_result($result, 0, 0);
         pg_free_result($result);
         if ($this->bytea_oid === false) {
             $this->pgsql = null;
             throw new dml_connection_exception('Can not read bytea type.');
         }
 
-        // Connection stabilished and configured, going to instantiate the temptables controller
+        // Connection stabilised and configured, going to instantiate the temptables controller
         $this->temptables = new pgsql_native_moodle_temptables($this);
 
         return true;
@@ -251,7 +251,7 @@ class pgsql_native_moodle_database extends moodle_database {
 
     /**
      * Returns supported query parameter types
-     * @return bitmask
+     * @return int bitmask
      */
     protected function allowed_param_types() {
         return SQL_PARAMS_DOLLAR;
@@ -259,6 +259,7 @@ class pgsql_native_moodle_database extends moodle_database {
 
     /**
      * Returns last error reported by database engine.
+     * @return string error message
      */
     public function get_last_error() {
         return pg_last_error($this->pgsql);
@@ -364,7 +365,7 @@ class pgsql_native_moodle_database extends moodle_database {
         }
         while ($rawcolumn = pg_fetch_object($result)) {
 
-            $info = new object();
+            $info = new stdClass();
             $info->name = $rawcolumn->field;
             $matches = null;
 
@@ -521,13 +522,13 @@ class pgsql_native_moodle_database extends moodle_database {
         if (is_bool($value)) { // Always, convert boolean to int
             $value = (int)$value;
 
-        } else if ($column->meta_type == 'B') { // BLOB detected, we return 'blob' array instead of raw value to allow
+        } else if ($column->meta_type === 'B') { // BLOB detected, we return 'blob' array instead of raw value to allow
             if (!is_null($value)) {             // binding/executing code later to know about its nature
                 $value = array('blob' => $value);
             }
 
         } else if ($value === '') {
-            if ($column->meta_type == 'I' or $column->meta_type == 'F' or $column->meta_type == 'N') {
+            if ($column->meta_type === 'I' or $column->meta_type === 'F' or $column->meta_type === 'N') {
                 $value = 0; // prevent '' problems in numeric fields
             }
         }
@@ -608,7 +609,7 @@ class pgsql_native_moodle_database extends moodle_database {
      * @param array $params array of sql parameters
      * @param int $limitfrom return a subset of records, starting at this point (optional, required if $limitnum is set).
      * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
-     * @return mixed an moodle_recordset object
+     * @return moodle_recordset instance
      * @throws dml_exception if error
      */
     public function get_recordset_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {
@@ -647,7 +648,7 @@ class pgsql_native_moodle_database extends moodle_database {
      * @param array $params array of sql parameters
      * @param int $limitfrom return a subset of records, starting at this point (optional, required if $limitnum is set).
      * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
-     * @return mixed an array of objects, or empty array if no records were found
+     * @return array of objects, or empty array if no records were found
      * @throws dml_exception if error
      */
     public function get_records_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {
@@ -705,7 +706,7 @@ class pgsql_native_moodle_database extends moodle_database {
      *
      * @param string $sql The SQL query
      * @param array $params array of sql parameters
-     * @return mixed array of values
+     * @return array of values
      * @throws dml_exception if error
      */
     public function get_fieldset_sql($sql, array $params=null) {
@@ -728,7 +729,7 @@ class pgsql_native_moodle_database extends moodle_database {
      * @param bool $returnit return it of inserted record
      * @param bool $bulk true means repeated inserts expected
      * @param bool $customsequence true if 'id' included in $params, disables $returnid
-     * @return true or new id
+     * @return bool|int true or new id
      * @throws dml_exception if error
      */
     public function insert_record_raw($table, $params, $returnid=true, $bulk=false, $customsequence=false) {
@@ -791,7 +792,7 @@ class pgsql_native_moodle_database extends moodle_database {
      * @param string $table The database table to be inserted into
      * @param object $data A data object with values for one or more fields in the record
      * @param bool $returnid Should the id of the newly created record entry be returned? If this option is not requested then true/false is returned.
-     * @return true or new id
+     * @return bool|int true or new id
      * @throws dml_exception if error
      */
     public function insert_record($table, $dataobject, $returnid=true, $bulk=false) {
@@ -853,15 +854,38 @@ class pgsql_native_moodle_database extends moodle_database {
 
         $columns = $this->get_columns($table);
         $cleaned = array();
+        $blobs   = array();
 
         foreach ($dataobject as $field=>$value) {
             if (!isset($columns[$field])) {
                 continue;
             }
+            if ($columns[$field]->meta_type === 'B') {
+                if (!is_null($value)) {
+                    $cleaned[$field] = '@#BLOB#@';
+                    $blobs[$field] = $value;
+                    continue;
+                }
+            }
+
             $cleaned[$field] = $value;
         }
 
-        return $this->insert_record_raw($table, $cleaned, false, true, true);
+        $this->insert_record_raw($table, $cleaned, false, true, true);
+        $id = $dataobject['id'];
+
+        foreach ($blobs as $key=>$value) {
+            $value = pg_escape_bytea($this->pgsql, $value);
+            $sql = "UPDATE {$this->prefix}$table SET $key = '$value'::bytea WHERE id = $id";
+            $this->query_start($sql, NULL, SQL_QUERY_UPDATE);
+            $result = pg_query($this->pgsql, $sql);
+            $this->query_end($result);
+            if ($result !== false) {
+                pg_free_result($result);
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -1041,12 +1065,39 @@ class pgsql_native_moodle_database extends moodle_database {
         return true;
     }
 
+    /**
+     * Returns 'LIKE' part of a query.
+     *
+     * @param string $fieldname usually name of the table column
+     * @param string $param usually bound query parameter (?, :named)
+     * @param bool $casesensitive use case sensitive search
+     * @param bool $accensensitive use accent sensitive search (not all databases support accent insensitive)
+     * @param bool $notlike true means "NOT LIKE"
+     * @param string $escapechar escape char for '%' and '_'
+     * @return string SQL code fragment
+     */
+    public function sql_like($fieldname, $param, $casesensitive = true, $accentsensitive = true, $notlike = false, $escapechar = '\\') {
+        if (strpos($param, '%') !== false) {
+            debugging('Potential SQL injection detected, sql_ilike() expects bound parameters (? or :named)');
+        }
+        $escapechar = pg_escape_string($this->pgsql, $escapechar); // prevents problems with C-style escapes of enclosing '\'
+
+        // postgresql does not support accent insensitive text comparisons, sorry
+        if ($casesensitive) {
+            $LIKE = $notlike ? 'NOT LIKE' : 'LIKE';
+        } else {
+            $LIKE = $notlike ? 'NOT ILIKE' : 'ILIKE';
+        }
+        return "$fieldname $LIKE $param ESCAPE '$escapechar'";
+    }
+
     public function sql_ilike() {
+        debugging('sql_ilike() is deprecated, please use sql_like() instead');
         return 'ILIKE';
     }
 
     public function sql_bitxor($int1, $int2) {
-        return '(' . $this->sql_bitor($int1, $int2) . ' - ' . $this->sql_bitand($int1, $int2) . ')';
+        return '((' . $int1 . ') # (' . $int2 . '))';
     }
 
     public function sql_cast_char2int($fieldname, $text=false) {

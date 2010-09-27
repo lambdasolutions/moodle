@@ -24,7 +24,7 @@ M.core_comment = {
     init: function(Y, options) {
         var CommentHelper = function(args) {
             CommentHelper.superclass.constructor.apply(this, arguments);
-        }
+        };
         CommentHelper.NAME = "COMMENT";
         CommentHelper.ATTRS = {
             options: {},
@@ -37,6 +37,7 @@ M.core_comment = {
                 this.client_id = args.client_id;
                 this.itemid = args.itemid;
                 this.commentarea = args.commentarea;
+                this.component = args.component;
                 this.courseid = args.courseid;
                 this.contextid = args.contextid;
                 this.env = args.env;
@@ -121,6 +122,7 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                 params['area']      = this.commentarea;
                 params['courseid']  = this.courseid;
                 params['contextid'] = this.contextid;
+                params['component'] = this.component;
                 if (args['params']) {
                     for (i in args['params']) {
                         params[i] = args['params'][i];
@@ -192,7 +194,7 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                 var container = Y.one('#comment-ctrl-'+this.client_id);
                 var params = {
                     'page': page
-                }
+                };
                 this.request({
                     scope: scope,
                     params: params,
@@ -209,6 +211,8 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                         }
                         var result = scope.render(ret.list);
                         container.set('innerHTML', result.html);
+                        var img = Y.one('#comment-img-'+scope.client_id);
+                        img.set('src', M.util.image_url('t/expanded', 'core'));
                         args.scope.register_pagination();
                         args.scope.register_delete_buttons();
                     }
@@ -242,11 +246,14 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
             },
             register_actions: function() {
                 // add new comment
-                Y.one('#comment-action-post-'+this.client_id).on('click', function(e) {
-                    e.preventDefault();
-                    this.post();
-                    return false;
-                }, this);
+                var action_btn = Y.one('#comment-action-post-'+this.client_id);
+                if (action_btn) {
+                    action_btn.on('click', function(e) {
+                        e.preventDefault();
+                        this.post();
+                        return false;
+                    }, this);
+                }
                 // cancel comment box
                 var cancel = Y.one('#comment-action-cancel-'+this.client_id);
                 if (cancel) {
@@ -265,6 +272,9 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                         var theid = node.get('id');
                         var parseid = new RegExp("comment-delete-"+scope.client_id+"-(\\d+)", "i");
                         var commentid = theid.match(parseid);
+                        if (!commentid) {
+                            return;
+                        }
                         if (commentid[1]) {
                             Y.Event.purgeElement('#'+theid, false, 'click');
                         }
@@ -328,25 +338,29 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                         this.register_pagination();
                     }
                     container.setStyle('display', 'block');
-                    img.src=M.util.image_url('t/expanded', 'core');
+                    img.set('src', M.util.image_url('t/expanded', 'core'));
                 } else {
                     // hide
                     container.setStyle('display', 'none');
-                    img.src=M.util.image_url('t/collapsed', 'core');
-                    ta.set('value','');
+                    img.set('src', M.util.image_url('t/collapsed', 'core'));
+                    if (ta) {
+                        ta.set('value','');
+                    }
                 }
-                //toggle_textarea.apply(ta, [false]);
-                //// reset textarea size
-                ta.on('click', function() {
-                    this.toggle_textarea(true);
-                }, this)
-                //ta.onkeypress = function() {
-                    //if (this.scrollHeight > this.clientHeight && !window.opera)
-                        //this.rows += 1;
-                //}
-                ta.on('blur', function() {
-                    this.toggle_textarea(false);
-                }, this);
+                if (ta) {
+                    //toggle_textarea.apply(ta, [false]);
+                    //// reset textarea size
+                    ta.on('click', function() {
+                        this.toggle_textarea(true);
+                    }, this);
+                    //ta.onkeypress = function() {
+                        //if (this.scrollHeight > this.clientHeight && !window.opera)
+                            //this.rows += 1;
+                    //}
+                    ta.on('blur', function() {
+                        this.toggle_textarea(false);
+                    }, this);
+                }
                 this.register_actions();
                 return false;
             },
@@ -367,7 +381,7 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
             },
             wait: function() {
                 var container = Y.one('#comment-list-'+this.client_id);
-                container.set('innerHTML', '<div class="mdl-align"><img src="'+M.util.image_url('i/loading', 'core')+'" /></div>');
+                container.set('innerHTML', '<div class="mdl-align"><img src="'+M.util.image_url('i/loading_small', 'core')+'" /></div>');
             }
         });
 
@@ -412,7 +426,7 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                         'commentids': list,
                         'sesskey': M.cfg.sesskey,
                         'action': 'delete'
-                    }
+                    };
                     var cfg = {
                         method: 'POST',
                         on: {
@@ -436,7 +450,7 @@ bodyContent: '<div class="comment-delete-confirm"><a href="#" id="confirmdelete-
                         data: build_querystring(data)
                     };
                     Y.io(url, cfg);
-                }
+                };
                 M.util.show_confirm_dialog(e, args);
             });
         }

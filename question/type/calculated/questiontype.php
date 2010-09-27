@@ -27,6 +27,7 @@ class question_calculated_qtype extends default_questiontype {
     // Used by the function custom_generator_tools:
     public $calcgenerateidhasbeenadded = false;
     public $virtualqtype = false;
+    public $wizard_pages_number = 3 ;
 
     function name() {
         return 'calculated';
@@ -394,9 +395,8 @@ class question_calculated_qtype extends default_questiontype {
         }
 
         // Set the legacy answer field
-        if (!$DB->set_field('question_states', 'answer', $responses, array('id'=> $state->id))) {
-            return false;
-        }
+        $DB->set_field('question_states', 'answer', $responses, array('id'=> $state->id));
+
         return true;
     }
 
@@ -462,6 +462,9 @@ class question_calculated_qtype extends default_questiontype {
     }
     function finished_edit_wizard(&$form) {
         return isset($form->backtoquiz);
+    }
+    function wizard_pages_number() {
+        return 3 ;
     }
     // This gets called by editquestion.php after the standard question is saved
     function print_next_wizard_page(&$question, &$form, $course) {
@@ -562,7 +565,7 @@ class question_calculated_qtype extends default_questiontype {
         $possibledatasets = $this->find_dataset_names($form->questiontext);
         $mandatorydatasets = array();
         foreach ($form->answers as $answer) {
-            //$mandatorydatasets += $this->find_dataset_names($answer);
+            $mandatorydatasets += $this->find_dataset_names($answer);
         }
         // if there are identical datasetdefs already saved in the original question.
         // either when editing a question or saving as new
@@ -623,9 +626,7 @@ class question_calculated_qtype extends default_questiontype {
             }
             $questionname ="#".$questionname;
         }
-        if (!$DB->set_field('question', 'name', $questionname, array("id" => $question->id))) {
-            return false ;
-        }
+        $DB->set_field('question', 'name', $questionname, array("id" => $question->id));
     }
 
     /**
@@ -649,6 +650,11 @@ class question_calculated_qtype extends default_questiontype {
      */
     function save_question($question, $form, $course) {
         global $DB;
+        if ($this->wizard_pages_number() == 1 ){
+                $question = parent::save_question($question, $form, $course);
+            return $question ;
+        }
+
         $wizardnow =  optional_param('wizardnow', '', PARAM_ALPHA);
         $id = optional_param('id', 0, PARAM_INT); // question id
         // in case 'question'
@@ -703,9 +709,7 @@ class question_calculated_qtype extends default_questiontype {
             }else {
                 $options_synchronize = 0 ;
             }
-            if (!$DB->set_field('question_calculated_options', 'synchronize', $options_synchronize, array("question" => $question->id))) {
-                return false;
-            }
+            $DB->set_field('question_calculated_options', 'synchronize', $options_synchronize, array("question" => $question->id));
             if(isset($form->synchronize) && $form->synchronize == 2 ){
                 $this->addnamecategory($question);
             }
@@ -1014,6 +1018,7 @@ class question_calculated_qtype extends default_questiontype {
 
 
     function update_dataset_options($datasetdefs, $form) {
+        global $OUTPUT;
         // Do we have informatin about new options???
         if (empty($form->definition) || empty($form->calcmin)
             || empty($form->calcmax) || empty($form->calclength)
@@ -1168,7 +1173,7 @@ class question_calculated_qtype extends default_questiontype {
             }
         // adding supplementary items
         $numbertoadd =0;
-        if (isset($fromform->addbutton) && $fromform->selectadd > 1 && $maxnumber < CALCULATEDQUESTIONMAXITEMNUMBER ) {
+        if (isset($fromform->addbutton) && $fromform->selectadd > 0 && $maxnumber < CALCULATEDQUESTIONMAXITEMNUMBER ) {
             $numbertoadd =$fromform->selectadd ;
             if ( $max100 - $maxnumber < $numbertoadd ) {
                 $numbertoadd = $max100 - $maxnumber ;
@@ -2038,59 +2043,6 @@ class question_calculated_qtype extends default_questiontype {
         return $this->virtualqtype;
     }
 
-
-    /// BACKUP FUNCTIONS ////////////////////////////
-
-    /*
-     * Backup the data in the question
-     *
-     * This is used in question/backuplib.php
-     */
-    function backup($bf,$preferences,$question,$level=6) {
-        global $DB;
-        $status = true;
-
-        $calculateds = $DB->get_records("question_calculated",array("question" =>$question,"id"));
-        //If there are calculated-s
-        if ($calculateds) {
-            //Iterate over each calculateds
-            foreach ($calculateds as $calculated) {
-                $status = $status &&fwrite ($bf,start_tag("CALCULATED",$level,true));
-                //Print calculated contents
-                fwrite ($bf,full_tag("ANSWER",$level+1,false,$calculated->answer));
-                fwrite ($bf,full_tag("TOLERANCE",$level+1,false,$calculated->tolerance));
-                fwrite ($bf,full_tag("TOLERANCETYPE",$level+1,false,$calculated->tolerancetype));
-                fwrite ($bf,full_tag("CORRECTANSWERLENGTH",$level+1,false,$calculated->correctanswerlength));
-                fwrite ($bf,full_tag("CORRECTANSWERFORMAT",$level+1,false,$calculated->correctanswerformat));
-                //Now backup numerical_units
-                $status = question_backup_numerical_units($bf,$preferences,$question,7);
-                //Now backup required dataset definitions and items...
-                $status = question_backup_datasets($bf,$preferences,$question,7);
-                //End calculated data
-                $status = $status &&fwrite ($bf,end_tag("CALCULATED",$level,true));
-            }
-            $calculated_options = $DB->get_records("question_calculated_options",array("questionid" => $question),"id");
-            if ($calculated_options) {
-                //Iterate over each calculated_option
-                foreach ($calculated_options as $calculated_option) {
-                    $status = fwrite ($bf,start_tag("CALCULATED_OPTIONS",$level,true));
-                    //Print calculated_option contents
-                    fwrite ($bf,full_tag("SYNCHRONIZE",$level+1,false,$calculated_option->synchronize));
-                    fwrite ($bf,full_tag("SINGLE",$level+1,false,$calculated_option->single));
-                    fwrite ($bf,full_tag("SHUFFLEANSWERS",$level+1,false,$calculated_option->shuffleanswers));
-                    fwrite ($bf,full_tag("CORRECTFEEDBACK",$level+1,false,$calculated_option->correctfeedback));
-                    fwrite ($bf,full_tag("PARTIALLYCORRECTFEEDBACK",$level+1,false,$calculated_option->partiallycorrectfeedback));
-                    fwrite ($bf,full_tag("INCORRECTFEEDBACK",$level+1,false,$calculated_option->incorrectfeedback));
-                    fwrite ($bf,full_tag("ANSWERNUMBERING",$level+1,false,$calculated_option->answernumbering));
-                    $status = fwrite ($bf,end_tag("CALCULATED_OPTIONS",$level,true));
-                }
-            }
-            $status = question_backup_numerical_options($bf,$preferences,$question,$level);
-
-        }
-        return $status;
-    }
-
     /// RESTORE FUNCTIONS /////////////////
 
     /*
@@ -2261,7 +2213,7 @@ class question_calculated_qtype extends default_questiontype {
             $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
             foreach ($files as $storedfile) {
                 if (!$storedfile->is_directory()) {
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);
                     $storedfile->delete();
@@ -2273,7 +2225,7 @@ class question_calculated_qtype extends default_questiontype {
         $files = $fs->get_area_files($question->contextid, $component, $filearea, $question->id);
         foreach ($files as $storedfile) {
             if (!$storedfile->is_directory()) {
-                $newfile = new object();
+                $newfile = new stdClass();
                 $newfile->contextid = (int)$newcategory->contextid;
                 $fs->create_file_from_storedfile($newfile, $storedfile);
                 $storedfile->delete();

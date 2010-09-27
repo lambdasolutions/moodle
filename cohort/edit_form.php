@@ -18,9 +18,9 @@
 /**
  * Cohort related management functions, this file needs to be included manually.
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage cohort
- * @copyright  2010 Petr Skoda  (info@skodak.org)
+ * @copyright  2010 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -101,7 +101,7 @@ class cohort_edit_form extends moodleform {
             $context = get_context_instance(CONTEXT_COURSECAT, $cid, MUST_EXIST);
             $options[$context->id] = $name;
         }
-        // always add current - this is not likely, but if the logic get's changed it might be a problem
+        // always add current - this is not likely, but if the logic gets changed it might be a problem
         if (!isset($options[$currentcontextid])) {
             $context = get_context_instance_by_id($currentcontextid, MUST_EXIST);
             $options[$context->id] = print_context_name($syscontext);

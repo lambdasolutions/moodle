@@ -361,7 +361,7 @@ class theme_config {
             $settings = get_config('theme_'.$themename);
         } catch (dml_exception $e) {
             // most probably moodle tables not created yet
-            $settings = new object();
+            $settings = new stdClass();
         }
 
         if ($config = theme_config::find_theme_config($themename, $settings)) {
@@ -579,7 +579,7 @@ class theme_config {
             foreach ($parent_config->editor_sheets as $sheet) {
                 $sheetfile = "$parent_config->dir/$sheet.css";
                 if (is_readable($sheetfile)) {
-                    $css .= "/*** Parent theme $parent/$sheet ***/\n\n" . file_get_contents($sheetfile) . "\n\n";
+                    $css .= "/*** Parent theme {$parent_config->name}/$sheet ***/\n\n" . file_get_contents($sheetfile) . "\n\n";
                 }
             }
         }
@@ -627,7 +627,7 @@ class theme_config {
             $candidatesheet = "$CFG->dataroot/cache/theme/$this->name/designer.ser";
             if (!file_exists($candidatesheet)) {
                 $css = $this->css_content();
-                check_dir_exists(dirname($candidatesheet), true, true);
+                check_dir_exists(dirname($candidatesheet));
                 file_put_contents($candidatesheet, serialize($css));
 
             } else if (filemtime($candidatesheet) > time() - THEME_DESIGNER_CACHE_LIFETIME) {
@@ -1016,7 +1016,7 @@ class theme_config {
             return null;
         }
 
-        $THEME = new object();
+        $THEME = new stdClass();
         $THEME->name     = $themename;
         $THEME->dir      = $dir;
         $THEME->settings = $settings;

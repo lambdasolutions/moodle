@@ -36,9 +36,9 @@ define('UPGRADE_LOG_ERROR',  2);
 /**
  * Exception indicating unknown error during upgrade.
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage upgrade
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2009 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class upgrade_exception extends moodle_exception {
@@ -52,9 +52,9 @@ class upgrade_exception extends moodle_exception {
 /**
  * Exception indicating downgrade error during upgrade.
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage upgrade
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2009 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class downgrade_exception extends moodle_exception {
@@ -67,15 +67,15 @@ class downgrade_exception extends moodle_exception {
 }
 
 /**
- * @package    moodlecore
+ * @package    core
  * @subpackage upgrade
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2009 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class upgrade_requires_exception extends moodle_exception {
     function __construct($plugin, $pluginversion, $currentmoodle, $requiremoodle) {
         global $CFG;
-        $a = new object();
+        $a = new stdClass();
         $a->pluginname     = $plugin;
         $a->pluginversion  = $pluginversion;
         $a->currentmoodle  = $currentmoodle;
@@ -85,9 +85,9 @@ class upgrade_requires_exception extends moodle_exception {
 }
 
 /**
- * @package    moodlecore
+ * @package    core
  * @subpackage upgrade
- * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
+ * @copyright  2009 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class plugin_defective_exception extends moodle_exception {
@@ -276,7 +276,7 @@ function upgrade_plugins($type, $startcallback, $endcallback, $verbose) {
             continue;
         }
 
-        $plugin = new object();
+        $plugin = new stdClass();
         require($fullplug.'/version.php');  // defines $plugin with version etc
 
         if (empty($plugin->version)) {
@@ -290,6 +290,8 @@ function upgrade_plugins($type, $startcallback, $endcallback, $verbose) {
         if (!empty($plugin->requires)) {
             if ($plugin->requires > $CFG->version) {
                 throw new upgrade_requires_exception($component, $plugin->version, $CFG->version, $plugin->requires);
+            } else if ($plugin->requires < 2010000000) {
+                throw new plugin_defective_exception($component, 'Plugin is not compatible with Moodle 2.x or later.');
             }
         }
 
@@ -404,7 +406,7 @@ function upgrade_plugins_modules($startcallback, $endcallback, $verbose) {
             throw new plugin_defective_exception($component, 'Missing version.php');
         }
 
-        $module = new object();
+        $module = new stdClass();
         require($fullmod .'/version.php');  // defines $module with version etc
 
         if (empty($module->version)) {
@@ -419,6 +421,8 @@ function upgrade_plugins_modules($startcallback, $endcallback, $verbose) {
         if (!empty($module->requires)) {
             if ($module->requires > $CFG->version) {
                 throw new upgrade_requires_exception($component, $module->version, $CFG->version, $module->requires);
+            } else if ($module->requires < 2010000000) {
+                throw new plugin_defective_exception($component, 'Plugin is not compatible with Moodle 2.x or later.');
             }
         }
 
@@ -547,11 +551,19 @@ function upgrade_plugins_blocks($startcallback, $endcallback, $verbose) {
         if (!is_readable($fullblock.'/version.php')) {
             throw new plugin_defective_exception('block/'.$blockname, 'Missing version.php file.');
         }
-        $plugin = new object();
+        $plugin = new stdClass();
         $plugin->version = NULL;
         $plugin->cron    = 0;
         include($fullblock.'/version.php');
         $block = $plugin;
+
+        if (!empty($plugin->requires)) {
+            if ($plugin->requires > $CFG->version) {
+                throw new upgrade_requires_exception($component, $plugin->version, $CFG->version, $plugin->requires);
+            } else if ($plugin->requires < 2010000000) {
+                throw new plugin_defective_exception($component, 'Plugin is not compatible with Moodle 2.x or later.');
+            }
+        }
 
         if (!is_readable($fullblock.'/block_'.$blockname.'.php')) {
             throw new plugin_defective_exception('block/'.$blockname, 'Missing main block class file.');
@@ -573,7 +585,6 @@ function upgrade_plugins_blocks($startcallback, $endcallback, $verbose) {
         }
 
         $block->name     = $blockname;   // The name MUST match the directory
-        $block->multiple = $blockobj->instance_allow_multiple() ? 1 : 0;
 
         if (empty($block->version)) {
             throw new plugin_defective_exception($component, 'Missing block version.');
@@ -602,8 +613,6 @@ function upgrade_plugins_blocks($startcallback, $endcallback, $verbose) {
         }
 
         if (empty($currblock->version)) { // block not installed yet, so install it
-            // If it allows multiples, start with it enabled
-
             $conflictblock = array_search($blocktitle, $blocktitles);
             if ($conflictblock !== false) {
                 // Duplicate block titles are not allowed, they confuse people
@@ -810,7 +819,7 @@ function external_update_descriptions($component) {
         }
     }
     foreach ($functions as $fname => $function) {
-        $dbfunction = new object();
+        $dbfunction = new stdClass();
         $dbfunction->name       = $fname;
         $dbfunction->classname  = $function['classname'];
         $dbfunction->methodname = $function['methodname'];
@@ -863,7 +872,7 @@ function external_update_descriptions($component) {
             }
         }
         foreach ($service['functions'] as $fname) {
-            $newf = new object();
+            $newf = new stdClass();
             $newf->externalserviceid = $dbservice->id;
             $newf->functionname      = $fname;
             $DB->insert_record('external_services_functions', $newf);
@@ -871,7 +880,7 @@ function external_update_descriptions($component) {
         unset($functions);
     }
     foreach ($services as $name => $service) {
-        $dbservice = new object();
+        $dbservice = new stdClass();
         $dbservice->name               = $name;
         $dbservice->enabled            = empty($service['enabled']) ? 0 : $service['enabled'];
         $dbservice->requiredcapability = empty($service['requiredcapability']) ? null : $service['requiredcapability'];
@@ -880,7 +889,7 @@ function external_update_descriptions($component) {
         $dbservice->timecreated        = time();
         $dbservice->id = $DB->insert_record('external_services', $dbservice);
         foreach ($service['functions'] as $fname) {
-            $newf = new object();
+            $newf = new stdClass();
             $newf->externalserviceid = $dbservice->id;
             $newf->functionname      = $fname;
             $DB->insert_record('external_services_functions', $newf);
@@ -908,6 +917,8 @@ function external_delete_descriptions($component) {
  * upgrade logging functions
  */
 function upgrade_handle_exception($ex, $plugin = null) {
+    global $CFG;
+
     // rollback everything, we need to log all upgrade problems
     abort_all_db_transactions();
 
@@ -977,7 +988,7 @@ function upgrade_log($type, $plugin, $info, $details=null, $backtrace=null) {
         }
     }
 
-    $log = new object();
+    $log = new stdClass();
     $log->type         = $type;
     $log->plugin       = $plugin;
     $log->version      = $version;
@@ -1374,6 +1385,8 @@ function upgrade_plugin_mnet_functions($component) {
     list($type, $plugin) = explode('_', $component);
     $path = get_plugin_directory($type, $plugin);
 
+    $publishes = array();
+    $subscribes = array();
     if (file_exists($path . '/db/mnet.php')) {
         require_once($path . '/db/mnet.php'); // $publishes comes from this file
     }
@@ -1415,7 +1428,7 @@ function upgrade_plugin_mnet_functions($component) {
         $f = $data['filename'];
         $c = $data['classname'];
         foreach ($data['methods'] as $method) {
-            $dataobject = new stdclass;
+            $dataobject = new stdClass();
             $dataobject->plugintype  = $type;
             $dataobject->pluginname  = $plugin;
             $dataobject->enabled     = 1;

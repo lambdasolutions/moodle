@@ -141,9 +141,9 @@ abstract class restore_activity_task extends restore_task {
         // Grades (module-related, rest of gradebook is restored later if possible: cats, calculations...)
         $this->add_step(new restore_activity_grades_structure_step('activity_grades', 'grades.xml'));
 
-        // TODO: Userscompletion (conditionally)
+        // Userscompletion (conditionally)
         if ($this->get_setting_value('userscompletion')) {
-            //$this->add_step(new restore_userscompletion_structure_step('activity_userscompletion', 'completion.xml'));
+            $this->add_step(new restore_userscompletion_structure_step('activity_userscompletion', 'completion.xml'));
         }
 
         // TODO: Logs (conditionally)
@@ -164,6 +164,7 @@ abstract class restore_activity_task extends restore_task {
         // Find activity_included_setting
         if (!$this->get_setting_value('included')) {
             $this->log('activity skipped by _included setting', backup::LOG_DEBUG, $this->name);
+            $this->plan->set_excluding_activities(); // Inform plan we are excluding actvities
 
         } else { // Setting tells us it's ok to execute
             parent::execute();
@@ -215,13 +216,17 @@ abstract class restore_activity_task extends restore_task {
      * Define the contents in the activity that must be
      * processed by the link decoder
      */
-    abstract static public function define_decode_contents();
+    static public function define_decode_contents() {
+        throw new coding_exception('define_decode_contents() method needs to be overridden in each subclass of restore_activity_task');
+    }
 
     /**
      * Define the decoding rules for links belonging
      * to the activity to be executed by the link decoder
      */
-    abstract static public function define_decode_rules();
+    static public function define_decode_rules() {
+        throw new coding_exception('define_decode_rules() method needs to be overridden in each subclass of restore_activity_task');
+    }
 
 // Protected API starts here
 
@@ -241,6 +246,7 @@ abstract class restore_activity_task extends restore_task {
         // - section_included setting (if exists)
         $settingname = $settingprefix . 'included';
         $activity_included = new restore_activity_generic_setting($settingname, base_setting::IS_BOOLEAN, true);
+        $activity_included->get_ui()->set_icon(new pix_icon('icon', get_string('pluginname', $this->modulename), $this->modulename));
         $this->add_setting($activity_included);
         // Look for "activities" root setting
         $activities = $this->plan->get_setting('activities');

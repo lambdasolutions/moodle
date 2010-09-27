@@ -81,7 +81,7 @@ class course_enrolment_manager {
 
     /**#@+
      * These variables are used to cache the information this class uses
-     * please never use these directly instead use thier get_ counterparts.
+     * please never use these directly instead use their get_ counterparts.
      * @access private
      * @var array
      */
@@ -164,7 +164,7 @@ class course_enrolment_manager {
     /**
      * Gets all of the users enrolled in this course.
      *
-     * If a filter was specificed this will be the users who were enrolled
+     * If a filter was specified this will be the users who were enrolled
      * in this course by means of that instance.
      *
      * @global moodle_database $DB
@@ -182,7 +182,8 @@ class course_enrolment_manager {
         $key = md5("$sort-$direction-$page-$perpage");
         if (!array_key_exists($key, $this->users)) {
             list($instancessql, $params, $filter) = $this->get_instance_sql();
-            $sql = "SELECT DISTINCT u.*, ul.timeaccess AS lastseen
+            $ufields = user_picture::fields('u', array('lastaccess', 'email'));
+            $sql = "SELECT DISTINCT $ufields, ul.timeaccess AS lastseen
                       FROM {user} u
                       JOIN {user_enrolments} ue ON (ue.userid = u.id  AND ue.enrolid $instancessql)
                       JOIN {enrol} e ON (e.id = ue.enrolid)
@@ -256,22 +257,21 @@ class course_enrolment_manager {
      * @return array Array(totalusers => int, users => array)
      */
     public function get_potential_users($enrolid, $search='', $searchanywhere=false, $page=0, $perpage=25) {
-        global $DB;
+        global $DB, $CFG;
 
         // Add some additional sensible conditions
-        $tests = array("u.username <> 'guest'", 'u.deleted = 0', 'u.confirmed = 1');
-        $params = array();
+        $tests = array("id <> :guestid", 'u.deleted = 0', 'u.confirmed = 1');
+        $params = array('guestid' => $CFG->siteguest);
         if (!empty($search)) {
             $conditions = array('u.firstname','u.lastname');
-            $ilike = ' ' . $DB->sql_ilike();
             if ($searchanywhere) {
                 $searchparam = '%' . $search . '%';
             } else {
                 $searchparam = $search . '%';
             }
             $i = 0;
-            foreach ($conditions as &$condition) {
-                $condition .= "$ilike :con{$i}00";
+            foreach ($conditions as $key=>$condition) {
+                $conditions[$key] = $DB->sql_like($condition,":con{$i}00", false);
                 $params["con{$i}00"] = $searchparam;
                 $i++;
             }
@@ -306,22 +306,21 @@ class course_enrolment_manager {
      * @return array
      */
     public function search_other_users($search='', $searchanywhere=false, $page=0, $perpage=25) {
-        global $DB;
+        global $DB, $CFG;
 
         // Add some additional sensible conditions
-        $tests = array("u.username <> 'guest'", 'u.deleted = 0', 'u.confirmed = 1');
-        $params = array();
+        $tests = array("u.id <> :guestid", 'u.deleted = 0', 'u.confirmed = 1');
+        $params = array('guestid'=>$CFG->siteguest);
         if (!empty($search)) {
             $conditions = array('u.firstname','u.lastname');
-            $ilike = ' ' . $DB->sql_ilike();
             if ($searchanywhere) {
                 $searchparam = '%' . $search . '%';
             } else {
                 $searchparam = $search . '%';
             }
             $i = 0;
-            foreach ($conditions as &$condition) {
-                $condition .= "$ilike :con{$i}00";
+            foreach ($conditions as $key=>$condition) {
+                $conditions[$key] = $DB->sql_like($condition, ":con{$i}00", false);
                 $params["con{$i}00"] = $searchparam;
                 $i++;
             }
@@ -477,7 +476,7 @@ class course_enrolment_manager {
     }
 
     /**
-     * Unenroles a user from the course given the users ue entry
+     * Unenrols a user from the course given the users ue entry
      *
      * @global moodle_database $DB
      * @param stdClass $ue
@@ -530,7 +529,7 @@ class course_enrolment_manager {
         try {
             role_unassign($roleid, $user->id, $this->context->id, '', NULL);
         } catch (Exception $e) {
-            if (is_defined('AJAX_SCRIPT')) {
+            if (defined('AJAX_SCRIPT')) {
                 throw $e;
             }
             return false;
@@ -548,8 +547,8 @@ class course_enrolment_manager {
     public function assign_role_to_user($roleid, $userid) {
         require_capability('moodle/role:assign', $this->context);
         if (!array_key_exists($roleid, $this->get_assignable_roles())) {
-            if (is_defined('AJAX_SCRIPT')) {
-                throw new moodle_;
+            if (defined('AJAX_SCRIPT')) {
+                throw new moodle_exception('invalidrole');
             }
             return false;
         }
@@ -612,7 +611,7 @@ class course_enrolment_manager {
      * @return bool
      */
     public function edit_enrolment($userenrolment, $data) {
-        list($instance, $plugin) = $this->get_user_enrolment_components($ue);
+        list($instance, $plugin) = $this->get_user_enrolment_components($userenrolment);
         if ($instance && $plugin && $plugin->allow_manage($instance) && has_capability("enrol/$instance->enrol:manage", $this->context)) {
             if (!isset($data->status)) {
                 $data->status = $userenrolment->status;

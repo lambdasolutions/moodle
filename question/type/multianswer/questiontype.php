@@ -131,7 +131,7 @@ class embedded_cloze_qtype extends default_questiontype {
             $previousid = $wrapped->id ;
             $wrapped->category = $question->category . ',1'; // save_question strips this extra bit off again.
             $wrapped = $QTYPES[$wrapped->qtype]->save_question($wrapped,
-                    $wrapped, $question->course);
+                    clone($wrapped), $question->course);
             $sequence[] = $wrapped->id;
             if ($previousid != 0 && $previousid != $wrapped->id ) {
                 // for some reasons a new question has been created
@@ -210,9 +210,7 @@ class embedded_cloze_qtype extends default_questiontype {
         $responses = implode(',', $responses);
 
         // Set the legacy answer field
-        if (!$DB->set_field('question_states', 'answer', $responses, array('id' => $state->id))) {
-            return false;
-        }
+        $DB->set_field('question_states', 'answer', $responses, array('id' => $state->id));
         return true;
     }
 
@@ -302,7 +300,7 @@ class embedded_cloze_qtype extends default_questiontype {
         // adding an icon with alt to warn user this is a fill in the gap question
         // MDL-7497
         if (!empty($USER->screenreader)) {
-            echo "<img src=\"$CFG->wwwroot/question/type/$question->qtype/icon.gif\" ".
+            echo "<img src=\"".$OUTPUT->pix_url('icon', 'qtype_'.$question->qtype)."\" ".
                 "class=\"icon\" alt=\"".get_string('clozeaid','qtype_multichoice')."\" />  ";
         }
 
@@ -675,39 +673,6 @@ class embedded_cloze_qtype extends default_questiontype {
         return $totalfraction / count($question->options->questions);
     }
 
-/// BACKUP FUNCTIONS ////////////////////////////
-
-    /*
-     * Backup the data in the question
-     *
-     * This is used in question/backuplib.php
-     */
-    function backup($bf,$preferences,$question,$level=6) {
-        global $DB;
-        $status = true;
-
-        $multianswers = $DB->get_records("question_multianswer",array("question" => $question),"id");
-        //If there are multianswers
-        if ($multianswers) {
-            //Print multianswers header
-            $status = fwrite ($bf,start_tag("MULTIANSWERS",$level,true));
-            //Iterate over each multianswer
-            foreach ($multianswers as $multianswer) {
-                $status = fwrite ($bf,start_tag("MULTIANSWER",$level+1,true));
-                //Print multianswer contents
-                fwrite ($bf,full_tag("ID",$level+2,false,$multianswer->id));
-                fwrite ($bf,full_tag("QUESTION",$level+2,false,$multianswer->question));
-                fwrite ($bf,full_tag("SEQUENCE",$level+2,false,$multianswer->sequence));
-                $status = fwrite ($bf,end_tag("MULTIANSWER",$level+1,true));
-            }
-            //Print multianswers footer
-            $status = fwrite ($bf,end_tag("MULTIANSWERS",$level,true));
-            //Now print question_answers
-            $status = question_backup_answers($bf,$preferences,$question);
-        }
-        return $status;
-    }
-
 /// RESTORE FUNCTIONS /////////////////
 
     /*
@@ -976,14 +941,22 @@ define("ANSWER_REGEX_ANSWER_TYPE_SHORTANSWER_C", 8);
 define("ANSWER_REGEX_ALTERNATIVES", 9);
 
 function qtype_multianswer_extract_question($text) {
+    // $text is an array [text][format][itemid]
     $question = new stdClass;
     $question->qtype = 'multianswer';
     $question->questiontext = $text;
-    $question->options->questions = array();
+    $question->generalfeedback['text'] = '';
+    $question->generalfeedback['format'] = '1';
+    $question->generalfeedback['itemid'] = '';
+    
+    $question->options->questions = array();    
     $question->defaultgrade = 0; // Will be increased for each answer norm
 
     for ($positionkey=1; preg_match('/'.ANSWER_REGEX.'/', $question->questiontext['text'], $answerregs); ++$positionkey ) {
         $wrapped = new stdClass;
+        $wrapped->generalfeedback['text'] = '';
+        $wrapped->generalfeedback['format'] = '1';
+        $wrapped->generalfeedback['itemid'] = '';
         if (isset($answerregs[ANSWER_REGEX_NORM])&& $answerregs[ANSWER_REGEX_NORM]!== ''){
             $wrapped->defaultgrade = $answerregs[ANSWER_REGEX_NORM];
         } else {
@@ -993,6 +966,9 @@ function qtype_multianswer_extract_question($text) {
             $wrapped->qtype = 'numerical';
             $wrapped->multiplier = array();
             $wrapped->units      = array();
+            $wrapped->instructions['text'] = '';
+            $wrapped->instructions['format'] = '1';
+            $wrapped->instructions['itemid'] = '';
         } else if(!empty($answerregs[ANSWER_REGEX_ANSWER_TYPE_SHORTANSWER])) {
             $wrapped->qtype = 'shortanswer';
             $wrapped->usecase = 0;
@@ -1003,25 +979,43 @@ function qtype_multianswer_extract_question($text) {
             $wrapped->qtype = 'multichoice';
             $wrapped->single = 1;
             $wrapped->answernumbering = 0;
-            $wrapped->correctfeedback = '';
-            $wrapped->partiallycorrectfeedback = '';
-            $wrapped->incorrectfeedback = '';
+            $wrapped->correctfeedback['text'] = '';
+            $wrapped->correctfeedback['format'] = '1';
+            $wrapped->correctfeedback['itemid'] = '';
+            $wrapped->partiallycorrectfeedback['text'] = '';
+            $wrapped->partiallycorrectfeedback['format'] = '1';
+            $wrapped->partiallycorrectfeedback['itemid'] = '';
+            $wrapped->incorrectfeedback['text'] = '';
+            $wrapped->incorrectfeedback['format'] = '1';
+            $wrapped->incorrectfeedback['itemid'] = '';
             $wrapped->layout = 0;
         } else if(!empty($answerregs[ANSWER_REGEX_ANSWER_TYPE_MULTICHOICE_REGULAR])) {
             $wrapped->qtype = 'multichoice';
             $wrapped->single = 1;
             $wrapped->answernumbering = 0;
-            $wrapped->correctfeedback = '';
-            $wrapped->partiallycorrectfeedback = '';
-            $wrapped->incorrectfeedback = '';
+            $wrapped->correctfeedback['text'] = '';
+            $wrapped->correctfeedback['format'] = '1';
+            $wrapped->correctfeedback['itemid'] = '';
+            $wrapped->partiallycorrectfeedback['text'] = '';
+            $wrapped->partiallycorrectfeedback['format'] = '1';
+            $wrapped->partiallycorrectfeedback['itemid'] = '';
+            $wrapped->incorrectfeedback['text'] = '';
+            $wrapped->incorrectfeedback['format'] = '1';
+            $wrapped->incorrectfeedback['itemid'] = '';
             $wrapped->layout = 1;
         } else if(!empty($answerregs[ANSWER_REGEX_ANSWER_TYPE_MULTICHOICE_HORIZONTAL])) {
             $wrapped->qtype = 'multichoice';
             $wrapped->single = 1;
             $wrapped->answernumbering = 0;
-            $wrapped->correctfeedback = '';
-            $wrapped->partiallycorrectfeedback = '';
-            $wrapped->incorrectfeedback = '';
+            $wrapped->correctfeedback['text'] = '';
+            $wrapped->correctfeedback['format'] = '1';
+            $wrapped->correctfeedback['itemid'] = '';
+            $wrapped->partiallycorrectfeedback['text'] = '';
+            $wrapped->partiallycorrectfeedback['format'] = '1';
+            $wrapped->partiallycorrectfeedback['itemid'] = '';
+            $wrapped->incorrectfeedback['text'] = '';
+            $wrapped->incorrectfeedback['format'] = '1';
+            $wrapped->incorrectfeedback['itemid'] = '';
             $wrapped->layout = 2;
         } else {
             print_error('unknownquestiontype', 'question', '', $answerregs[2]);
@@ -1035,49 +1029,60 @@ function qtype_multianswer_extract_question($text) {
         $wrapped->fraction = array();
         $wrapped->feedback = array();
         $wrapped->shuffleanswers = 1;
-        $wrapped->questiontext = $answerregs[0];
-        $wrapped->questiontextformat = 0;
+        $wrapped->questiontext['text'] = $answerregs[0];
+        $wrapped->questiontext['format'] = 0 ;
+        $wrapped->questiontext['itemid'] = '' ;
+        $answerindex = 0 ;
 
         $remainingalts = $answerregs[ANSWER_REGEX_ALTERNATIVES];
         while (preg_match('/~?'.ANSWER_ALTERNATIVE_REGEX.'/', $remainingalts, $altregs)) {
             if ('=' == $altregs[ANSWER_ALTERNATIVE_REGEX_FRACTION]) {
-                $wrapped->fraction[] = '1';
+                $wrapped->fraction["$answerindex"] = '1';
             } else if ($percentile = $altregs[ANSWER_ALTERNATIVE_REGEX_PERCENTILE_FRACTION]){
-                $wrapped->fraction[] = .01 * $percentile;
+                $wrapped->fraction["$answerindex"] = .01 * $percentile;
             } else {
-                $wrapped->fraction[] = '0';
+                $wrapped->fraction["$answerindex"] = '0';
             }
             if (isset($altregs[ANSWER_ALTERNATIVE_REGEX_FEEDBACK])) {
                 $feedback = html_entity_decode($altregs[ANSWER_ALTERNATIVE_REGEX_FEEDBACK], ENT_QUOTES, 'UTF-8');
                 $feedback = str_replace('\}', '}', $feedback);
-                $wrapped->feedback[] = str_replace('\#', '#', $feedback);
+                $wrapped->feedback["$answerindex"]['text'] = str_replace('\#', '#', $feedback);
+                $wrapped->feedback["$answerindex"]['format'] = '1';
+                $wrapped->feedback["$answerindex"]['itemid'] = '';
             } else {
-                $wrapped->feedback[] = '';
+                $wrapped->feedback["$answerindex"]['text'] = '';
+                $wrapped->feedback["$answerindex"]['format'] = '1';
+                $wrapped->feedback["$answerindex"]['itemid'] = '1';
+
             }
             if (!empty($answerregs[ANSWER_REGEX_ANSWER_TYPE_NUMERICAL])
                     && preg_match('~'.NUMERICAL_ALTERNATIVE_REGEX.'~', $altregs[ANSWER_ALTERNATIVE_REGEX_ANSWER], $numregs)) {
                 $wrapped->answer[] = $numregs[NUMERICAL_CORRECT_ANSWER];
                 if ($numregs[NUMERICAL_ABS_ERROR_MARGIN]) {
-                    $wrapped->tolerance[] =
+                    $wrapped->tolerance["$answerindex"] =
                     $numregs[NUMERICAL_ABS_ERROR_MARGIN];
                 } else {
-                    $wrapped->tolerance[] = 0;
+                    $wrapped->tolerance["$answerindex"] = 0;
                 }
             } else { // Tolerance can stay undefined for non numerical questions
                 // Undo quoting done by the HTML editor.
                 $answer = html_entity_decode($altregs[ANSWER_ALTERNATIVE_REGEX_ANSWER], ENT_QUOTES, 'UTF-8');
                 $answer = str_replace('\}', '}', $answer);
-                $wrapped->answer[] = str_replace('\#', '#', $answer);
+                $wrapped->answer["$answerindex"] = str_replace('\#', '#', $answer);
             }
             $tmp = explode($altregs[0], $remainingalts, 2);
             $remainingalts = $tmp[1];
+            $answerindex++ ;
         }
 
         $question->defaultgrade += $wrapped->defaultgrade;
         $question->options->questions[$positionkey] = clone($wrapped);
-        $question->questiontext = implode("{#$positionkey}",
-                    explode($answerregs[0], $question->questiontext, 2));
+        $question->questiontext['text'] = implode("{#$positionkey}",
+                    explode($answerregs[0], $question->questiontext['text'], 2));
+//    echo"<p>questiontext 2 <pre>";print_r($question->questiontext);echo"<pre></p>";
     }
+//    echo"<p>questiontext<pre>";print_r($question->questiontext);echo"<pre></p>";
     $question->questiontext = $question->questiontext;
+//    echo"<p>question<pre>";print_r($question);echo"<pre></p>";
     return $question;
 }

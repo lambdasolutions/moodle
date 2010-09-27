@@ -124,7 +124,7 @@ class course_publish_manager {
         $publication->huburl = $huburl;
         $publication->courseid = $courseid;
         $publication->hubcourseid = $hubcourseid;
-        $publication->enrollable = $enrollable;
+        $publication->enrollable = (int) $enrollable;
         $publication->timepublished = time();
         $DB->insert_record('course_published', $publication);
     }
@@ -170,7 +170,7 @@ class course_publish_manager {
         }
 
         if ($enrollable != -1) {
-            $params['enrollable'] = $enrollable;
+            $params['enrollable'] = (int) $enrollable;
         }
 
         return $DB->get_records('course_published', $params);
@@ -244,7 +244,7 @@ class course_publish_manager {
         }
 
         if ($enrollable != -1) {
-            $params['enrollable'] = $enrollable;
+            $params['enrollable'] = (int) $enrollable;
         }
 
         $DB->delete_records('course_published', $params);

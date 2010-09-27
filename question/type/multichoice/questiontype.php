@@ -236,9 +236,7 @@ class question_multichoice_qtype extends default_questiontype {
         $responses .= implode(',', $state->responses);
 
         // Set the legacy answer field
-        if (!$DB->set_field('question_states', 'answer', $responses, array('id' => $state->id))) {
-            return false;
-        }
+        $DB->set_field('question_states', 'answer', $responses, array('id' => $state->id));
         return true;
     }
 
@@ -420,40 +418,6 @@ class question_multichoice_qtype extends default_questiontype {
             $totalfraction += $answer->fraction;
         }
         return $totalfraction / count($question->options->answers);
-    }
-    /// BACKUP FUNCTIONS ////////////////////////////
-
-    /*
-     * Backup the data in the question
-     *
-     * This is used in question/backuplib.php
-     */
-    function backup($bf,$preferences,$question,$level=6) {
-
-        global $DB;
-        $status = true;
-
-        $multichoices = $DB->get_records("question_multichoice",array("question" => $question),"id");
-        if ($multichoices) {
-            //Iterate over each multichoice
-            foreach ($multichoices as $multichoice) {
-                $status = fwrite ($bf,start_tag("MULTICHOICE",$level,true));
-                //Print multichoice contents
-                fwrite ($bf,full_tag("LAYOUT",$level+1,false,$multichoice->layout));
-                fwrite ($bf,full_tag("ANSWERS",$level+1,false,$multichoice->answers));
-                fwrite ($bf,full_tag("SINGLE",$level+1,false,$multichoice->single));
-                fwrite ($bf,full_tag("SHUFFLEANSWERS",$level+1,false,$multichoice->shuffleanswers));
-                fwrite ($bf,full_tag("CORRECTFEEDBACK",$level+1,false,$multichoice->correctfeedback));
-                fwrite ($bf,full_tag("PARTIALLYCORRECTFEEDBACK",$level+1,false,$multichoice->partiallycorrectfeedback));
-                fwrite ($bf,full_tag("INCORRECTFEEDBACK",$level+1,false,$multichoice->incorrectfeedback));
-                fwrite ($bf,full_tag("ANSWERNUMBERING",$level+1,false,$multichoice->answernumbering));
-                $status = fwrite ($bf,end_tag("MULTICHOICE",$level,true));
-            }
-
-            //Now print question_answers
-            $status = question_backup_answers($bf,$preferences,$question);
-        }
-        return $status;
     }
 
     /// RESTORE FUNCTIONS /////////////////
@@ -750,7 +714,7 @@ class question_multichoice_qtype extends default_questiontype {
             $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
             foreach ($files as $storedfile) {
                 if (!$storedfile->is_directory()) {
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);
                     $storedfile->delete();
@@ -763,7 +727,7 @@ class question_multichoice_qtype extends default_questiontype {
             $files = $fs->get_area_files($question->contextid, $component, $filearea, $question->id);
             foreach ($files as $storedfile) {
                 if (!$storedfile->is_directory()) {
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);
                     $storedfile->delete();

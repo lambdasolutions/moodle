@@ -117,7 +117,7 @@ define('PARAM_BOOL',     'bool');
 define('PARAM_CAPABILITY',   'capability');
 
 /**
- * PARAM_CLEANHTML - cleans submitted HTML code and removes slashes. It stays as HTML.
+ * PARAM_CLEANHTML - cleans submitted HTML code. use only for text in HTML format. This cleaning may fix xhtml strictness too.
  */
 define('PARAM_CLEANHTML', 'cleanhtml');
 
@@ -208,7 +208,7 @@ define('PARAM_TAG',   'tag');
 define('PARAM_TAGLIST',   'taglist');
 
 /**
- * PARAM_TEXT - general plain text compatible with multilang filter, no other html tags.
+ * PARAM_TEXT - general plain text compatible with multilang filter, no other html tags. Please note '<', or '>' are allowed here.
  */
 define('PARAM_TEXT',  'text');
 
@@ -236,6 +236,7 @@ define('PARAM_STRINGID',    'stringid');
 /**
  * PARAM_CLEAN - obsoleted, please use a more specific type of parameter.
  * It was one of the first types, that is why it is abused so much ;-)
+ * @deprecated since 2.0
  */
 define('PARAM_CLEAN',    'clean');
 
@@ -429,12 +430,18 @@ define('HUB_MOODLEORGHUBURL', "http://hub.moodle.org");
  * used like this:
  *    $id = required_param('id', PARAM_INT);
  *
- * @param string $parname the name of the page parameter we want,
- *                        default PARAM_CLEAN
- * @param int $type expected type of parameter
+ * Please note the $type parameter is now required,
+ * for now PARAM_CLEAN is used for backwards compatibility only.
+ *
+ * @param string $parname the name of the page parameter we want
+ * @param string $type expected type of parameter
  * @return mixed
  */
-function required_param($parname, $type=PARAM_CLEAN) {
+function required_param($parname, $type) {
+    if (!isset($type)) {
+        debugging('required_param() requires $type to be specified.');
+        $type = PARAM_CLEAN; // for now let's use this deprecated type
+    }
     if (isset($_POST[$parname])) {       // POST has precedence
         $param = $_POST[$parname];
     } else if (isset($_GET[$parname])) {
@@ -455,12 +462,23 @@ function required_param($parname, $type=PARAM_CLEAN) {
  * used like this:
  *    $name = optional_param('name', 'Fred', PARAM_TEXT);
  *
+ * Please note $default and $type parameters are now required,
+ * for now PARAM_CLEAN is used for backwards compatibility only.
+ *
  * @param string $parname the name of the page parameter we want
  * @param mixed  $default the default value to return if nothing is found
- * @param int $type expected type of parameter, default PARAM_CLEAN
+ * @param string $type expected type of parameter
  * @return mixed
  */
-function optional_param($parname, $default=NULL, $type=PARAM_CLEAN) {
+function optional_param($parname, $default, $type) {
+    if (!isset($type)) {
+        debugging('optional_param() requires $default and $type to be specified.');
+        $type = PARAM_CLEAN; // for now let's use this deprecated type
+    }
+    if (!isset($default)) {
+        $default = null;
+    }
+
     if (isset($_POST[$parname])) {       // POST has precedence
         $param = $_POST[$parname];
     } else if (isset($_GET[$parname])) {
@@ -512,7 +530,7 @@ function validate_param($param, $type, $allownull=NULL_NOT_ALLOWED, $debuginfo='
  * an options field.
  * <code>
  * $course->format = clean_param($course->format, PARAM_ALPHA);
- * $selectedgrade_item = clean_param($selectedgrade_item, PARAM_CLEAN);
+ * $selectedgrade_item = clean_param($selectedgrade_item, PARAM_INT);
  * </code>
  *
  * @param mixed $param the variable we are cleaning
@@ -536,13 +554,14 @@ function clean_param($param, $type) {
             return $param;
 
         case PARAM_CLEAN:        // General HTML cleaning, try to use more specific type if possible
+            // this is deprecated!, please use more specific type instead
             if (is_numeric($param)) {
                 return $param;
             }
             return clean_text($param);     // Sweep for scripts, etc
 
-        case PARAM_CLEANHTML:    // prepare html fragment for display, do not store it into db!!
-            $param = clean_text($param);     // Sweep for scripts, etc
+        case PARAM_CLEANHTML:    // clean html fragment
+            $param = clean_text($param, FORMAT_HTML);     // Sweep for scripts, etc
             return trim($param);
 
         case PARAM_INT:
@@ -582,7 +601,67 @@ function clean_param($param, $type) {
             return strip_tags($param);
 
         case PARAM_TEXT:    // leave only tags needed for multilang
-            return clean_param(strip_tags($param, '<lang><span>'), PARAM_CLEAN);
+            // if the multilang syntax is not correct we strip all tags
+            // because it would break xhtml strict which is required for accessibility standards
+            // please note this cleaning does not strip unbalanced '>' for BC compatibility reasons
+            do {
+                if (strpos($param, '</lang>') !== false) {
+                    // old and future mutilang syntax
+                    $param = strip_tags($param, '<lang>');
+                    if (!preg_match_all('/<.*>/suU', $param, $matches)) {
+                        break;
+                    }
+                    $open = false;
+                    foreach ($matches[0] as $match) {
+                        if ($match === '</lang>') {
+                            if ($open) {
+                                $open = false;
+                                continue;
+                            } else {
+                                break 2;
+                            }
+                        }
+                        if (!preg_match('/^<lang lang="[a-zA-Z0-9_-]+"\s*>$/u', $match)) {
+                            break 2;
+                        } else {
+                            $open = true;
+                        }
+                    }
+                    if ($open) {
+                        break;
+                    }
+                    return $param;
+
+                } else if (strpos($param, '</span>') !== false) {
+                    // current problematic multilang syntax
+                    $param = strip_tags($param, '<span>');
+                    if (!preg_match_all('/<.*>/suU', $param, $matches)) {
+                        break;
+                    }
+                    $open = false;
+                    foreach ($matches[0] as $match) {
+                        if ($match === '</span>') {
+                            if ($open) {
+                                $open = false;
+                                continue;
+                            } else {
+                                break 2;
+                            }
+                        }
+                        if (!preg_match('/^<span(\s+lang="[a-zA-Z0-9_-]+"|\s+class="multilang"){2}\s*>$/u', $match)) {
+                            break 2;
+                        } else {
+                            $open = true;
+                        }
+                    }
+                    if ($open) {
+                        break;
+                    }
+                    return $param;
+                }
+            } while (false);
+            // easy, just strip all tags, if we ever want to fix orphaned '&' we have to do that in format_string()
+            return strip_tags($param);
 
         case PARAM_SAFEDIR:      // Remove everything not a-zA-Z0-9_-
             return preg_replace('/[^a-zA-Z0-9_-]/i', '', $param);
@@ -885,7 +964,7 @@ function set_config($name, $value, $plugin=NULL) {
             }
         } else {
             if ($value !== null) {
-                $config = new object();
+                $config = new stdClass();
                 $config->name  = $name;
                 $config->value = $value;
                 $DB->insert_record('config', $config, false);
@@ -901,7 +980,7 @@ function set_config($name, $value, $plugin=NULL) {
             }
         } else {
             if ($value !== null) {
-                $config = new object();
+                $config = new stdClass();
                 $config->plugin = $plugin;
                 $config->name   = $name;
                 $config->value  = $value;
@@ -1079,12 +1158,8 @@ function purge_all_caches() {
     // purge all other caches: rss, simplepie, etc.
     remove_dir($CFG->dataroot.'/cache', true);
 
-    // some more diagnostics in case site is misconfigured
-    if (!check_dir_exists($CFG->dataroot.'/cache', true, true)) {
-        debugging('Can not create cache directory, please check permissions in dataroot.');
-    } else if (!is_writeable($CFG->dataroot.'/cache')) {
-        debugging('Cache directory is not writeable, please verify permissions in dataroot.');
-    }
+    // make sure cache dir is writable, throws exception if not
+    make_upload_directory('cache');
 
     clearstatcache();
 }
@@ -1170,7 +1245,7 @@ function set_cache_flag($type, $name, $value, $expiry=NULL) {
         $f->timemodified = $timemodified;
         $DB->update_record('cache_flags', $f);
     } else {
-        $f = new object();
+        $f = new stdClass();
         $f->flagtype     = $type;
         $f->name         = $name;
         $f->value        = $value;
@@ -1308,7 +1383,7 @@ function set_user_preference($name, $value, $otheruserid=NULL) {
         $DB->set_field('user_preferences', 'value', (string)$value, array('id'=>$preference->id));
 
     } else {
-        $preference = new object();
+        $preference = new stdClass();
         $preference->userid = $userid;
         $preference->name   = $name;
         $preference->value  = (string)$value;
@@ -2126,7 +2201,7 @@ function days_in_month($month, $year) {
 function dayofweek($day, $month, $year) {
     // I wonder if this is any different from
     // strftime('%w', mktime(12, 0, 0, $month, $daysinmonth, $year, 0));
-    return intval(date('w', mktime(12, 0, 0, $month, $day, $year, 0)));
+    return intval(date('w', mktime(12, 0, 0, $month, $day, $year)));
 }
 
 /// USER AUTHENTICATION AND LOGIN ////////////////////////////////////////
@@ -2134,20 +2209,15 @@ function dayofweek($day, $month, $year) {
 /**
  * Returns full login url.
  *
- * @global object
- * @param bool $loginguest add login guest param, return false
  * @return string login url
  */
-function get_login_url($loginguest=false) {
+function get_login_url() {
     global $CFG;
 
-    if (empty($CFG->loginhttps) or $loginguest) { //do not require https for guest logins
-        $loginguest = $loginguest ? '?loginguest=true' : '';
-        $url = "$CFG->wwwroot/login/index.php$loginguest";
+    $url = "$CFG->wwwroot/login/index.php";
 
-    } else {
-        $wwwroot = str_replace('http:','https:', $CFG->wwwroot);
-        $url = "$wwwroot/login/index.php";
+    if (!empty($CFG->loginhttps)) {
+        $url = str_replace('http:', 'https:', $url);
     }
 
     return $url;
@@ -2212,29 +2282,32 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
 
     // If the user is not even logged in yet then make sure they are
     if (!isloggedin()) {
-        //NOTE: $USER->site check was obsoleted by session test cookie,
-        //      $USER->confirmed test is in login/index.php
-        if ($preventredirect) {
-            throw new require_login_exception('You are not logged in');
-        }
-
-        if ($setwantsurltome) {
-            $SESSION->wantsurl = $FULLME;
-        }
-        if (!empty($_SERVER['HTTP_REFERER'])) {
-            $SESSION->fromurl  = $_SERVER['HTTP_REFERER'];
-        }
         if ($autologinguest and !empty($CFG->guestloginbutton) and !empty($CFG->autologinguests)) {
-            if ($course->id == SITEID) {
-                $loginguest = true;
-            } else {
-                $loginguest = false;
+            if (!$guest = get_complete_user_data('id', $CFG->siteguest)) {
+                // misconfigured site guest, just redirect to login page
+                redirect(get_login_url());
+                exit; // never reached
             }
+            $lang = isset($SESSION->lang) ? $SESSION->lang : $CFG->lang;
+            complete_user_login($guest, false);
+            $SESSION->lang = $lang;
         } else {
-            $loginguest = false;
+            //NOTE: $USER->site check was obsoleted by session test cookie,
+            //      $USER->confirmed test is in login/index.php
+            if ($preventredirect) {
+                throw new require_login_exception('You are not logged in');
+            }
+
+            if ($setwantsurltome) {
+                // TODO: switch to PAGE->url
+                $SESSION->wantsurl = $FULLME;
+            }
+            if (!empty($_SERVER['HTTP_REFERER'])) {
+                $SESSION->fromurl  = $_SERVER['HTTP_REFERER'];
+            }
+            redirect(get_login_url());
+            exit; // never reached
         }
-        redirect(get_login_url($loginguest));
-        exit; // never reached
     }
 
     // loginas as redirection if needed
@@ -2320,7 +2393,7 @@ function require_login($courseorid = NULL, $autologinguest = true, $cm = NULL, $
     if ($course->id == SITEID) {
         // frontpage can not be hidden
     } else {
-        if (!empty($USER->access['rsw'][$coursecontext->path])) {
+        if (is_role_switched($course->id)) {
             // when switching roles ignore the hidden flag - user had to be in course to do the switch
         } else {
             if (!$course->visible and !has_capability('moodle/course:viewhiddencourses', $coursecontext)) {
@@ -2663,7 +2736,7 @@ function require_user_key_login($script, $instance=null) {
 function create_user_key($script, $userid, $instance=null, $iprestriction=null, $validuntil=null) {
     global $DB;
 
-    $key = new object();
+    $key = new stdClass();
     $key->script        = $script;
     $key->userid        = $userid;
     $key->instance      = $instance;
@@ -2728,7 +2801,7 @@ function get_user_key($script, $userid, $instance=null, $iprestriction=null, $va
 function update_user_login_times() {
     global $USER, $DB;
 
-    $user = new object();
+    $user = new stdClass();
     $USER->lastlogin = $user->lastlogin = $USER->currentlogin;
     $USER->currentlogin = $user->lastaccess = $user->currentlogin = time();
 
@@ -2745,7 +2818,10 @@ function update_user_login_times() {
  * @return bool
  */
 function user_not_fully_set_up($user) {
-    return ($user->username != 'guest' and (empty($user->firstname) or empty($user->lastname) or empty($user->email) or over_bounce_threshold($user)));
+    if (isguestuser($user)) {
+        return false;
+    }
+    return (empty($user->firstname) or empty($user->lastname) or empty($user->email) or over_bounce_threshold($user));
 }
 
 /**
@@ -2806,7 +2882,7 @@ function set_send_count($user,$reset=false) {
     }
     else if (!empty($reset)) { // if it's not there and we're resetting, don't bother.
         // make a new one
-        $pref = new object();
+        $pref = new stdClass();
         $pref->name   = 'email_send_count';
         $pref->value  = 1;
         $pref->userid = $user->id;
@@ -2830,7 +2906,7 @@ function set_bounce_count($user,$reset=false) {
     }
     else if (!empty($reset)) { // if it's not there and we're resetting, don't bother.
         // make a new one
-        $pref = new object();
+        $pref = new stdClass();
         $pref->name   = 'email_bounce_count';
         $pref->value  = 1;
         $pref->userid = $user->id;
@@ -2914,7 +2990,7 @@ function &get_fast_modinfo(&$course, $userid=0) {
         $course->modinfo = $DB->get_field('course', 'modinfo', array('id'=>$course->id));
     }
 
-    $modinfo = new object();
+    $modinfo = new stdClass();
     $modinfo->courseid  = $course->id;
     $modinfo->userid    = $userid;
     $modinfo->sections  = array();
@@ -2957,7 +3033,7 @@ function &get_fast_modinfo(&$course, $userid=0) {
             continue;
         }
         // reconstruct minimalistic $cm
-        $cm = new object();
+        $cm = new stdClass();
         $cm->id               = $mod->cm;
         $cm->instance         = $mod->id;
         $cm->course           = $course->id;
@@ -2975,7 +3051,7 @@ function &get_fast_modinfo(&$course, $userid=0) {
         $cm->icon             = isset($mod->icon) ? $mod->icon : '';
         $cm->iconcomponent    = isset($mod->iconcomponent) ? $mod->iconcomponent : '';
         $cm->uservisible      = true;
-        if(!empty($CFG->enableavailability)) {
+        if (!empty($CFG->enableavailability)) {
             // We must have completion information from modinfo. If it's not
             // there, cache needs rebuilding
             if(!isset($mod->availablefrom)) {
@@ -2983,7 +3059,7 @@ function &get_fast_modinfo(&$course, $userid=0) {
                     'cache for course '.$course->id);
                 rebuild_course_cache($course->id,true);
                 // Re-enter this routine to do it all properly
-                return get_fast_modinfo($course,$userid);
+                return get_fast_modinfo($course, $userid);
             }
             $cm->availablefrom    = $mod->availablefrom;
             $cm->availableuntil   = $mod->availableuntil;
@@ -3002,13 +3078,13 @@ function &get_fast_modinfo(&$course, $userid=0) {
         $cm->modplural = $modlurals[$cm->modname];
         $modcontext = get_context_instance(CONTEXT_MODULE,$cm->id);
 
-        if(!empty($CFG->enableavailability)) {
+        if (!empty($CFG->enableavailability)) {
             // Unfortunately the next call really wants to call
             // get_fast_modinfo, but that would be recursive, so we fake up a
             // modinfo for it already
-            if(empty($minimalmodinfo)) {
-                $minimalmodinfo=new stdClass();
-                $minimalmodinfo->cms=array();
+            if (empty($minimalmodinfo)) { //TODO: this is suspicious (skodak)
+                $minimalmodinfo = new stdClass();
+                $minimalmodinfo->cms = array();
                 foreach($info as $mod) {
                     if (empty($mod->name)) {
                         // something is wrong here
@@ -3023,9 +3099,9 @@ function &get_fast_modinfo(&$course, $userid=0) {
 
             // Get availability information
             $ci = new condition_info($cm);
-            $cm->available=$ci->is_available($cm->availableinfo, true, $userid, $minimalmodinfo);
+            $cm->available = $ci->is_available($cm->availableinfo, true, $userid, $minimalmodinfo);
         } else {
-            $cm->available=true;
+            $cm->available = true;
         }
         if ((!$cm->visible or !$cm->available) and !has_capability('moodle/course:viewhiddenactivities', $modcontext, $userid)) {
             $cm->uservisible = false;
@@ -3305,7 +3381,7 @@ function create_user_record($username, $password, $auth='manual') {
 
     $authplugin = get_auth_plugin($auth);
 
-    $newuser = new object();
+    $newuser = new stdClass();
 
     if ($newinfo = $authplugin->get_userinfo($username)) {
         $newinfo = truncate_userinfo($newinfo);
@@ -3482,7 +3558,7 @@ function delete_user($user) {
     }
 
     // mark internal user record as "deleted"
-    $updateuser = new object();
+    $updateuser = new stdClass();
     $updateuser->id           = $user->id;
     $updateuser->deleted      = 1;
     $updateuser->username     = $delname;            // Remember it just in case
@@ -3512,7 +3588,7 @@ function delete_user($user) {
 function guest_user() {
     global $CFG, $DB;
 
-    if ($newuser = $DB->get_record('user', array('username'=>'guest', 'mnethostid'=>$CFG->mnet_localhost_id))) {
+    if ($newuser = $DB->get_record('user', array('id'=>$CFG->siteguest))) {
         $newuser->confirmed = 1;
         $newuser->lang = $CFG->lang;
         $newuser->lastip = getremoteaddr();
@@ -3568,7 +3644,7 @@ function authenticate_user_login($username, $password) {
         }
 
         $auths = $authsenabled;
-        $user = new object();
+        $user = new stdClass();
         $user->id = 0;     // User does not exist
     }
 
@@ -3657,6 +3733,11 @@ function complete_user_login($user, $setcookie=true) {
 
     update_user_login_times();
     set_login_session_preferences();
+
+    if (isguestuser()) {
+        // no need to continue when user is THE guest
+        return $USER;
+    }
 
     if ($setcookie) {
         if (empty($CFG->nolastloggedin)) {
@@ -3855,7 +3936,7 @@ function get_complete_user_data($field, $value, $mnethostid=null) {
     if (!empty($user->description)) {
         $user->description = true;   // No need to cart all of it around
     }
-    if ($user->username == 'guest') {
+    if (isguestuser($user)) {
         $user->lang       = $CFG->lang;               // Guest language always same as site
         $user->firstname  = get_string('guestuser');  // Name always in current language
         $user->lastname   = ' ';
@@ -3936,7 +4017,7 @@ function set_login_session_preferences() {
 
 /**
  * Delete a course, including all related data from the database,
- * and any associated files from the moodledata folder.
+ * and any associated files.
  *
  * @global object
  * @global object
@@ -3947,7 +4028,7 @@ function set_login_session_preferences() {
  *             failed, but you have no way of knowing which.
  */
 function delete_course($courseorid, $showfeedback = true) {
-    global $CFG, $DB, $OUTPUT;
+    global $DB;
 
     if (is_object($courseorid)) {
         $courseid = $courseorid->id;
@@ -3958,20 +4039,22 @@ function delete_course($courseorid, $showfeedback = true) {
             return false;
         }
     }
+    $context = get_context_instance(CONTEXT_COURSE, $courseid);
 
     // frontpage course can not be deleted!!
     if ($courseid == SITEID) {
         return false;
     }
 
+    // make the course completely empty
     remove_course_contents($courseid, $showfeedback);
 
+    // delete the course and related context instance
+    delete_context(CONTEXT_COURSE, $courseid);
     $DB->delete_records("course", array("id"=>$courseid));
 
-    // Delete all roles and overiddes in the course context
-    delete_context(CONTEXT_COURSE, $courseid);
-
     //trigger events
+    $course->context = $context; // you can not fetch context in the event because it was already deleted
     events_trigger('course_deleted', $course);
 
     return true;
@@ -3979,27 +4062,40 @@ function delete_course($courseorid, $showfeedback = true) {
 
 /**
  * Clear a course out completely, deleting all content
- * but don't delete the course itself
+ * but don't delete the course itself.
+ * This function does not verify any permissions.
  *
- * @global object
- * @global object
+ * Please note this function also deletes all user enrolments,
+ * enrolment instances and role assignments.
+ *
  * @param int $courseid The id of the course that is being deleted
  * @param bool $showfeedback Whether to display notifications of each action the function performs.
  * @return bool true if all the removals succeeded. false if there were any failures. If this
  *             method returns false, some of the removals will probably have succeeded, and others
  *             failed, but you have no way of knowing which.
  */
-function remove_course_contents($courseid, $showfeedback=true) {
+function remove_course_contents($courseid, $showfeedback = true) {
     global $CFG, $DB, $OUTPUT;
     require_once($CFG->libdir.'/questionlib.php');
     require_once($CFG->libdir.'/gradelib.php');
+    require_once($CFG->dirroot.'/group/lib.php');
+    require_once($CFG->dirroot.'/tag/coursetagslib.php');
 
     $course = $DB->get_record('course', array('id'=>$courseid), '*', MUST_EXIST);
     $context = get_context_instance(CONTEXT_COURSE, $courseid, MUST_EXIST);
 
     $strdeleted = get_string('deleted');
 
-/// Clean up course formats (iterate through all formats in the even the course format was ever changed)
+    // Delete course completion information,
+    // this has to be done before grades and enrols
+    $cc = new completion_info($course);
+    $cc->clear_criteria();
+
+    // remove roles and enrolments
+    role_unassign_all(array('contextid'=>$context->id), true);
+    enrol_course_delete($course);
+
+    // Clean up course formats (iterate through all formats in the even the course format was ever changed)
     $formats = get_plugin_list('format');
     foreach ($formats as $format=>$formatdir) {
         $formatdelete = 'format_'.$format.'_delete_course';
@@ -4015,14 +4111,26 @@ function remove_course_contents($courseid, $showfeedback=true) {
         }
     }
 
-/// Remove all data from gradebook - this needs to be done before course modules
-/// because while deleting this information, the system may need to reference
-/// the course modules that own the grades.
+    // Remove all data from gradebook - this needs to be done before course modules
+    // because while deleting this information, the system may need to reference
+    // the course modules that own the grades.
     remove_course_grades($courseid, $showfeedback);
     remove_grade_letters($context, $showfeedback);
 
-/// Delete every instance of every module
+    // Remove all data from availability and completion tables that is associated
+    // with course-modules belonging to this course. Note this is done even if the
+    // features are not enabled now, in case they were enabled previously
+    $DB->delete_records_select('course_modules_completion',
+           'coursemoduleid IN (SELECT id from {course_modules} WHERE course=?)',
+           array($courseid));
+    $DB->delete_records_select('course_modules_availability',
+           'coursemoduleid IN (SELECT id from {course_modules} WHERE course=?)',
+           array($courseid));
 
+    // Delete course blocks - they may depend on modules so delete them first
+    blocks_delete_all_for_context($context->id);
+
+    // Delete every instance of every module
     if ($allmods = $DB->get_records('modules') ) {
         foreach ($allmods as $mod) {
             $modname = $mod->name;
@@ -4047,12 +4155,13 @@ function remove_course_contents($courseid, $showfeedback=true) {
                             }
                             if ($cm) {
                                 // delete cm and its context in correct order
+                                delete_context(CONTEXT_MODULE, $cm->id); // some callbacks may try to fetch context, better delete first
                                 $DB->delete_records('course_modules', array('id'=>$cm->id));
-                                delete_context(CONTEXT_MODULE, $cm->id);
                             }
                         }
                     }
                 } else {
+                    //note: we should probably delete these anyway
                     echo $OUTPUT->notification('Function '.$moddelete.'() doesn\'t exist!');
                 }
 
@@ -4066,23 +4175,38 @@ function remove_course_contents($courseid, $showfeedback=true) {
         }
     }
 
-/// Delete course blocks
-    blocks_delete_all_for_context($context->id);
+    // Delete any groups, removing members and grouping/course links first.
+    groups_delete_groupings($course->id, $showfeedback);
+    groups_delete_groups($course->id, $showfeedback);
 
-/// Delete any groups, removing members and grouping/course links first.
-    require_once($CFG->dirroot.'/group/lib.php');
-    groups_delete_groupings($courseid, $showfeedback);
-    groups_delete_groups($courseid, $showfeedback);
+    // Delete questions and question categories
+    question_delete_course($course, $showfeedback);
 
-/// Delete all related records in other tables that may have a courseid
-/// This array stores the tables that need to be cleared, as
-/// table_name => column_name that contains the course id.
+    // Delete course tags
+    coursetag_delete_course_tags($course->id, $showfeedback);
 
+    // Delete legacy files (just in case some files are still left there after conversion to new file api)
+    fulldelete($CFG->dataroot.'/'.$course->id);
+
+    // cleanup course record - remove links to delted stuff
+    $oldcourse = new stdClass();
+    $oldcourse->id                = $course->id;
+    $oldcourse->summary           = '';
+    $oldcourse->modinfo           = NULL;
+    $oldcourse->legacyfiles       = 0;
+    $oldcourse->defaultgroupingid = 0;
+    $oldcourse->enablecompletion  = 0;
+    $DB->update_record('course', $oldcourse);
+
+    // Delete all related records in other tables that may have a courseid
+    // This array stores the tables that need to be cleared, as
+    // table_name => column_name that contains the course id.
     $tablestoclear = array(
         'event' => 'courseid', // Delete events
         'log' => 'course', // Delete logs
         'course_sections' => 'course', // Delete any course stuff
         'course_modules' => 'course',
+        'course_display' => 'course',
         'backup_courses' => 'courseid', // Delete scheduled backup stuff
         'user_lastaccess' => 'courseid',
         'backup_log' => 'courseid'
@@ -4091,21 +4215,13 @@ function remove_course_contents($courseid, $showfeedback=true) {
         $DB->delete_records($table, array($col=>$course->id));
     }
 
-/// Delete questions and question categories
-    question_delete_course($course, $showfeedback);
-
-/// Delete course tags
-    require_once($CFG->dirroot.'/tag/coursetagslib.php');
-    coursetag_delete_course_tags($course->id, $showfeedback);
-
-/// Delete comments
-    require_once($CFG->dirroot.'/comment/lib.php');
-    comment::delete_comments(array('contextid'=>$context->id));
-
-    // Delete legacy files
-    fulldelete($CFG->dataroot.'/'.$courseid);
+    // Delete all remaining stuff linked to context,
+    // such as remaining roles, files, comments, etc.
+    // Keep the context record for now.
+    delete_context(CONTEXT_COURSE, $course->id, false);
 
     //trigger events
+    $course->context = $context; // you can not access context in cron event later after course is deleted
     events_trigger('course_content_removed', $course);
 
     return true;
@@ -4204,6 +4320,14 @@ function reset_course_userdata($data) {
         require_once($CFG->dirroot.'/blog/lib.php');
         blog_remove_associations_for_course($data->courseid);
         $status[] = array('component'=>$componentstr, 'item'=>get_string('deleteblogassociations', 'blog'), 'error'=>false);
+    }
+
+    if (!empty($data->reset_course_completion)) {
+        // Delete course completion information
+        $course = $DB->get_record('course', array('id'=>$data->courseid));
+        $cc = new completion_info($course);
+        $cc->delete_course_completion_data();
+        $status[] = array('component'=>$componentstr, 'item'=>get_string('deletecoursecompletiondata', 'completion'), 'error'=>false);
     }
 
     $componentstr = get_string('roles');
@@ -4341,6 +4465,11 @@ function reset_course_userdata($data) {
     } else if (!empty($data->reset_gradebook_grades)) {
         grade_course_reset($data->courseid);
         $status[] = array('component'=>$componentstr, 'item'=>get_string('removeallcoursegrades', 'grades'), 'error'=>false);
+    }
+    // reset comments
+    if (!empty($data->reset_comments)) {
+        require_once($CFG->dirroot.'/comment/lib.php');
+        comment::reset_course_page_comments($context);
     }
 
     return $status;
@@ -4526,8 +4655,8 @@ function &get_mailer($action='get') {
  * @global string
  * @global string IdentityProvider(IDP) URL user hits to jump to mnet peer.
  * @uses SITEID
- * @param user $user  A {@link $USER} object
- * @param user $from A {@link $USER} object
+ * @param stdClass $user  A {@link $USER} object
+ * @param stdClass $from A {@link $USER} object
  * @param string $subject plain text subject line of the email
  * @param string $messagetext plain text version of the message
  * @param string $messagehtml complete html version of the message (optional)
@@ -4765,7 +4894,7 @@ function generate_email_supportuser() {
         return $supportuser;
     }
 
-    $supportuser = new object;
+    $supportuser = new stdClass();
     $supportuser->email = $CFG->supportemail ? $CFG->supportemail : $CFG->noreplyaddress;
     $supportuser->firstname = $CFG->supportname ? $CFG->supportname : get_string('noreplyname');
     $supportuser->lastname = '';
@@ -4795,7 +4924,7 @@ function setnew_password_and_mail($user) {
 
     $DB->set_field('user', 'password', hash_internal_user_password($newpassword), array('id'=>$user->id));
 
-    $a = new object();
+    $a = new stdClass();
     $a->firstname   = fullname($user, true);
     $a->sitename    = format_string($site->fullname);
     $a->username    = $user->username;
@@ -4837,7 +4966,7 @@ function reset_password_and_mail($user) {
         print_error("cannotsetpassword");
     }
 
-    $a = new object();
+    $a = new stdClass();
     $a->firstname   = $user->firstname;
     $a->lastname    = $user->lastname;
     $a->sitename    = format_string($site->fullname);
@@ -4868,7 +4997,7 @@ function reset_password_and_mail($user) {
     $site = get_site();
     $supportuser = generate_email_supportuser();
 
-    $data = new object();
+    $data = new stdClass();
     $data->firstname = fullname($user);
     $data->sitename  = format_string($site->fullname);
     $data->admin     = generate_email_signoff();
@@ -4899,7 +5028,7 @@ function send_password_change_confirmation_email($user) {
     $site = get_site();
     $supportuser = generate_email_supportuser();
 
-    $data = new object();
+    $data = new stdClass();
     $data->firstname = $user->firstname;
     $data->lastname  = $user->lastname;
     $data->sitename  = format_string($site->fullname);
@@ -4928,7 +5057,7 @@ function send_password_change_info($user) {
     $supportuser = generate_email_supportuser();
     $systemcontext = get_context_instance(CONTEXT_SYSTEM);
 
-    $data = new object();
+    $data = new stdClass();
     $data->firstname = $user->firstname;
     $data->lastname  = $user->lastname;
     $data->sitename  = format_string($site->fullname);
@@ -5088,6 +5217,7 @@ function get_file_packer($mimetype='application/zip') {
 
     switch ($mimetype) {
         case 'application/zip':
+        case 'application/vnd.moodle.backup':
             $classname = 'zip_packer';
             break;
         case 'application/x-tar':
@@ -5101,81 +5231,6 @@ function get_file_packer($mimetype='application/zip') {
     $fp[$mimetype] = new $classname();
 
     return $fp[$mimetype];
-}
-
-/**
- * Makes a directory for a particular user.
- *
- * @global object
- * @param int $userid The id of the user in question - maps to id field of 'user' table.
- * @param bool $test Whether we are only testing the return value (do not create the directory)
- * @return string|false Returns full path to directory if successful, false if not
- */
-function make_user_directory($userid, $test=false) {
-    global $CFG, $OUTPUT;
-
-    if (is_bool($userid) || $userid < 0 || !preg_match('/^[0-9]{1,10}$/', $userid) || $userid > 2147483647) {
-        if (!$test) {
-            echo $OUTPUT->notification("Given userid was not a valid integer! (" . gettype($userid) . " $userid)");
-        }
-        return false;
-    }
-
-    // Generate a two-level path for the userid. First level groups them by slices of 1000 users, second level is userid
-    $level1 = floor($userid / 1000) * 1000;
-
-    $userdir = "user/$level1/$userid";
-    if ($test) {
-        return $CFG->dataroot . '/' . $userdir;
-    } else {
-        return make_upload_directory($userdir);
-    }
-}
-
-/**
- * Returns an array of full paths to user directories, indexed by their userids.
- *
- * @global object
- * @param bool $only_non_empty Only return directories that contain files
- * @param bool $legacy Search for user directories in legacy location (dataroot/users/userid) instead of (dataroot/user/section/userid)
- * @return array An associative array: userid=>array(basedir => $basedir, userfolder => $userfolder)
- */
-function get_user_directories($only_non_empty=true, $legacy=false) {
-    global $CFG, $OUTPUT;
-
-    $rootdir = $CFG->dataroot."/user";
-
-    if ($legacy) {
-        $rootdir = $CFG->dataroot."/users";
-    }
-    $dirlist = array();
-
-    //Check if directory exists
-    if (check_dir_exists($rootdir, true)) {
-        if ($legacy) {
-            if ($userlist = get_directory_list($rootdir, '', true, true, false)) {
-                foreach ($userlist as $userid) {
-                    $dirlist[$userid] = array('basedir' => $rootdir, 'userfolder' => $userid);
-                }
-            } else {
-                echo $OUTPUT->notification("no directories found under $rootdir");
-            }
-        } else {
-            if ($grouplist =get_directory_list($rootdir, '', true, true, false)) { // directories will be in the form 0, 1000, 2000 etc...
-                foreach ($grouplist as $group) {
-                    if ($userlist = get_directory_list("$rootdir/$group", '', true, true, false)) {
-                        foreach ($userlist as $userid) {
-                            $dirlist[$userid] = array('basedir' => $rootdir, 'userfolder' => $group . '/' . $userid);
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        echo $OUTPUT->notification("$rootdir does not exist!");
-        return false;
-    }
-    return $dirlist;
 }
 
 /**
@@ -5261,7 +5316,7 @@ function get_max_upload_file_size($sitebytes=0, $coursebytes=0, $modulebytes=0) 
  * @param int $sizebytes Set maximum size
  * @param int $coursebytes Current course $course->maxbytes (in bytes)
  * @param int $modulebytes Current module ->maxbytes (in bytes)
- * @return int
+ * @return array
  */
 function get_max_upload_sizes($sitebytes=0, $coursebytes=0, $modulebytes=0) {
     global $CFG;
@@ -5635,9 +5690,10 @@ interface string_manager {
      * @param string $component The module the string is associated with
      * @param string $lang
      * @param bool $disablecache Do not use caches, force fetching the strings from sources
+     * @param bool $disablelocal Do not use customized strings in xx_local language packs
      * @return array of all string for given component and lang
      */
-    public function load_component_strings($component, $lang, $disablecache=false);
+    public function load_component_strings($component, $lang, $disablecache=false, $disablelocal=false);
 
     /**
      * Invalidates all caches, should the implementation use any
@@ -5719,9 +5775,10 @@ class core_string_manager implements string_manager {
      * @param string $component The module the string is associated with
      * @param string $lang
      * @param bool $disablecache Do not use caches, force fetching the strings from sources
+     * @param bool $disablelocal Do not use customized strings in xx_local language packs
      * @return array of all string for given component and lang
      */
-    public function load_component_strings($component, $lang, $disablecache=false) {
+    public function load_component_strings($component, $lang, $disablecache=false, $disablelocal=false) {
         global $CFG;
 
         list($plugintype, $pluginname) = normalize_component($component);
@@ -5761,8 +5818,8 @@ class core_string_manager implements string_manager {
             $originalkeys = array_keys($string);
             $originalkeys = array_flip($originalkeys);
 
-            // and then corresponding local if present
-            if (file_exists("$this->localroot/en_local/$file.php")) {
+            // and then corresponding local if present and allowed
+            if (!$disablelocal and file_exists("$this->localroot/en_local/$file.php")) {
                 include("$this->localroot/en_local/$file.php");
             }
             // now loop through all langs in correct order
@@ -5772,7 +5829,7 @@ class core_string_manager implements string_manager {
                 if (file_exists("$this->otherroot/$dep/$file.php")) {
                     include("$this->otherroot/$dep/$file.php");
                 }
-                if (file_exists("$this->localroot/{$dep}_local/$file.php")) {
+                if (!$disablelocal and file_exists("$this->localroot/{$dep}_local/$file.php")) {
                     include("$this->localroot/{$dep}_local/$file.php");
                 }
             }
@@ -5797,7 +5854,7 @@ class core_string_manager implements string_manager {
             $originalkeys = array_keys($string);
             $originalkeys = array_flip($originalkeys);
             // and then corresponding local english if present
-            if (file_exists("$this->localroot/en_local/$file.php")) {
+            if (!$disablelocal and file_exists("$this->localroot/en_local/$file.php")) {
                 include("$this->localroot/en_local/$file.php");
             }
 
@@ -5813,7 +5870,7 @@ class core_string_manager implements string_manager {
                     include("$this->otherroot/$dep/$file.php");
                 }
                 // local customisations
-                if (file_exists("$this->localroot/{$dep}_local/$file.php")) {
+                if (!$disablelocal and file_exists("$this->localroot/{$dep}_local/$file.php")) {
                     include("$this->localroot/{$dep}_local/$file.php");
                 }
             }
@@ -5826,7 +5883,7 @@ class core_string_manager implements string_manager {
         // caches so we do not need to do all this merging and dependencies resolving again
         $this->cache[$lang][$component] = $string;
         if ($this->usediskcache) {
-            check_dir_exists("$this->cacheroot/$lang", true, true);
+            check_dir_exists("$this->cacheroot/$lang");
             file_put_contents("$this->cacheroot/$lang/$component.php", "<?php \$this->cache['$lang']['$component'] = ".var_export($string, true).";");
         }
         return $string;
@@ -5979,8 +6036,7 @@ class core_string_manager implements string_manager {
         }
 
         $countries = $this->load_component_strings('core_countries', $lang);
-        asort($countries);
-
+        textlib_get_instance()->asort($countries);
         if (!$returnall and !empty($CFG->allcountrycodes)) {
             $enabled = explode(',', $CFG->allcountrycodes);
             $return = array();
@@ -6114,7 +6170,6 @@ class core_string_manager implements string_manager {
             $langdirs = array_merge($langdirs, array("$CFG->dirroot/lang/en"=>'en'));
             // Sort all
 
-            asort($langdirs);
             // Loop through all langs and get info
             foreach ($langdirs as $lang) {
                 if (strstr($lang, '_local') !== false) {
@@ -6130,6 +6185,8 @@ class core_string_manager implements string_manager {
                 unset($string);
             }
         }
+
+        textlib_get_instance()->asort($languages);
 
         return $languages;
     }
@@ -6190,9 +6247,10 @@ class install_string_manager implements string_manager {
      * @param string $component The module the string is associated with
      * @param string $lang
      * @param bool $disablecache Do not use caches, force fetching the strings from sources
+     * @param bool $disablelocal Do not use customized strings in xx_local language packs
      * @return array of all string for given component and lang
      */
-    public function load_component_strings($component, $lang, $disablecache=false) {
+    public function load_component_strings($component, $lang, $disablecache=false, $disablelocal=false) {
         // not needed in installer
         return array();
     }
@@ -6859,6 +6917,7 @@ function get_core_subsystems() {
             'notes'       => 'notes',
             'pagetype'    => NULL,
             'pix'         => NULL,
+            'plagiarism'  => 'plagiarism',
             'portfolio'   => 'portfolio',
             'publish'     => 'course/publish',
             'question'    => 'question',
@@ -6915,6 +6974,7 @@ function get_plugin_types($fullpaths=true) {
                       'portfolio'     => 'portfolio',
                       'qtype'         => 'question/type',
                       'qformat'       => 'question/format',
+                      'plagiarism'    => 'plagiarism',
                       'theme'         => 'theme'); // this is a bit hacky, themes may be in dataroot too
 
         $mods = get_plugin_list('mod');
@@ -6948,7 +7008,7 @@ function get_plugin_types($fullpaths=true) {
 function get_plugin_list($plugintype) {
     global $CFG;
 
-    $ignored = array('CVS', '_vti_cnf', 'simpletest', 'db', 'yui');
+    $ignored = array('CVS', '_vti_cnf', 'simpletest', 'db', 'yui', 'phpunit');
     if ($plugintype == 'auth') {
         // Historically we have had an auth plugin called 'db', so allow a special case.
         $key = array_search('db', $ignored);
@@ -7045,7 +7105,7 @@ function get_list_of_plugins($directory='mod', $exclude='', $basedir='') {
         $dirhandle = opendir($basedir);
         while (false !== ($dir = readdir($dirhandle))) {
             $firstchar = substr($dir, 0, 1);
-            if ($firstchar == '.' or $dir == 'CVS' or $dir == '_vti_cnf' or $dir == 'simpletest' or $dir == 'yui' or $dir == $exclude) {
+            if ($firstchar === '.' or $dir === 'CVS' or $dir === '_vti_cnf' or $dir === 'simpletest' or $dir === 'yui' or $dir === 'phpunit' or $dir === $exclude) {
                 continue;
             }
             if (filetype($basedir .'/'. $dir) != 'dir') {
@@ -7078,32 +7138,13 @@ function plugin_callback($type, $name, $feature, $action, $options = null, $defa
 
     $name = clean_param($name, PARAM_SAFEDIR);
     $function = $name.'_'.$feature.'_'.$action;
-
-    switch($type) {
-        case 'mod' :
-            $file = $CFG->dirroot.'/mod/'.$name.'/lib.php';
-            break;
-        case 'block' :
-            // load block_base class
-            require_once($CFG->dirroot . '/blocks/moodleblock.class.php');
-            // block uses class based callback functions
-            // see blocks/moodleblock.class.php
-            $file = $CFG->dirroot.'/blocks/'.$name.'/block_'.$name.'.php';
-            $function = array('block_' . $name, 'comment_'.$action);
-            break;
-        case 'moodle':
-            // for special plugins, such as blog and tag
-            $file = $CFG->dirroot.'/'.$name.'/lib.php';
-            break;
-        default:
-            throw new Exception('Unsupported callback type ('.$type.')');
-    }
+    $file = get_plugin_directory($type, $name) . '/lib.php';
 
     // Load library and look for function
     if (file_exists($file)) {
         require_once($file);
     }
-    if (is_array($function) || function_exists($function)) {
+    if (function_exists($function)) {
         // Function exists, so just return function result
         $ret = call_user_func_array($function, (array)$options);
         if (is_null($ret)) {
@@ -7111,13 +7152,8 @@ function plugin_callback($type, $name, $feature, $action, $options = null, $defa
         } else {
             return $ret;
         }
-    } else {
-        switch($feature) {
-            // If some features can also be checked in other ways
-            // for legacy support, this could be added here
-            default: return $default;
-        }
     }
+    return $default;
 }
 
 /**
@@ -7467,7 +7503,7 @@ function moodle_needs_upgrading() {
         if ($mod === 'NEWMODULE') {   // Someone has unzipped the template, ignore it
             continue;
         }
-        $module = new object();
+        $module = new stdClass();
         if (!is_readable($fullmod.'/version.php')) {
             continue;
         }
@@ -7491,7 +7527,7 @@ function moodle_needs_upgrading() {
         if (!is_readable($fullblock.'/version.php')) {
             continue;
         }
-        $plugin = new object();
+        $plugin = new stdClass();
         $plugin->version = NULL;
         include($fullblock.'/version.php');
         if (empty($installed[$blockname])) {
@@ -7513,7 +7549,7 @@ function moodle_needs_upgrading() {
             if (!is_readable($fullplug.'/version.php')) {
                 continue;
             }
-            $plugin = new object();
+            $plugin = new stdClass();
             include($fullplug.'/version.php');  // defines $plugin with version etc
             $installedversion = get_config($component, 'version');
             if (empty($installedversion)) { // new installation
@@ -8213,11 +8249,10 @@ function make_menu_from_list($list, $separator=',') {
  * are scales, zero is no grade, and positive numbers are maximum
  * grades.
  *
- * @todo Finish documenting this function
+ * @todo Finish documenting this function or better deprecated this completely!
  *
- * @global object
  * @param int $gradingtype
- * @return int
+ * @return array
  */
 function make_grades_menu($gradingtype) {
     global $DB;
@@ -9073,7 +9108,7 @@ function get_performance_info() {
         $info['txt'] .= 'rcache: '.
             "{$rcache->hits}/{$rcache->misses} ";
     }*/
-    $info['html'] = '<div class="performanceinfo">'.$info['html'].'</div>';
+    $info['html'] = '<div class="performanceinfo siteinfo">'.$info['html'].'</div>';
     return $info;
 }
 
@@ -9112,33 +9147,6 @@ function remove_dir($dir, $content_only=false) {
         return $result;
     }
     return rmdir($dir); // if anything left the result will be false, no need for && $result
-}
-
-/**
- * Function to check if a directory exists and optionally create it.
- *
- * @param string absolute directory path (must be under $CFG->dataroot)
- * @param boolean create directory if does not exist
- * @param boolean create directory recursively
- * @return boolean true if directory exists or created
- */
-function check_dir_exists($dir, $create=false, $recursive=false) {
-    global $CFG;
-
-    if (strpos(str_replace('\\', '/', $dir), str_replace('\\', '/', $CFG->dataroot.'/')) !== 0) {
-        debugging('Warning. Wrong call to check_dir_exists(). $dir must be an absolute path under $CFG->dataroot ("' . $dir . '" is incorrect)', DEBUG_DEVELOPER);
-        return false;
-    }
-
-    if (is_dir($dir)) {
-        return true;
-    }
-
-    if (!$create) {
-        return false;
-    }
-
-    return mkdir($dir, $CFG->directorypermissions, $recursive);
 }
 
 /**
@@ -9590,6 +9598,8 @@ function set_mnet_remote_client($client) {
  * @param stdclass $user the user to get the idp url for
  */
 function mnet_get_idp_jump_url($user) {
+    global $CFG;
+
     static $mnetjumps = array();
     if (!array_key_exists($user->mnethostid, $mnetjumps)) {
         $idp = mnet_get_peer_host($user->mnethostid);

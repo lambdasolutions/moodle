@@ -170,7 +170,7 @@ class quiz_grading_report extends quiz_default_report {
         }
         $qmenu = array();
         foreach ($gradeableqs as $qid => $questionformenu){
-            $a= new object();
+            $a= new stdClass();
             $a->number = $gradeableqs[$qid]->number;
             $a->name = $gradeableqs[$qid]->name;
             $a->gradedattempts =$qattempts[$qid]->gradedattempts;
@@ -188,7 +188,7 @@ class quiz_grading_report extends quiz_default_report {
         if (!$questionid){
             return true;
         }
-        $a= new object();
+        $a= new stdClass();
         $a->number = $question->number;
         $a->name = $question->name;
         $a->gradedattempts =$qattempts[$question->id]->gradedattempts;
@@ -260,12 +260,14 @@ class quiz_grading_report extends quiz_default_report {
 
         list($select, $from, $where, $params) = $this->attempts_sql($quiz->id, true, $question->id);
 
-        if($table->get_sql_where()) { // forgot what this does
-            $where .= 'AND '.$table->get_sql_where();
+        list($twhere, $tparams) = $table->get_sql_where();
+        if ($twhere) {
+            $where .= ' AND '.$twhere; //initial bar
+            $params = array_merge($params, $tparams);
         }
 
         // sorting of the table
-        if($sort = $table->get_sql_sort()) {
+        if ($sort = $table->get_sql_sort()) {
             $sort = 'ORDER BY '.$sort;  // seems like I would need to have u. or qa. infront of the ORDER BY attribues... but seems to work..
         } else {
             // my default sort rule
@@ -354,7 +356,7 @@ class quiz_grading_report extends quiz_default_report {
             } else if ($userid){
                 echo $OUTPUT->heading(get_string('gradinguser','quiz_grading', $fullname), 3);
             } else if ($attemptid){
-                $a = new object();
+                $a = new stdClass();
                 $a->fullname = $fullname;
                 $a->attempt = $firstattempt->attempt;
                 echo $OUTPUT->heading(get_string('gradingattempt','quiz_grading', $a), 3);
@@ -389,7 +391,7 @@ class quiz_grading_report extends quiz_default_report {
                     $gradedclass = 'main';
                     $gradedstring = '';
                 }
-                $a = new object();
+                $a = new stdClass();
                 $a->fullname = fullname($attempt, true);
                 $a->attempt = $attempt->attempt;
 

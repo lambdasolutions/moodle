@@ -137,8 +137,8 @@ if ($hassiteconfig) {
     }
 
 /// License types
-    $ADMIN->add('modules', new admin_category('licensesettings', get_string('license')));
-    $temp = new admin_settingpage('managelicenses', get_string('license'));
+    $ADMIN->add('modules', new admin_category('licensesettings', get_string('licenses')));
+    $temp = new admin_settingpage('managelicenses', get_string('managelicenses', 'admin'));
 
     require_once($CFG->libdir . '/licenselib.php');
     $licenses = array();
@@ -279,6 +279,7 @@ if ($hassiteconfig) {
     $temp->add(new admin_setting_heading('managerepositoriescommonheading', get_string('commonsettings', 'admin'), ''));
     $temp->add(new admin_setting_configtext('repositorycacheexpire', get_string('cacheexpire', 'repository'), get_string('configcacheexpire', 'repository'), 120));
     $temp->add(new admin_setting_configcheckbox('repositoryallowexternallinks', get_string('allowexternallinks', 'repository'), get_string('configallowexternallinks', 'repository'), 1));
+    $temp->add(new admin_setting_configcheckbox('legacyfilesinnewcourses', get_string('legacyfilesinnewcourses', 'admin'), get_string('legacyfilesinnewcourses_help', 'admin'), 0));
     $ADMIN->add('repositorysettings', $temp);
     $ADMIN->add('repositorysettings', new admin_externalpage('repositorynew',
         get_string('addplugin', 'repository'), $url, 'moodle/site:config', true),
@@ -320,7 +321,7 @@ if ($hassiteconfig) {
     $temp->add(new admin_setting_heading('manageserviceshelpexplaination', get_string('information', 'webservice'), get_string('servicehelpexplanation', 'webservice')));
     $temp->add(new admin_setting_manageexternalservices());
     $ADMIN->add('webservicesettings', $temp);
-    $ADMIN->add('webservicesettings', new admin_externalpage('externalservice', get_string('externalservice', 'webservice'), "$CFG->wwwroot/$CFG->admin/webservice/service.php", 'moodle/site:config', true));
+    $ADMIN->add('webservicesettings', new admin_externalpage('externalservice', get_string('editaservice', 'webservice'), "$CFG->wwwroot/$CFG->admin/webservice/service.php", 'moodle/site:config', true));
     $ADMIN->add('webservicesettings', new admin_externalpage('externalservicefunctions', get_string('externalservicefunctions', 'webservice'), "$CFG->wwwroot/$CFG->admin/webservice/service_functions.php", 'moodle/site:config', true));
     $ADMIN->add('webservicesettings', new admin_externalpage('externalserviceusers', get_string('externalserviceusers', 'webservice'), "$CFG->wwwroot/$CFG->admin/webservice/service_users.php", 'moodle/site:config', true));
     $ADMIN->add('webservicesettings', new admin_externalpage('externalserviceusersettings', get_string('serviceusersettings', 'webservice'), "$CFG->wwwroot/$CFG->admin/webservice/service_user_settings.php", 'moodle/site:config', true));
@@ -375,7 +376,17 @@ if ($hassiteconfig || has_capability('moodle/question:config', $systemcontext)) 
         }
     }
 }
-
+if ($hassiteconfig && !empty($CFG->enableplagiarism)) {
+    $ADMIN->add('modules', new admin_category('plagiarism', get_string('plagiarism', 'plagiarism')));
+    $temp = new admin_settingpage('plagiarismsettings', get_string('plagiarismsettings', 'plagiarism'));
+    $temp->add(new admin_setting_manageplagiarism());
+    $ADMIN->add('plagiarism', $temp);
+    foreach (get_plugin_list('plagiarism') as $plugin => $plugindir) {
+        if (file_exists($plugindir.'/settings.php')) {
+            $ADMIN->add('plagiarism', new admin_externalpage('plagiarism'.$plugin, get_string($plugin, 'plagiarism_'.$plugin), "$CFG->wwwroot/plagiarism/$plugin/settings.php", 'moodle/site:config'));
+        }
+    }
+}
 $ADMIN->add('reports', new admin_externalpage('comments', get_string('comments'), $CFG->wwwroot.'/comment/', 'moodle/site:viewreports'));
 /// Now add reports
 

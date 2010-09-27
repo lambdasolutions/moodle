@@ -38,13 +38,16 @@ class core_user_renderer extends plugin_renderer_base {
     }
 
     public function render_user_files_tree(user_files_tree $tree) {
-        $htmlid = 'user_files_tree_'.uniqid();
-        $module = array('name'=>'core_user', 'fullpath'=>'/user/module.js');
-        $this->page->requires->js_init_call('M.core_user.init_tree', array(false, $htmlid), false, $module);
-
-        $html = '<div id="'.$htmlid.'">';
-        $html .= $this->htmllize_tree($tree, $tree->dir);
-        $html .= '</div>';
+        if (empty($tree->dir['subdirs']) && empty($tree->dir['files'])) {
+            $html = $this->output->box(get_string('nofilesavailable', 'repository'));
+        } else {
+            $htmlid = 'user_files_tree_'.uniqid();
+            $module = array('name'=>'core_user', 'fullpath'=>'/user/module.js');
+            $this->page->requires->js_init_call('M.core_user.init_tree', array(false, $htmlid), false, $module);
+            $html = '<div id="'.$htmlid.'">';
+            $html .= $this->htmllize_tree($tree, $tree->dir);
+            $html .= '</div>';
+        }
         return $html;
     }
 
@@ -61,14 +64,14 @@ class core_user_renderer extends plugin_renderer_base {
         }
         $result = '<ul>';
         foreach ($dir['subdirs'] as $subdir) {
-            $image = $this->output->pix_icon("/f/folder", $subdir['dirname'], 'moodle', array('class'=>'icon'));
+            $image = $this->output->pix_icon("f/folder", $subdir['dirname'], 'moodle', array('class'=>'icon'));
             $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.s($subdir['dirname']).'</div> '.$this->htmllize_tree($tree, $subdir).'</li>';
         }
         foreach ($dir['files'] as $file) {
             $url = file_encode_url("$CFG->wwwroot/pluginfile.php", '/'.$tree->context->id.'/user/private'.$file->get_filepath().$file->get_filename(), true);
             $filename = $file->get_filename();
-            $icon = substr(mimeinfo("icon", $filename), 0, -4);
-            $image = $this->output->pix_icon("/f/$icon", $filename, 'moodle', array('class'=>'icon'));
+            $icon = mimeinfo("icon", $filename);
+            $image = $this->output->pix_icon("f/$icon", $filename, 'moodle', array('class'=>'icon'));
             $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.html_writer::link($url, $filename).'</div></li>';
         }
         $result .= '</ul>';

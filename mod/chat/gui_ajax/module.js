@@ -167,19 +167,22 @@ M.mod_chat_ajax.init = function(Y, cfg) {
         },
 
         send_callback : function(tid, outcome, args) {
-            if (outcome.responseText == 200) {
-                this.sendbutton.set('value', M.str.chat.send);
-                this.messageinput.set('value', '');
+            try {
+                var data = Y.JSON.parse(outcome.responseText);
+            } catch (ex) {
+                return;
             }
+            this.sendbutton.set('value', M.str.chat.send);
+            this.messageinput.set('value', '');
             clearInterval(this.interval);
             this.update_messages();
-            this.interval = setInterval(function(me) {
-                me.update_messages();
+            var scope = this;
+            this.interval = setInterval(function() {
+                scope.update_messages();
             }, this.cfg.timer, this);
         },
 
         talkto: function (e, name) {
-            console.info(name);
             this.messageinput.set('value', "To "+name+": ");
             this.messageinput.focus();
         },

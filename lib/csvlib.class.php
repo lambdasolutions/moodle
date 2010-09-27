@@ -258,7 +258,8 @@ class csv_import_reader {
      *
      * @return array suitable for selection box
      */
-    function get_delimiter_list() {
+    static function get_delimiter_list() {
+        global $CFG;
         $delimiters = array('comma'=>',', 'semicolon'=>';', 'colon'=>':', 'tab'=>'\\t');
         if (isset($CFG->CSV_DELIMITER) and strlen($CFG->CSV_DELIMITER) === 1 and !in_array($CFG->CSV_DELIMITER, $delimiters)) {
             $delimiters['cfg'] = $CFG->CSV_DELIMITER;
@@ -272,7 +273,8 @@ class csv_import_reader {
      * @param string separator name
      * @return string delimiter char
      */
-    function get_delimiter($delimiter_name) {
+    static function get_delimiter($delimiter_name) {
+        global $CFG;
         switch ($delimiter_name) {
             case 'colon':     return ':';
             case 'semicolon': return ';';
@@ -308,9 +310,7 @@ class csv_import_reader {
     function get_new_iid($type) {
         global $USER;
 
-        if (!$filename = make_upload_directory('temp/csvimport/'.$type.'/'.$USER->id, false)) {
-            print_error('cannotcreatetempdir');
-        }
+        $filename = make_upload_directory('temp/csvimport/'.$type.'/'.$USER->id);
 
         // use current (non-conflicting) time stamp
         $iiid = time();

@@ -80,10 +80,13 @@ class auth_plugin_mnet extends auth_plugin_base {
         $userdata['session.gc_maxlifetime']  = ini_get('session.gc_maxlifetime');
 
         if (array_key_exists('picture', $userdata) && !empty($user->picture)) {
+            //TODO: rewrite to use new file storage
+            /*
             $imagefile = make_user_directory($user->id, true) . "/f1.jpg";
             if (file_exists($imagefile)) {
                 $userdata['imagehash'] = sha1(file_get_contents($imagefile));
             }
+            */
         }
 
         $userdata['myhosts'] = array();
@@ -155,7 +158,7 @@ class auth_plugin_mnet extends auth_plugin_base {
                                    array('userid'=>$USER->id, 'mnethostid'=>$mnethostid,
                                    'useragent'=>sha1($_SERVER['HTTP_USER_AGENT'])));
         if ($mnet_session == false) {
-            $mnet_session = new object();
+            $mnet_session = new stdClass();
             $mnet_session->mnethostid = $mnethostid;
             $mnet_session->userid = $USER->id;
             $mnet_session->username = $USER->username;
@@ -285,7 +288,9 @@ class auth_plugin_mnet extends auth_plugin_base {
         foreach ((array) $remoteuser as $key => $val) {
 
             // TODO: fetch image if it has changed
+            //TODO: rewrite to use new file storage
             if ($key == 'imagehash') {
+                /*
                 $dirname = make_user_directory($localuser->id, true);
                 $filename = "$dirname/f1.jpg";
 
@@ -313,6 +318,7 @@ class auth_plugin_mnet extends auth_plugin_base {
                         }
                     }
                 }
+                */
             }
 
             if($key == 'myhosts') {
@@ -416,7 +422,7 @@ class auth_plugin_mnet extends auth_plugin_base {
         if (!$mnet_session = $DB->get_record('mnet_session',
                                    array('userid'=>$user->id, 'mnethostid'=>$remotepeer->id,
                                    'useragent'=>sha1($_SERVER['HTTP_USER_AGENT'])))) {
-            $mnet_session = new object();
+            $mnet_session = new stdClass();
             $mnet_session->mnethostid = $remotepeer->id;
             $mnet_session->userid = $user->id;
             $mnet_session->username = $user->username;
@@ -442,7 +448,7 @@ class auth_plugin_mnet extends auth_plugin_base {
      * Normally called by the SP after calling user_authorise()
      *
      * @param string $username The username
-     * @param string $courses  Assoc array of courses following the structure of mnetservice_enrol_courses
+     * @param array $courses  Assoc array of courses following the structure of mnetservice_enrol_courses
      * @return bool
      */
     function update_enrolments($username, $courses) {
@@ -565,10 +571,10 @@ class auth_plugin_mnet extends auth_plugin_base {
      * Returns the URL for changing the user's pw, or false if the default can
      * be used.
      *
-     * @return string
+     * @return moodle_url
      */
     function change_password_url() {
-        return '';
+        return null;
     }
 
     /**
@@ -1102,6 +1108,9 @@ class auth_plugin_mnet extends auth_plugin_base {
     function fetch_user_image($username) {
         global $CFG, $DB;
 
+        //TODO: rewrite to use new file storage
+        return false;
+        /*
         if ($user = $DB->get_record('user', array('username'=>$username, 'mnethostid'=>$CFG->mnet_localhost_id))) {
             $filename1 = make_user_directory($user->id, true) . "/f1.jpg";
             $filename2 = make_user_directory($user->id, true) . "/f2.jpg";
@@ -1115,6 +1124,7 @@ class auth_plugin_mnet extends auth_plugin_base {
             return $return;
         }
         return false;
+        */
     }
 
     /**

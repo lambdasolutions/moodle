@@ -749,7 +749,7 @@ class generator {
 
                     require_once($CFG->dirroot.'/mod/forum/lib.php');
 
-                    $discussion = new object();
+                    $discussion = new stdClass();
                     $discussion->course        = $forum->course;
                     $discussion->forum         = $forum->id;
                     $discussion->name          = 'Test discussion';
@@ -896,9 +896,8 @@ class generator {
                     $entry->timemodified = time();
                     $entry->teacherentry = 0;
                     $entry->approved = 1;
-                    if ($DB->insert_record('glossary_entries', $entry)) {
-                        $entries_count++;
-                    }
+                    $DB->insert_record('glossary_entries', $entry);
+                    $entries_count++;
                 }
             }
             if ($entries_count > 0 && !$this->get('quiet')) {
@@ -1272,7 +1271,7 @@ class fake_form {
 
 class generator_form extends moodleform {
     function definition() {
-        global $generator, $CFG;
+        global $generator, $CFG; //TODO: sloppy coding style!!
 
         $mform =& $this->_form;
         $mform->addElement('hidden', 'do_generation', 1);

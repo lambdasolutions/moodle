@@ -123,7 +123,7 @@ class grade_outcome extends grade_object {
 
         if ($result = parent::insert($source)) {
             if (!empty($this->courseid)) {
-                $goc = new object();
+                $goc = new stdClass();
                 $goc->courseid = $this->courseid;
                 $goc->outcomeid = $this->id;
                 $DB->insert_record('grade_outcomes_courses', $goc);
@@ -160,7 +160,7 @@ class grade_outcome extends grade_object {
         }
 
         if (!$DB->record_exists('grade_outcomes_courses', array('courseid' => $courseid, 'outcomeid' => $this->id))) {
-            $goc = new object();
+            $goc = new stdClass();
             $goc->courseid  = $courseid;
             $goc->outcomeid = $this->id;
             $DB->insert_record('grade_outcomes_courses', $goc);
@@ -272,7 +272,7 @@ class grade_outcome extends grade_object {
     }
 
     /**
-     * Returns the formatted grade description with URL's converted
+     * Returns the formatted grade description with URLs converted
      * @return string
      */
     public function get_description() {

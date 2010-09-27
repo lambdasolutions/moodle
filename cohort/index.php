@@ -18,9 +18,9 @@
 /**
  * Cohort related management functions, this file needs to be included manually.
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage cohort
- * @copyright  2010 Petr Skoda  (info@skodak.org)
+ * @copyright  2010 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -53,7 +53,8 @@ if (!$manager) {
 
 $strcohorts = get_string('cohorts', 'cohort');
 
-if ($category) { 
+if ($category) {
+    $PAGE->set_pagelayout('admin');
     $PAGE->set_context($context);
     $PAGE->set_url('/cohort/index.php', array('contextid'=>$context->id));
     $PAGE->set_title($strcohorts);

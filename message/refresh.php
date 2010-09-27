@@ -50,14 +50,14 @@ $userid       = required_param('id', PARAM_INT);
 $userfullname = strip_tags(required_param('name', PARAM_RAW));
 $wait         = optional_param('wait', MESSAGE_DEFAULT_REFRESH, PARAM_INT);
 
-/*Get still to be read message, use message/lib.php funtion*/
+/*Get still to be read message, use message/lib.php function*/
 $messages = message_get_popup_messages($USER->id, $userid);
 $jsmessages = Array();
 if ($messages ) {
     foreach ($messages as $message) {
         $time = userdate($message->timecreated, get_string('strftimedatetimeshort'));
 
-        $options = new object();
+        $options = new stdClass();
         $options->para = false;
         $options->newlines = true;
         $printmessage = format_text($message->fullmessage, $message->fullmessageformat, $options, 0);

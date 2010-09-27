@@ -68,9 +68,7 @@
                 $visible = 1;
             }
             if ($course) {
-                if (! $DB->set_field("course", "visible", $visible, array("id"=>$course->id))) {
-                    echo $OUTPUT->notification("Could not update that course!");
-                }
+                $DB->set_field("course", "visible", $visible, array("id"=>$course->id));
             }
         }
     }
@@ -341,7 +339,7 @@
 
     } else {
         if (!empty($search)) {
-            echo $OUTPUT->heading(get_string("nocoursesfound", s($search)));
+            echo $OUTPUT->heading(get_string("nocoursesfound",'', s($search)));
         }
         else {
             echo $OUTPUT->heading( $strnovalidcourses );

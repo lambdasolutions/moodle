@@ -8,6 +8,8 @@ require_once ($CFG->dirroot.'/course/moodleform_mod.php');
 class mod_chat_mod_form extends moodleform_mod {
 
     function definition() {
+        global $CFG;
+
         $mform = $this->_form;
 
 //-------------------------------------------------------------------------------
@@ -17,7 +19,7 @@ class mod_chat_mod_form extends moodleform_mod {
         if (!empty($CFG->formatstringstriptags)) {
             $mform->setType('name', PARAM_TEXT);
         } else {
-            $mform->setType('name', PARAM_CLEAN);
+            $mform->setType('name', PARAM_CLEANHTML);
         }
         $mform->addRule('name', null, 'required', null, 'client');
 

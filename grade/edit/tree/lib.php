@@ -215,7 +215,7 @@ class grade_edit_tree {
 
                     $cell = new html_table_cell();
                     $cell->colspan = 12;
-                    
+
                     $icon = new pix_icon('movehere', $strmovehere, null, array('class'=>'movetarget'));
                     $cell->text = $OUTPUT->action_icon($aurl, $icon);
 
@@ -303,7 +303,7 @@ class grade_edit_tree {
 
             $returnrows = array_merge($returnrows, $html_children);
 
-            // Print a coloured row to show the end of the category accross the table
+            // Print a coloured row to show the end of the category across the table
             $endcell = new html_table_cell();
             $endcell->colspan = (19 - $level);
             $endcell->attributes['class'] = 'colspan ' . $levelclass;
@@ -377,7 +377,7 @@ class grade_edit_tree {
         }
     }
 
-    //Trim's trailing zeros
+    //Trims trailing zeros
     //Used on the 'categories and items' page for grade items settings like aggregation co-efficient
     //Grader report has its own decimal place settings so they are handled elsewhere
     function format_number($number) {
@@ -869,7 +869,7 @@ class grade_edit_tree_column_aggregatesubcats extends grade_edit_tree_column_cat
         $headercell = clone($this->headercell);
         $headercell->style .= 'width: 40px;';
         $headercell->text = get_string('aggregatesubcats', 'grades')
-              .$OUTPUT->old_help_icon('aggregatesubcats', 'aggregatesubcats', 'grade');
+              .$OUTPUT->help_icon('aggregatesubcats', 'grades');
         return $headercell;
     }
 
@@ -984,7 +984,7 @@ class grade_edit_tree_column_keephigh extends grade_edit_tree_column_category {
     public function get_header_cell() {
         global $OUTPUT;
         $headercell = clone($this->headercell);
-        $headercell->text = get_string('keephigh', 'grades').$OUTPUT->old_help_icon('keephigh', 'keephigh', 'grade');
+        $headercell->text = get_string('keephigh', 'grades').$OUTPUT->help_icon('keephigh', 'grades');
         return $headercell;
     }
 

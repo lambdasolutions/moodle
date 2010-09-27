@@ -152,7 +152,7 @@ function survey_user_outline($course, $user, $mod, $survey) {
     if ($answers = $DB->get_records("survey_answers", array('survey'=>$survey->id, 'userid'=>$user->id))) {
         $lastanswer = array_pop($answers);
 
-        $result = new object();
+        $result = new stdClass();
         $result->info = get_string("done", "survey");
         $result->time = $lastanswer->time;
         return $result;
@@ -430,7 +430,7 @@ function survey_get_user_answer($surveyid, $questionid, $userid) {
 function survey_add_analysis($survey, $user, $notes) {
     global $DB;
 
-    $record = new object();
+    $record = new stdClass();
     $record->survey = $survey;
     $record->userid = $user;
     $record->notes = $notes;
@@ -525,7 +525,7 @@ function survey_shorten_name ($name, $numwords) {
  * @param object $question
  */
 function survey_print_multi($question) {
-    global $USER, $DB, $qnum, $checklist, $DB, $OUTPUT;
+    global $USER, $DB, $qnum, $checklist, $DB, $OUTPUT; //TODO: this is sloppy globals abuse
 
     $stripreferthat = get_string("ipreferthat", "survey");
     $strifoundthat = get_string("ifoundthat", "survey");
@@ -582,10 +582,10 @@ function survey_print_multi($question) {
                 $hiddentext = get_accesshide($options[$i-1]);
                 $id = "q$P" . $q->id . "_$i";
                 echo "<td><label for=\"$id\"><input type=\"radio\" name=\"q$P$q->id\" id=\"$id\" value=\"$i\" />$hiddentext</label></td>";
-            }            
-            $checklist["q$P$q->id"] = 0; 
+            }
+            $checklist["q$P$q->id"] = 0;
 
-        } else { 
+        } else {
             // yu : fix for MDL-7501, possibly need to use user flag as this is quite ugly.
             echo "<th scope=\"row\" class=\"optioncell\">";
             echo "<b class=\"qnumtopcell\">$qnum</b> &nbsp; ";
@@ -612,13 +612,13 @@ function survey_print_multi($question) {
 
             $default = get_accesshide($strdefault);
             echo '<td class="whitecell"><label for="q'. $q->id .'"><input type="radio" name="q'.$q->id. '" id="q'. $q->id .'" value="0" checked="checked" />'.$default.'</label></td>';
-          
+
             for ($i=1;$i<=$numoptions;$i++) {
                 $hiddentext = get_accesshide($options[$i-1]);
                 $id = "q" . $q->id . "_$i";
                 echo "<td><label for=\"$id\"><input type=\"radio\" name=\"q$q->id\" id=\"$id\" value=\"$i\" />$hiddentext</label></td>";
             }
-            
+
             $checklist["qP$q->id"] = 0;
             $checklist["q$q->id"] = 0;
         }
@@ -740,7 +740,7 @@ function survey_reset_course_form_defaults($course) {
 }
 
 /**
- * Actual implementation of the rest coures functionality, delete all the
+ * Actual implementation of the reset course functionality, delete all the
  * survey responses for course $data->courseid.
  *
  * @global object

@@ -123,9 +123,11 @@ function xmldb_data_upgrade($oldversion) {
                         if ($content->type == 'picture') {
                             // migrate thumb
                             $filepath = "$CFG->dataroot/$content->course/$CFG->moddata/data/$content->dataid/$content->fieldid/$content->recordid/thumb/$content->content";
-                            if (!$fs->file_exists($context->id, 'mod_data', $filearea, $content->id, '/', 'thumb_'.$filename)) {
-                                $file_record['filename'] = 'thumb_'.$file_record['filename'];
-                                $fs->create_file_from_pathname($file_record, $filepath);
+                            if (file_exists($filepath)) {
+                                if (!$fs->file_exists($context->id, 'mod_data', $filearea, $content->id, '/', 'thumb_'.$filename)) {
+                                    $file_record['filename'] = 'thumb_'.$file_record['filename'];
+                                    $fs->create_file_from_pathname($file_record, $filepath);
+                                }
                                 unlink($filepath);
                             }
                         }
@@ -153,7 +155,7 @@ function xmldb_data_upgrade($oldversion) {
                                                       AND (d.requiredentries > 0 OR d.requiredentriestoview > 0)
                                              ORDER BY c.fullname, d.name");
             if (!empty($databases)) {
-                $a = new object();
+                $a = new stdClass();
                 $a->text = '';
                 foreach($databases as $database) {
                     $a->text .= $database->fullname." - " .$database->name. " (course id: ".$database->course." - database id: ".$database->id.")<br/>";
@@ -226,7 +228,7 @@ function xmldb_data_upgrade($oldversion) {
                         $lastdataid = $res->dataid;
                         $lastcourseid = $res->courseid;
                     }
-                    $cmt = new stdclass;
+                    $cmt = new stdClass();
                     $cmt->contextid   = $modcontext->id;
                     $cmt->commentarea = 'database_entry';
                     $cmt->itemid      = $res->itemid;

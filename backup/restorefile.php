@@ -28,6 +28,7 @@ require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 
 // current context
 $contextid = required_param('contextid', PARAM_INT);
+$filecontextid = optional_param('filecontextid', 0, PARAM_INT);
 // action
 $action = optional_param('action', '', PARAM_ALPHA);
 // file parameters
@@ -40,43 +41,39 @@ $filename   = optional_param('filename', null, PARAM_FILE);
 
 list($context, $course, $cm) = get_context_info_array($contextid);
 
-$filecontext = $context;
-// files in user context
-if ($filearea == 'backup' && $component == 'user') {
-    // XXX: hacky, to get user context
-    $filecontext = get_context_instance(CONTEXT_USER, $USER->id);
+// will be used when restore
+if (!empty($filecontextid)) {
+    $filecontext = get_context_instance_by_id($filecontextid);
 }
 
 $url = new moodle_url('/backup/restorefile.php', array('contextid'=>$contextid));
 
 switch ($context->contextlevel) {
-    case CONTEXT_COURSE:
-        $heading = get_string('restorecourse', 'backup');
-        break;
     case CONTEXT_MODULE:
         $heading = get_string('restoreactivity', 'backup');
         break;
+    case CONTEXT_COURSE:
     default:
-        print_error('invalidcontext');
-        die;
+        $heading = get_string('restorecourse', 'backup');
 }
 
 
 require_login($course);
 require_capability('moodle/restore:restorecourse', $context);
 
-$PAGE->set_url($url);
-$PAGE->set_context($context);
-$PAGE->set_title(get_string('course') . ': ' . $course->fullname);
-$PAGE->set_heading($heading);
-$PAGE->set_pagelayout('admin');
 $browser = get_file_browser();
+
+// check if tmp dir exists
+$tmpdir = $CFG->dataroot . '/temp/backup';
+if (!check_dir_exists($tmpdir, true, true)) {
+    throw new restore_controller_exception('cannot_create_backup_temp_dir');
+}
 
 // choose the backup file from backup files tree
 if ($action == 'choosebackupfile') {
     if ($fileinfo = $browser->get_file_info($filecontext, $component, $filearea, $itemid, $filepath, $filename)) {
         $filename = restore_controller::get_tempdir_name($course->id, $USER->id);
-        $pathname = "$CFG->dataroot/temp/backup/".$filename;
+        $pathname = $tmpdir . '/' . $filename;
         $fileinfo->copy_to_pathname($pathname);
         $restore_url = new moodle_url('/backup/restore.php', array('contextid'=>$contextid, 'filename'=>$filename));
         redirect($restore_url);
@@ -86,38 +83,26 @@ if ($action == 'choosebackupfile') {
     die;
 }
 
+$PAGE->set_url($url);
+$PAGE->set_context($context);
+$PAGE->set_title(get_string('course') . ': ' . $course->fullname);
+$PAGE->set_heading($heading);
+$PAGE->set_pagelayout('admin');
+
 $form = new course_restore_form(null, array('contextid'=>$contextid));
 $data = $form->get_data();
 if ($data && has_capability('moodle/restore:uploadfile', $context)) {
     $filename = restore_controller::get_tempdir_name($course->id, $USER->id);
-    $pathname = "$CFG->dataroot/temp/backup/".$filename;
+    $pathname = $tmpdir . '/' . $filename;
     $form->save_file('backupfile', $pathname);
     $restore_url = new moodle_url('/backup/restore.php', array('contextid'=>$contextid, 'filename'=>$filename));
     redirect($restore_url);
     die;
 }
 
-$treeview_options = array();
-$treeview_options['context'] = $context;
-$treeview_options['filecontext'] = $filecontext;
-$treeview_options['component'] = $component;
-$treeview_options['filearea'] = $filearea;
-$treeview_options['itemid'] = $itemid;
-$treeview_options['filepath'] = $filepath;
-$treeview_options['filename'] = $filename;
-if (empty($component) && empty($filearea)) {
-    $treeview_options['show_user_backup'] = true;
-}
 
 
 echo $OUTPUT->header();
-
-echo $OUTPUT->heading(get_string('choosefile', 'backup'));
-echo $OUTPUT->container_start();
-$renderer = $PAGE->get_renderer('core', 'backup');
-
-echo $renderer->backup_files_viewer($treeview_options);
-echo $OUTPUT->container_end();
 
 // require uploadfile cap to use file picker
 if (has_capability('moodle/restore:uploadfile', $context)) {
@@ -126,5 +111,31 @@ if (has_capability('moodle/restore:uploadfile', $context)) {
     $form->display();
     echo $OUTPUT->container_end();
 }
+
+echo $OUTPUT->heading_with_help(get_string('choosefilefromcoursebackup', 'backup'), 'choosefilefromcoursebackup', 'backup');
+echo $OUTPUT->container_start();
+$treeview_options = array();
+$treeview_options['filecontext'] = $context;
+$treeview_options['currentcontext'] = $context;
+$treeview_options['component']   = 'backup';
+$treeview_options['context']     = $context;
+$treeview_options['filearea']    = 'course';
+$renderer = $PAGE->get_renderer('core', 'backup');
+echo $renderer->backup_files_viewer($treeview_options);
+echo $OUTPUT->container_end();
+
+
+echo $OUTPUT->heading_with_help(get_string('choosefilefromuserbackup', 'backup'), 'choosefilefromuserbackup', 'backup');
+echo $OUTPUT->container_start();
+$treeview_options = array();
+$user_context = get_context_instance(CONTEXT_USER, $USER->id);
+$treeview_options['filecontext'] = $user_context;
+$treeview_options['currentcontext'] = $context;
+$treeview_options['component']   = 'user';
+$treeview_options['context']     = 'backup';
+$treeview_options['filearea']    = 'backup';
+$renderer = $PAGE->get_renderer('core', 'backup');
+echo $renderer->backup_files_viewer($treeview_options);
+echo $OUTPUT->container_end();
 
 echo $OUTPUT->footer();

@@ -19,7 +19,7 @@
  * Fetches language packages from download.moodle.org server
  *
  * Language packages are available at http://download.moodle.org/langpack/2.0/
- * in ZIP format together with a file languages.md5 containing thir hashes
+ * in ZIP format together with a file languages.md5 containing their hashes
  * and meta info.
  * Locally, language packs are saved into $CFG->dataroot/lang/
  *
@@ -65,8 +65,8 @@ $notice_error = array();
 
 if (($mode == INSTALLATION_OF_SELECTED_LANG) and confirm_sesskey() and !empty($pack)) {
     set_time_limit(0);
-    @mkdir ($CFG->dataroot.'/temp/', $CFG->directorypermissions);    //make it in case it's a fresh install, it might not be there
-    @mkdir ($CFG->dataroot.'/lang/', $CFG->directorypermissions);
+    make_upload_directory('temp');
+    make_upload_directory('lang');
 
     if (is_array($pack)) {
         $packs = $pack;
@@ -80,7 +80,7 @@ if (($mode == INSTALLATION_OF_SELECTED_LANG) and confirm_sesskey() and !empty($p
             switch ($status) {
             case COMPONENT_ERROR:
                 if ($cd->get_error() == 'remotedownloaderror') {
-                    $a = new object();
+                    $a = new stdClass();
                     $a->url = 'http://download.moodle.org/langpack/'.$thisversion.'/'.$pack.'.zip';
                     $a->dest = $CFG->dataroot.'/lang';
                     print_error($cd->get_error(), 'error', 'langimport.php', $a);
@@ -173,8 +173,9 @@ if ($mode == UPDATE_ALL_LANG) {
         }
     }
 
-    @mkdir ($CFG->dataroot.'/temp/', $CFG->directorypermissions);
-    @mkdir ($CFG->dataroot.'/lang/', $CFG->directorypermissions);
+    make_upload_directory('temp');
+    make_upload_directory('lang');
+
     $updated = false;       // any packs updated?
     foreach ($neededlangs as $pack) {
         if ($pack == 'en') {
@@ -273,7 +274,7 @@ if ($notice_error) {
 
 if ($missingparents) {
     foreach ($missingparents as $l=>$parent) {
-        $a = new object();
+        $a = new stdClass();
         $a->lang   = $installedlangs[$l];
         $a->parent = $parent;
         foreach ($availablelangs as $alang) {

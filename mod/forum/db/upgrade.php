@@ -132,13 +132,12 @@ function xmldb_forum_upgrade($oldversion) {
                     $DB->update_record('forum_posts', $post);
                     continue;
                 }
-                if (!$fs->file_exists($context->id, 'mod_form', $filearea, $post->id, '/', $filename)) {
-                    $file_record = array('contextid'=>$context->id, 'component'=>'mod_form', 'filearea'=>$filearea, 'itemid'=>$post->id, 'filepath'=>'/', 'filename'=>$filename, 'userid'=>$post->userid);
+                if (!$fs->file_exists($context->id, 'mod_forum', $filearea, $post->id, '/', $filename)) {
+                    $file_record = array('contextid'=>$context->id, 'component'=>'mod_forum', 'filearea'=>$filearea, 'itemid'=>$post->id, 'filepath'=>'/', 'filename'=>$filename, 'userid'=>$post->userid);
                     if ($fs->create_file_from_pathname($file_record, $filepath)) {
                         $post->attachment = '1';
-                        if ($DB->update_record('forum_posts', $post)) {
-                            unlink($filepath);
-                        }
+                        $DB->update_record('forum_posts', $post);
+                        unlink($filepath);
                     }
                 }
 
@@ -298,6 +297,23 @@ function xmldb_forum_upgrade($oldversion) {
         // forum savepoint reached
         upgrade_mod_savepoint(true, 2010070800, 'forum');
     }
+
+    if ($oldversion < 2010091900) {
+        // rename files from borked upgrade in 2.0dev
+        $fs = get_file_storage();
+        $rs = $DB->get_recordset('files', array('component'=>'mod_form'));
+        foreach ($rs as $oldrecord) {
+            $file = $fs->get_file_instance($oldrecord);
+            $newrecord = array('component'=>'mod_forum');
+            if (!$fs->file_exists($oldrecord->contextid, 'mod_forum', $oldrecord->filearea, $oldrecord->itemid, $oldrecord->filepath, $oldrecord->filename)) {
+                $fs->create_file_from_storedfile($newrecord, $file);
+            }
+            $file->delete();
+        }
+        $rs->close();
+        upgrade_mod_savepoint(true, 2010091900, 'forum');
+    }
+
 
     return true;
 }

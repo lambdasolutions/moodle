@@ -89,7 +89,7 @@ echo $OUTPUT->heading(get_string('profilefields', 'admin'));
 
 /// Check that we have at least one category defined
 if ($DB->count_records('user_info_category') == 0) {
-    $defaultcategory = new object();
+    $defaultcategory = new stdClass();
     $defaultcategory->name = $strdefaultcategory;
     $defaultcategory->sortorder = 1;
     $DB->insert_record('user_info_category', $defaultcategory);
@@ -203,12 +203,10 @@ function profile_category_icons($category) {
 function profile_field_icons($field) {
     global $CFG, $USER, $DB, $OUTPUT;
 
-    if (empty($str)) {
-        $strdelete   = get_string('delete');
-        $strmoveup   = get_string('moveup');
-        $strmovedown = get_string('movedown');
-        $stredit     = get_string('edit');
-    }
+    $strdelete   = get_string('delete');
+    $strmoveup   = get_string('moveup');
+    $strmovedown = get_string('movedown');
+    $stredit     = get_string('edit');
 
     $fieldcount = $DB->count_records('user_info_field', array('categoryid'=>$field->categoryid));
     $datacount  = $DB->count_records('user_info_data', array('fieldid'=>$field->id));

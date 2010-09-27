@@ -167,7 +167,7 @@ if ($formdata = $mform->is_cancelled()) {
     // caches
     $ccache       = array(); // course cache - do not fetch all courses here, we  will not probably use them all anyway!
     $rolecache    = uu_allowed_roles_cache(); // roles lookup cache
-    $manualcacche = array(); // cache of used manual enrol plugins in each course
+    $manualcache  = array(); // cache of used manual enrol plugins in each course
 
     $allowedauths   = uu_allowed_auths();
     $allowedauths   = array_keys($allowedauths);
@@ -202,7 +202,7 @@ if ($formdata = $mform->is_cancelled()) {
 
         $forcechangepassword = false;
 
-        $user = new object();
+        $user = new stdClass();
         // by default, use the local mnet id (this may be changed in the file)
         $user->mnethostid = $CFG->mnet_localhost_id;
         // add fields to user object
@@ -457,7 +457,7 @@ if ($formdata = $mform->is_cancelled()) {
                             }
                         }
                     }
-                    if ((array_key_exists($column, $existinguser) and array_key_exists($column, $user)) or in_array($column, $PRF_FIELDS)) {
+                    if ((property_exists($existinguser, $column) and property_exists($user, $column)) or in_array($column, $PRF_FIELDS)) {
                         if ($updatetype == 3 and $existinguser->$column !== '') {
                             //missing == non-empty only
                             continue;
@@ -484,7 +484,7 @@ if ($formdata = $mform->is_cancelled()) {
                     }
                 }
 
-                // do not update record if new auth plguin does not exist!
+                // do not update record if new auth plugin does not exist!
                 if (!in_array($existinguser->auth, $availableauths)) {
                     $upt->track('auth', get_string('userautherror', 'error', $existinguser->auth), 'error');
                     $upt->track('status', $strusernotupdated, 'error');
@@ -641,7 +641,7 @@ if ($formdata = $mform->is_cancelled()) {
 
                     $manual->enrol_user($manualcache[$courseid], $user->id, $rid, $today, $timeend, true);
 
-                    $a = new object();
+                    $a = new stdClass();
                     $a->course = $shortname;
                     $a->role   = $rolecache[$rid]->name;
                     $upt->track('enrolments', get_string('enrolledincourserole', 'enrol_manual', $a));
@@ -652,7 +652,7 @@ if ($formdata = $mform->is_cancelled()) {
             if (!empty($user->{'group'.$i})) {
                 // make sure user is enrolled into course before adding into groups
                 if (!is_enrolled($coursecontext, $user->id)) {
-                    $upt->track('enrolments', get_string('addedtogroupnotenrolled', '', $gname), 'error');
+                    $upt->track('enrolments', get_string('addedtogroupnotenrolled', '', $user->{'group'.$i}), 'error');
                     continue;
                 }
                 //build group cache
@@ -660,11 +660,11 @@ if ($formdata = $mform->is_cancelled()) {
                     $ccache[$shortname]->groups = array();
                     if ($groups = groups_get_all_groups($courseid)) {
                         foreach ($groups as $gid=>$group) {
-                            $ccache[$shortname]->groups[$gid] = new object();
+                            $ccache[$shortname]->groups[$gid] = new stdClass();
                             $ccache[$shortname]->groups[$gid]->id   = $gid;
                             $ccache[$shortname]->groups[$gid]->name = $group->name;
                             if (!is_numeric($group->name)) { // only non-numeric names are supported!!!
-                            $ccache[$shortname]->groups[$group->name] = new object();
+                            $ccache[$shortname]->groups[$group->name] = new stdClass();
                             $ccache[$shortname]->groups[$group->name]->id   = $gid;
                             $ccache[$shortname]->groups[$group->name]->name = $group->name;
                             }
@@ -675,7 +675,7 @@ if ($formdata = $mform->is_cancelled()) {
                 $addgroup = $user->{'group'.$i};
                 if (!array_key_exists($addgroup, $ccache[$shortname]->groups)) {
                     // if group doesn't exist,  create it
-                    $newgroupdata = new object();
+                    $newgroupdata = new stdClass();
                     $newgroupdata->name = $addgroup;
                     $newgroupdata->courseid = $ccache[$shortname]->id;
                     if ($ccache[$shortname]->groups[$addgroup]->id = groups_create_group($newgroupdata)){
@@ -1086,7 +1086,7 @@ function process_template($template, $user) {
 
     // very very ugly hack!
     global $template_globals;
-    $template_globals = new object();
+    $template_globals = new stdClass();
     $template_globals->username  = isset($user->username)  ? $user->username  : '';
     $template_globals->firstname = isset($user->firstname) ? $user->firstname : '';
     $template_globals->lastname  = isset($user->lastname)  ? $user->lastname  : '';
@@ -1157,11 +1157,11 @@ function uu_allowed_roles() {
 function uu_allowed_roles_cache() {
     $allowedroles = get_assignable_roles(get_context_instance(CONTEXT_COURSE, SITEID), ROLENAME_SHORT);
     foreach ($allowedroles as $rid=>$rname) {
-        $rolecache[$rid] = new object();
+        $rolecache[$rid] = new stdClass();
         $rolecache[$rid]->id   = $rid;
         $rolecache[$rid]->name = $rname;
         if (!is_numeric($rname)) { // only non-numeric shortnames are supported!!!
-            $rolecache[$rname] = new object();
+            $rolecache[$rname] = new stdClass();
             $rolecache[$rname]->id   = $rid;
             $rolecache[$rname]->name = $rname;
         }

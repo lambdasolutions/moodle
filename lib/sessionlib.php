@@ -19,6 +19,7 @@
  * @package    core
  * @subpackage session
  * @copyright  1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ * @copyright  2008, 2009 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -60,9 +61,12 @@ function session_get_instance() {
 }
 
 /**
- * @package   moodlecore
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Moodle session abstraction
+ *
+ * @package    core
+ * @subpackage session
+ * @copyright  2008 Petr Skoda  {@link http://skodak.org}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 interface moodle_session {
     /**
@@ -89,9 +93,10 @@ interface moodle_session {
 /**
  * Class handling all session and cookies related stuff.
  *
- * @package   moodlecore
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    core
+ * @subpackage session
+ * @copyright  2009 Petr Skoda  {@link http://skodak.org}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class session_stub implements moodle_session {
     protected $justloggedout;
@@ -99,25 +104,13 @@ abstract class session_stub implements moodle_session {
     public function __construct() {
         global $CFG;
 
-        if (!defined('NO_MOODLE_COOKIES')) {
-            if (empty($CFG->version) or $CFG->version < 2009011900) {
-                // no session before sessions table gets created
-                define('NO_MOODLE_COOKIES', true);
-            } else if (CLI_SCRIPT) {
-                // CLI scripts can not have session
-                define('NO_MOODLE_COOKIES', true);
-            } else {
-                define('NO_MOODLE_COOKIES', false);
-            }
-        }
-
         if (NO_MOODLE_COOKIES) {
             // session not used at all
             $CFG->usesid = 0;
 
             $_SESSION = array();
-            $_SESSION['SESSION'] = new object();
-            $_SESSION['USER']    = new object();
+            $_SESSION['SESSION'] = new stdClass();
+            $_SESSION['USER']    = new stdClass();
 
         } else {
             $this->prepare_cookies();
@@ -136,13 +129,13 @@ abstract class session_stub implements moodle_session {
             session_set_cookie_params(0, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $CFG->cookiesecure, $CFG->cookiehttponly);
             session_start();
             if (!isset($_SESSION['SESSION'])) {
-                $_SESSION['SESSION'] = new object();
+                $_SESSION['SESSION'] = new stdClass();
                 if (!$newsession and !$this->justloggedout) {
                     $_SESSION['SESSION']->has_timed_out = true;
                 }
             }
             if (!isset($_SESSION['USER'])) {
-                $_SESSION['USER'] = new object();
+                $_SESSION['USER'] = new stdClass();
             }
         }
 
@@ -169,8 +162,8 @@ abstract class session_stub implements moodle_session {
 
         // Initialize variable to pass-by-reference to headers_sent(&$file, &$line)
         $_SESSION = array();
-        $_SESSION['SESSION'] = new object();
-        $_SESSION['USER']    = new object();
+        $_SESSION['SESSION'] = new stdClass();
+        $_SESSION['USER']    = new stdClass();
         $_SESSION['USER']->id = 0;
         if (isset($CFG->mnet_localhost_id)) {
             $_SESSION['USER']->mnethostid = $CFG->mnet_localhost_id;
@@ -213,6 +206,8 @@ abstract class session_stub implements moodle_session {
      * @return void
      */
     protected function check_user_initialised() {
+        global $CFG;
+
         if (isset($_SESSION['USER']->id)) {
             // already set up $USER
             return;
@@ -246,7 +241,7 @@ abstract class session_stub implements moodle_session {
         }
 
         if (!$user) {
-            $user = new object();
+            $user = new stdClass();
             $user->id = 0; // to enable proper function of $CFG->notloggedinroleid hack
             if (isset($CFG->mnet_localhost_id)) {
                 $user->mnethostid = $CFG->mnet_localhost_id;
@@ -332,9 +327,10 @@ abstract class session_stub implements moodle_session {
 /**
  * Legacy moodle sessions stored in files, not recommended any more.
  *
- * @package   moodlecore
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    core
+ * @subpackage session
+ * @copyright  2009 Petr Skoda  {@link http://skodak.org}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class legacy_file_session extends session_stub {
     protected function init_session_storage() {
@@ -351,12 +347,9 @@ class legacy_file_session extends session_stub {
 
         ini_set('session.gc_maxlifetime', $CFG->sessiontimeout);
 
-        if (!file_exists($CFG->dataroot .'/sessions')) {
-            make_upload_directory('sessions');
-        }
-        if (!is_writable($CFG->dataroot .'/sessions/')) {
-            print_error('sessionnotwritable', 'error');
-        }
+        // make sure sessions dir exists and is writable, throws exception if not
+        make_upload_directory('sessions');
+
         // Need to disable debugging since disk_free_space()
         // will fail on very large partitions (see MDL-19222)
         $freespace = @disk_free_space($CFG->dataroot.'/sessions');
@@ -371,20 +364,21 @@ class legacy_file_session extends session_stub {
      * @return boolean true if session found.
      */
     public function session_exists($sid){
+        global $CFG;
+
         $sid = clean_param($sid, PARAM_FILE);
-        $sessionfile = clean_param("$CFG->dataroot/sessions/sess_$sid", PARAM_FILE);
+        $sessionfile = "$CFG->dataroot/sessions/sess_$sid";
         return file_exists($sessionfile);
     }
-
-
 }
 
 /**
  * Recommended moodle session storage.
  *
- * @package   moodlecore
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    core
+ * @subpackage session
+ * @copyright  2009 Petr Skoda  {@link http://skodak.org}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class database_session extends session_stub {
     protected $record   = null;
@@ -462,7 +456,7 @@ class database_session extends session_stub {
                 $this->database->get_session_lock($record->id);
 
             } else {
-                $record = new object();
+                $record = new stdClass();
                 $record->state        = 0;
                 $record->sid          = $sid;
                 $record->sessdata     = null;
@@ -483,7 +477,7 @@ class database_session extends session_stub {
             $ignoretimeout = false;
             if (!empty($record->userid)) { // skips not logged in
                 if ($user = $this->database->get_record('user', array('id'=>$record->userid))) {
-                    if ($user->username !== 'guest') {
+                    if (!isguestuser($user)) {
                         $authsequence = get_enabled_auth_plugins(); // auths, in sequence
                         foreach($authsequence as $authname) {
                             $authplugin = get_auth_plugin($authname);
@@ -541,6 +535,7 @@ class database_session extends session_stub {
         }
 
         if (isset($this->record->id)) {
+            $record = new stdClass();
             $record->state              = 0;
             $record->sid                = $sid;                         // might be regenerating sid
             $this->record->sessdata     = base64_encode($session_data); // there might be some binary mess :-(
@@ -568,7 +563,7 @@ class database_session extends session_stub {
 
         } else {
             // session already destroyed
-            $record = new object();
+            $record = new stdClass();
             $record->state        = 0;
             $record->sid          = $sid;
             $record->sessdata     = base64_encode($session_data); // there might be some binary mess :-(
@@ -739,8 +734,8 @@ function session_gc() {
         $sql = "SELECT u.*, s.sid, s.timecreated AS s_timecreated, s.timemodified AS s_timemodified
                   FROM {user} u
                   JOIN {sessions} s ON s.userid = u.id
-                 WHERE s.timemodified + ? < ? AND u.username <> 'guest'";
-        $params = array($maxlifetime, time());
+                 WHERE s.timemodified + ? < ? AND u.id <> ?";
+        $params = array($maxlifetime, time(), $CFG->siteguest);
 
         $authplugins = array();
         foreach($auth_sequence as $authname) {
@@ -770,13 +765,12 @@ function session_gc() {
  * @return string
  */
 function sesskey() {
-    global $USER;
-
-    if (empty($USER->sesskey)) {
-        $USER->sesskey = random_string(10);
+    // note: do not use $USER because it may not be initialised yet
+    if (empty($_SESSION['USER']->sesskey)) {
+        $_SESSION['USER']->sesskey = random_string(10);
     }
 
-    return $USER->sesskey;
+    return $_SESSION['USER']->sesskey;
 }
 
 
@@ -873,7 +867,7 @@ function get_moodle_cookie() {
  * Setup $USER object - called during login, loginas, etc.
  * Preloads capabilities and checks enrolment plugins
  *
- * @param object $user full user record object
+ * @param stdClass $user full user record object
  * @return void
  */
 function session_set_user($user) {
@@ -897,7 +891,7 @@ function session_is_loggedinas() {
 
 /**
  * Returns the $USER object ignoring current login-as session
- * @return object user object
+ * @return stdClass user object
  */
 function session_get_realuser() {
     if (session_is_loggedinas()) {
@@ -910,7 +904,7 @@ function session_get_realuser() {
 /**
  * Login as another user - no security checks here.
  * @param int $userid
- * @param object $context
+ * @param stdClass $context
  * @return void
  */
 function session_loginas($userid, $context) {
@@ -920,7 +914,7 @@ function session_loginas($userid, $context) {
 
     // switch to fresh new $SESSION
     $_SESSION['REALSESSION'] = $_SESSION['SESSION'];
-    $_SESSION['SESSION']     = new object();
+    $_SESSION['SESSION']     = new stdClass();
 
     /// Create the new $USER object with all details and reload needed capabilities
     $_SESSION['REALUSER'] = $_SESSION['USER'];
@@ -931,26 +925,10 @@ function session_loginas($userid, $context) {
 }
 
 /**
- * Terminate login-as session
- * @return void
- */
-function session_unloginas() {
-    if (!session_is_loggedinas()) {
-        return;
-    }
-
-    $_SESSION['SESSION'] = $_SESSION['REALSESSION'];
-    unset($_SESSION['REALSESSION']);
-
-    $_SESSION['USER'] = $_SESSION['REALUSER'];
-    unset($_SESSION['REALUSER']);
-}
-
-/**
  * Sets up current user and course environment (lang, etc.) in cron.
  * Do not use outside of cron script!
  *
- * @param object $user full user object, null means default cron user (admin)
+ * @param stdClass $user full user object, null means default cron user (admin)
  * @param $course full course record, null means $SITE
  * @return void
  */
@@ -968,7 +946,7 @@ function cron_setup_user($user = NULL, $course = NULL) {
         $cronuser->theme    = '';
         unset($cronuser->description);
 
-        $cronsession = new object();
+        $cronsession = new stdClass();
     }
 
     if (!$user) {
@@ -980,7 +958,7 @@ function cron_setup_user($user = NULL, $course = NULL) {
         // emulate real user session - needed for caps in cron
         if ($_SESSION['USER']->id != $user->id) {
             session_set_user($user);
-            $_SESSION['SESSION'] = new object();
+            $_SESSION['SESSION'] = new stdClass();
         }
     }
 

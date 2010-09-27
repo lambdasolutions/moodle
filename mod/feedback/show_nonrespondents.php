@@ -19,8 +19,8 @@
     $subject = optional_param('subject','',PARAM_CLEANHTML);
     $message = optional_param('message','',PARAM_CLEANHTML);
     $format = optional_param('format',FORMAT_MOODLE,PARAM_INT);
-    $messageuser = optional_param('messageuser',PARAM_INT);
-    $action = optional_param('action',PARAM_ALPHA);
+    $messageuser = optional_param('messageuser', false, PARAM_INT);
+    $action = optional_param('action', '',PARAM_ALPHA);
     $perpage = optional_param('perpage', FEEDBACK_DEFAULT_PAGE_COUNT, PARAM_INT);  // how many per page
     $showall = optional_param('showall', false, PARAM_INT);  // should we show all users
     // $SESSION->feedback->current_tab = $do_show;
@@ -68,13 +68,13 @@
 
     require_capability('mod/feedback:viewreports', $context);
 
-    if(has_capability('moodle/course:bulkmessaging', $coursecontext)) {
+    if($action == 'sendmessage' AND has_capability('moodle/course:bulkmessaging', $coursecontext)) {
         // require_once($CFG->dirroot.'/message/lib.php');
         $good = 1;
         if(is_array($messageuser)) {
             foreach ($messageuser as $userid) {
                 $senduser = $DB->get_record('user', array('id'=>$userid));
-                $eventdata = new object();
+                $eventdata = new stdClass();
                 $eventdata->name             = 'feedback';
                 $eventdata->component        = 'mod';
                 $eventdata->userfrom         = $USER;
@@ -167,13 +167,6 @@
         $sort = $table->get_sql_sort();
     }else {
         $sort = '';
-    }
-
-    if($table->get_sql_where()) {
-        $where = $table->get_sql_where();
-        $where .= ' AND';
-    }else {
-        $where = '';
     }
 
     //get students in conjunction with groupmode

@@ -82,7 +82,7 @@ function page_get_post_actions() {
  * Add page instance.
  * @param object $data
  * @param object $mform
- * @return int new resoruce instance id
+ * @return int new page instance id
  */
 function page_add_instance($data, $mform) {
     global $CFG, $DB;
@@ -194,7 +194,7 @@ function page_user_outline($course, $user, $mod, $page) {
         $numviews = count($logs);
         $lastlog = array_pop($logs);
 
-        $result = new object();
+        $result = new stdClass();
         $result->info = get_string('numviews', '', $numviews);
         $result->time = $lastlog->time;
 
@@ -256,7 +256,7 @@ function page_get_coursemodule_info($coursemodule) {
         return NULL;
     }
 
-    $info = new object();
+    $info = new stdClass();
     $info->name = $page->name;
 
     if ($page->display != RESOURCELIB_DISPLAY_POPUP) {
@@ -363,11 +363,11 @@ function page_pluginfile($course, $cm, $context, $filearea, $args, $forcedownloa
     $relativepath = implode('/', $args);
     $fullpath = "/$context->id/mod_page/$filearea/0/$relativepath";
     if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
-        $page = $DB->get_record('page', array('id'=>$cminfo->instance), 'id, legacyfiles', MUST_EXIST);
+        $page = $DB->get_record('page', array('id'=>$cm->instance), 'id, legacyfiles', MUST_EXIST);
         if ($page->legacyfiles != RESOURCELIB_LEGACYFILES_ACTIVE) {
             return false;
         }
-        if (!$file = resourcelib_try_file_migration('/'.$relativepath, $cminfo->id, $cminfo->course, 'mod_page', 'content', 0)) {
+        if (!$file = resourcelib_try_file_migration('/'.$relativepath, $cm->id, $cm->course, 'mod_page', 'content', 0)) {
             return false;
         }
         //file migrate - update flag

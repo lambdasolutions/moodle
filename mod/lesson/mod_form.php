@@ -86,7 +86,7 @@ class mod_lesson_mod_form extends moodleform_mod {
         if (!empty($CFG->formatstringstriptags)) {
             $mform->setType('name', PARAM_TEXT);
         } else {
-            $mform->setType('name', PARAM_CLEAN);
+            $mform->setType('name', PARAM_CLEANHTML);
         }
         $mform->addRule('name', null, 'required', null, 'client');
 
@@ -134,6 +134,8 @@ class mod_lesson_mod_form extends moodleform_mod {
         $mform->setAdvanced('password');
         $mform->disabledIf('password', 'usepassword', 'eq', 0);
 
+        $this->standard_grading_coursemodule_elements();
+
 //-------------------------------------------------------------------------------
         $mform->addElement('header', 'gradeoptions', get_string('gradeoptions', 'lesson'));
 
@@ -144,15 +146,6 @@ class mod_lesson_mod_form extends moodleform_mod {
         $mform->addElement('selectyesno', 'custom', get_string('customscoring', 'lesson'));
         $mform->addHelpButton('custom', 'customscoring', 'lesson');
         $mform->setDefault('custom', 1);
-
-        $grades = array();
-        for ($i=100; $i>=0; $i--) {
-            $grades[$i] = $i;
-        }
-        $mform->addElement('select', 'grade', get_string('maxgrade', 'lesson'), $grades);
-        $mform->setDefault('grade', 0);
-        $mform->addHelpButton('grade', 'maxgrade', 'lesson');
-        $mform->disabledIf('grade', 'practice', 'eq', '1');
 
         $mform->addElement('selectyesno', 'retake', get_string('retakesallowed', 'lesson'));
         $mform->addHelpButton('retake', 'retakesallowed', 'lesson');

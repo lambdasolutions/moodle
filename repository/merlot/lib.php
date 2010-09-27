@@ -19,11 +19,11 @@
  * repository_merlot is used to search merlot.org in moodle
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage merlot
+ * @copyright  2009 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class repository_merlot extends repository {
 
@@ -75,7 +75,7 @@ class repository_merlot extends repository {
         return $ret;
     }
 
-    private function _get_collection($keyword, $author) {
+    private function _get_collection($keyword) {
         global $OUTPUT;
         $list = array();
         $this->api = 'http://www.merlot.org/merlot/materials.rest?keywords=' . urlencode($keyword) . '&licenseKey='.$this->licensekey;
@@ -85,7 +85,7 @@ class repository_merlot extends repository {
         foreach ($xml->results->material as $entry) {
             $list[] = array(
                 'title'=>(string)$entry->title,
-                'thumbnail'=>$OUTPUT->pix_url('f/unknown-32'),
+                'thumbnail'=>$OUTPUT->pix_url('f/unknown-32')->out(false),
                 'date'=>userdate((int)$entry->creationDate),
                 'size'=>'',
                 'source'=>(string)$entry->URL
@@ -101,12 +101,12 @@ class repository_merlot extends repository {
      */
     public function print_login(){
         $ret = array();
-        $search = new stdclass;
+        $search = new stdClass();
         $search->type = 'text';
         $search->id   = 'merlog_search';
         $search->name = 'merlot_keyword';
         $search->label = get_string('search').': ';
-        $author = new stdclass;
+        $author = new stdClass();
         $author->type = 'text';
         $author->id   = 'merlog_author';
         $author->name = 'merlot_author';

@@ -20,7 +20,7 @@ YUI.add('moodle-mod_glossary-autolinker', function(Y) {
 
     var AUTOLINKER = function() {
         AUTOLINKER.superclass.constructor.apply(this, arguments);
-    }
+    };
     Y.extend(AUTOLINKER, Y.Base, {
         overlay : null,
         initializer : function(config) {
@@ -41,8 +41,8 @@ YUI.add('moodle-mod_glossary-autolinker', function(Y) {
                 self.overlay = o;
                 o.render(Y.one(document.body));
 
-                //fetch the glossary item
-                var fullurl = this.getAttribute('href')+'&ajax=1';
+                //Switch over to the ajax url and fetch the glossary item
+                var fullurl = this.getAttribute('href').replace('showentry.php','showentry_ajax.php');
                 var cfg = {
                     method: 'get',
                     context : self,
@@ -68,17 +68,17 @@ YUI.add('moodle-mod_glossary-autolinker', function(Y) {
                 var data = Y.JSON.parse(content);
                 if (data.success){
                     this.overlay.hide(); //hide progress indicator
-                    
+
                     for (key in data.entries) {
                         new M.core.alert({title:data.entries[key].concept, message:data.entries[key].definition, lightbox:false});
                     }
 
                     return true;
                 } else if (data.error) {
-                    alert(data.error);
+                    new M.core.ajaxException(data);
                 }
-            }catch(ex) {
-                alert(ex.message+" "+content);
+            }catch(e) {
+                new M.core.exception(e);
             }
             return false;
         }

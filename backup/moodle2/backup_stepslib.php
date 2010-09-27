@@ -149,6 +149,109 @@ abstract class backup_activity_structure_step extends backup_structure_step {
 }
 
 /**
+ * Abstract structure step, to be used by all the activities using core questions stuff
+ * (namelu quiz module), supporting question plugins, states and sessions
+ */
+abstract class backup_questions_activity_structure_step extends backup_activity_structure_step {
+
+    /**
+     * Attach to $element (usually attempts) the needed backup structures
+     * for question_states for a given question_attempt
+     */
+    protected function add_question_attempts_states($element, $questionattemptname) {
+        // Check $element is one nested_backup_element
+        if (! $element instanceof backup_nested_element) {
+            throw new backup_step_exception('question_states_bad_parent_element', $element);
+        }
+        // Check that the $questionattemptname is final element in $element
+        if (! $element->get_final_element($questionattemptname)) {
+            throw new backup_step_exception('question_states_bad_question_attempt_element', $questionattemptname);
+        }
+
+        // TODO: Some day we should stop these "encrypted" state->answers and
+        // TODO: delegate to qtypes plugin to proper XML writting the needed info on each question
+
+        // TODO: Should be doing here some introspection in the "answer" element, based on qtype,
+        // TODO: to know which real questions are being used (for randoms and other qtypes...)
+        // TODO: Not needed if consistency is guaranteed, but it isn't right now :-(
+
+        // Define the elements
+        $states = new backup_nested_element('states');
+        $state = new backup_nested_element('state', array('id'), array(
+            'question', 'seq_number', 'answer', 'timestamp',
+            'event', 'grade', 'raw_grade', 'penalty'));
+
+        // Build the tree
+        $element->add_child($states);
+        $states->add_child($state);
+
+        // Set the sources
+        $state->set_source_table('question_states', array('attempt' => '../../' . $questionattemptname));
+
+        // Annotate ids
+        $state->annotate_ids('question', 'question');
+    }
+
+    /**
+     * Attach to $element (usually attempts) the needed backup structures
+     * for question_sessions for a given question_attempt
+     */
+    protected function add_question_attempts_sessions($element, $questionattemptname) {
+        // Check $element is one nested_backup_element
+        if (! $element instanceof backup_nested_element) {
+            throw new backup_step_exception('question_sessions_bad_parent_element', $element);
+        }
+        // Check that the $questionattemptname is final element in $element
+        if (! $element->get_final_element($questionattemptname)) {
+            throw new backup_step_exception('question_sessions_bad_question_attempt_element', $questionattemptname);
+        }
+
+        // Define the elements
+        $sessions = new backup_nested_element('sessions');
+        $session = new backup_nested_element('session', array('id'), array(
+            'questionid', 'newest', 'newgraded', 'sumpenalty',
+            'manualcomment', 'manualcommentformat', 'flagged'));
+
+        // Build the tree
+        $element->add_child($sessions);
+        $sessions->add_child($session);
+
+        // Set the sources
+        $session->set_source_table('question_sessions', array('attemptid' => '../../' . $questionattemptname));
+
+        // Annotate ids
+        $session->annotate_ids('question', 'questionid');
+
+        // Annotate files
+        // Note: question_sessions haven't files associated. On purpose manualcomment is lacking
+        // support for them, so we don't need to annotated them here.
+    }
+}
+
+/**
+ * backup structure step in charge of calculating the categories to be
+ * included in backup, based in the context being backuped (module/course)
+ * and the already annotated questions present in backup_ids_temp
+ */
+class backup_calculate_question_categories extends backup_execution_step {
+
+    protected function define_execution() {
+        backup_question_dbops::calculate_question_categories($this->get_backupid(), $this->task->get_contextid());
+    }
+}
+
+/**
+ * backup structure step in charge of deleting all the questions annotated
+ * in the backup_ids_temp table
+ */
+class backup_delete_temp_questions extends backup_execution_step {
+
+    protected function define_execution() {
+        backup_question_dbops::delete_temp_questions($this->get_backupid());
+    }
+}
+
+/**
  * Abstract structure step, parent of all the block structure steps. Used to wrap the
  * block structure definition within the main <block ...> tag
  */
@@ -262,8 +365,8 @@ class backup_course_structure_step extends backup_structure_step {
         $course = new backup_nested_element('course', array('id', 'contextid'), array(
             'shortname', 'fullname', 'idnumber',
             'summary', 'summaryformat', 'format', 'showgrades',
-            'newsitems', 'startdate',
-            'numsections', 'marker', 'maxbytes', 'showreports',
+            'newsitems', 'startdate', 'numsections',
+            'marker', 'maxbytes', 'legacyfiles', 'showreports',
             'visible', 'hiddensections', 'groupmode', 'groupmodeforce',
             'defaultgroupingid', 'lang', 'theme',
             'timecreated', 'timemodified',
@@ -664,7 +767,8 @@ class backup_gradebook_structure_step extends backup_structure_step {
 
         //grade_categories
         $grade_categories = new backup_nested_element('grade_categories');
-        $grade_category   = new backup_nested_element('grade_category', null, array('courseid',
+        $grade_category   = new backup_nested_element('grade_category', array('id'), array(
+                //'courseid', 
                 'parent', 'depth', 'path', 'fullname', 'aggregation', 'keephigh',
                 'dropload', 'aggregateonlygraded', 'aggregateoutcomes', 'aggregatesubcats',
                 'timecreated', 'timemodified'));
@@ -673,26 +777,30 @@ class backup_gradebook_structure_step extends backup_structure_step {
         $letter = new backup_nested_element('grade_letter', 'id', array(
             'lowerboundary', 'letter'));
 
+        $grade_settings = new backup_nested_element('grade_settings');
+        $grade_setting = new backup_nested_element('grade_setting', 'id', array(
+            'name', 'value'));
+
 
         // Build the tree
+        $gradebook->add_child($grade_categories);
+        $grade_categories->add_child($grade_category);
 
         $gradebook->add_child($grade_items);
         $grade_items->add_child($grade_item);
         $grade_item->add_child($grade_grades);
         $grade_grades->add_child($grade_grade);
 
-        //$grade_item->add_child($grade_scale);
-
-        $gradebook->add_child($grade_categories);
-        $grade_categories->add_child($grade_category);
-
         $gradebook->add_child($letters);
         $letters->add_child($letter);
+
+        $gradebook->add_child($grade_settings);
+        $grade_settings->add_child($grade_setting);
 
         // Define sources
 
         //Include manual, category and the course grade item
-        $grade_items_sql ="SELECT * FROM {grade_items} 
+        $grade_items_sql ="SELECT * FROM {grade_items}
                            WHERE courseid = :courseid
                            AND (itemtype='manual' OR itemtype='course' OR itemtype='category')";
         $grade_items_params = array('courseid'=>backup::VAR_COURSEID);
@@ -713,9 +821,14 @@ class backup_gradebook_structure_step extends backup_structure_step {
 
         $letter->set_source_table('grade_letters', array('contextid' => backup::VAR_CONTEXTID));
 
+        $grade_setting->set_source_table('grade_settings', array('courseid' => backup::VAR_COURSEID));
+
         // Annotations (both as final as far as they are going to be exported in next steps)
         $grade_item->annotate_ids('scalefinal', 'scaleid'); // Straight as scalefinal because it's > 0
         $grade_item->annotate_ids('outcomefinal', 'outcomeid');
+
+        //just in case there are any users not already annotated by the activities
+        $grade_grade->annotate_ids('userfinal', 'userid');
 
         // Return the root element
         return $gradebook;
@@ -1302,7 +1415,7 @@ class backup_main_structure_step extends backup_structure_step {
 }
 
 /**
- * Execution step that will generate the final zip file with all the contents
+ * Execution step that will generate the final zip (.mbz) file with all the contents
  */
 class backup_zip_contents extends backup_execution_step {
 
@@ -1324,8 +1437,8 @@ class backup_zip_contents extends backup_execution_step {
              $files['moodle_backup.log'] = $logfilepath;
         }
 
-        // Calculate the zip fullpath (in OS temp area it's always backup.zip)
-        $zipfile = $basepath . '/backup.zip';
+        // Calculate the zip fullpath (in OS temp area it's always backup.mbz)
+        $zipfile = $basepath . '/backup.mbz';
 
         // Get the zip packer
         $zippacker = get_file_packer('application/zip');
@@ -1345,8 +1458,8 @@ class backup_store_backup_file extends backup_execution_step {
         // Get basepath
         $basepath = $this->get_basepath();
 
-        // Calculate the zip fullpath (in OS temp area it's always backup.zip)
-        $zipfile = $basepath . '/backup.zip';
+        // Calculate the zip fullpath (in OS temp area it's always backup.mbz)
+        $zipfile = $basepath . '/backup.mbz';
 
         // Perform storage and return it (TODO: shouldn't be array but proper result object)
         return array('backup_destination' => backup_helper::store_backup_file($this->get_backupid(), $zipfile));
@@ -1418,6 +1531,91 @@ class backup_annotate_scales_from_outcomes extends backup_execution_step {
         }
     }
 }
+
+/**
+ * This step will generate all the file annotations for the already
+ * annotated (final) question_categories. It calculates the different
+ * contexts that are being backup and, annotates all the files
+ * on every context belonging to the "question" component. As far as
+ * we are always including *complete* question banks it is safe and
+ * optimal to do that in this (one pass) way
+ */
+class backup_annotate_all_question_files extends backup_execution_step {
+
+    protected function define_execution() {
+        global $DB;
+
+        // Get all the different contexts for the final question_categories
+        // annotated along the whole backup
+        $rs = $DB->get_recordset_sql("SELECT DISTINCT qc.contextid
+                                        FROM {question_categories} qc
+                                        JOIN {backup_ids_temp} bi ON bi.itemid = qc.id
+                                       WHERE bi.backupid = ?
+                                         AND bi.itemname = 'question_categoryfinal'", array($this->get_backupid()));
+        foreach($rs as $record) {
+            // We don't need to specify filearea nor itemid as far as by
+            // component and context it's enough to annotate the whole bank files
+            backup_structure_dbops::annotate_files($this->get_backupid(), $record->contextid, 'question', null, null);
+        }
+        $rs->close();
+    }
+}
+
+/**
+ * structure step in charge of constructing the questions.xml file for all the
+ * question categories and questions required by the backup
+ * and letters related to one activity
+ */
+class backup_questions_structure_step extends backup_structure_step {
+
+    protected function define_structure() {
+
+        // Define each element separated
+
+        $qcategories = new backup_nested_element('question_categories');
+
+        $qcategory = new backup_nested_element('question_category', array('id'), array(
+            'name', 'contextid', 'contextlevel', 'contextinstanceid',
+            'info', 'infoformat', 'stamp', 'parent',
+            'sortorder'));
+
+        $questions = new backup_nested_element('questions');
+
+        $question = new backup_nested_element('question', array('id'), array(
+            'parent', 'name', 'questiontext', 'questiontextformat',
+            'generalfeedback', 'generalfeedbackformat', 'defaultgrade', 'penalty',
+            'qtype', 'length', 'stamp', 'version',
+            'hidden', 'timecreated', 'timemodified', 'createdby', 'modifiedby'));
+
+        // attach qtype plugin structure to $question element, only one allowed
+        $this->add_plugin_structure('qtype', $question, false);
+
+        // Build the tree
+
+        $qcategories->add_child($qcategory);
+        $qcategory->add_child($questions);
+
+        $questions->add_child($question);
+
+        // Define the sources
+
+        $qcategory->set_source_sql("
+            SELECT gc.*, contextlevel, instanceid AS contextinstanceid
+              FROM {question_categories} gc
+              JOIN {backup_ids_temp} bi ON bi.itemid = gc.id
+              JOIN {context} co ON co.id = gc.contextid
+             WHERE bi.backupid = ?
+               AND bi.itemname = 'question_categoryfinal'", array(backup::VAR_BACKUPID));
+
+        $question->set_source_table('question', array('category' => backup::VAR_PARENTID));
+
+        // don't need to annotate ids nor files
+
+        return $qcategories;
+    }
+}
+
+
 
 /**
  * This step will generate all the file  annotations for the already
@@ -1532,5 +1730,84 @@ class backup_activity_grades_structure_step extends backup_structure_step {
         // Return the root element (book)
 
         return $book;
+    }
+}
+
+/**
+ * Backups up the course completion information for the course.
+ */
+class backup_course_completion_structure_step extends backup_structure_step {
+
+    protected function execute_condition() {
+        // Check that all activities have been included
+        if ($this->task->is_excluding_activities()) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * The structure of the course completion backup
+     *
+     * @return backup_nested_element
+     */
+    protected function define_structure() {
+
+        // To know if we are including user completion info
+        $userinfo = $this->get_setting_value('userscompletion');
+
+        $cc = new backup_nested_element('course_completion');
+
+        $criteria = new backup_nested_element('course_completion_criteria', array('id'), array(
+            'course','criteriatype', 'module', 'moduleinstance', 'courseinstanceshortname', 'enrolperiod', 'timeend', 'gradepass', 'role'
+        ));
+
+        $criteriacompletions = new backup_nested_element('course_completion_crit_completions');
+
+        $criteriacomplete = new backup_nested_element('course_completion_crit_compl', array('id'), array(
+            'criteriaid', 'userid','gradefinal','unenrolled','deleted','timecompleted'
+        ));
+
+        $coursecompletions = new backup_nested_element('course_completions', array('id'), array(
+            'userid', 'course', 'deleted', 'timenotified', 'timeenrolled','timestarted','timecompleted','reaggregate'
+        ));
+
+        $notify = new backup_nested_element('course_completion_notify', array('id'), array(
+            'course','role','message','timesent'
+        ));
+
+        $aggregatemethod = new backup_nested_element('course_completion_aggr_methd', array('id'), array(
+            'course','criteriatype','method','value'
+        ));
+
+        $cc->add_child($criteria);
+            $criteria->add_child($criteriacompletions);
+                $criteriacompletions->add_child($criteriacomplete);
+        $cc->add_child($coursecompletions);
+        $cc->add_child($notify);
+        $cc->add_child($aggregatemethod);
+
+        // We need to get the courseinstances shortname rather than an ID for restore
+        $criteria->set_source_sql("SELECT ccc.*, c.shortname courseinstanceshortname
+                                   FROM {course_completion_criteria} ccc
+                                   LEFT JOIN {course} c ON c.id = ccc.courseinstance
+                                   WHERE ccc.course = ?", array(backup::VAR_COURSEID));
+
+
+        $notify->set_source_table('course_completion_notify', array('course' => backup::VAR_COURSEID));
+        $aggregatemethod->set_source_table('course_completion_aggr_methd', array('course' => backup::VAR_COURSEID));
+
+        if ($userinfo) {
+            $criteriacomplete->set_source_table('course_completion_crit_compl', array('criteriaid' => backup::VAR_PARENTID));
+            $coursecompletions->set_source_table('course_completions', array('course' => backup::VAR_COURSEID));
+        }
+
+        $criteria->annotate_ids('role', 'role');
+        $criteriacomplete->annotate_ids('user', 'userid');
+        $coursecompletions->annotate_ids('user', 'userid');
+        $notify->annotate_ids('role', 'role');
+
+        return $cc;
+
     }
 }

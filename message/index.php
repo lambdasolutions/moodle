@@ -39,7 +39,7 @@ if (empty($CFG->messaging)) {
 
 $usergroup = optional_param('usergroup', VIEW_UNREAD_MESSAGES, PARAM_ALPHANUMEXT);
 $history   = optional_param('history', MESSAGE_HISTORY_SHORT, PARAM_INT);
-$search    = optional_param('search', '', PARAM_CLEAN);
+$search    = optional_param('search', '', PARAM_CLEAN); //TODO: use PARAM_RAW, but make sure we use s() and p() properly
 
 $user1id   = optional_param('user', $USER->id, PARAM_INT);
 $user2id   = optional_param('id', 0, PARAM_INT);
@@ -122,7 +122,7 @@ if (!empty($user2id)) {
 }
 unset($user2id);
 
-//was a message sent? Do NOT allow someone looking at somone elses messages to send them.
+//was a message sent? Do NOT allow someone looking at someone else's messages to send them.
 $messageerror = null;
 if ($currentuser && !empty($user2) && has_capability('moodle/site:sendmessage', $context)) {
 
@@ -241,7 +241,7 @@ echo html_writer::start_tag('div', array('class'=>'messagearea mdl-align'));
                 $messagehistorylink .=  html_writer::start_tag('span', array('class'=>$historyclass));
                     $messagehistorylink .= get_string('mostrecent','message');
                 $messagehistorylink .= html_writer::end_tag('span');
-                
+
             $messagehistorylink .= html_writer::end_tag('div');
 
             message_print_message_history($user1, $user2, $search, $displaycount, $messagehistorylink);

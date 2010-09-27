@@ -1020,8 +1020,8 @@ function stats_clean_old() {
 function stats_get_parameters($time,$report,$courseid,$mode,$roleid=0) {
     global $CFG, $DB;
 
-    $param = new object();
-    $params->params = array();
+    $param = new stdClass();
+    $param->params = array();
 
     if ($time < 10) { // dailies
         // number of days to go back = 7* time
@@ -1449,7 +1449,7 @@ function stats_check_uptodate($courseid=0) {
         return NULL;
     }
 
-    $a = new object();
+    $a = new stdClass();
     $a->daysdone = $DB->get_field_sql("SELECT COUNT(DISTINCT(timeend)) FROM {stats_daily}");
 
     // how many days between the last day and now?

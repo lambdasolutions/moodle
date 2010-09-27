@@ -28,16 +28,13 @@ M.core_filetree = {
                         node.isLeaf = true;
                     } else {
                         for (i in data) {
-                            var mynode = {
-                                label: data[i].filename,
-                                href: data[i].url
-                            };
-                            var tmp = new YAHOO.widget.TextNode(mynode, node, false);
+                            var tmp = new YAHOO.widget.HTMLNode('<div>'+data[i].icon+'&nbsp;<a href="'+data[i].url+'">'+data[i].filename+'</a></div>', node, false);
                             if (data[i].isdir) {
                                 tmp.isLeaf = false;
+                                tmp.isDir = true;
                             } else {
                                 tmp.isLeaf = true;
-                                tmp.target = '_blank';
+                                tmp.isFile = true;
                             }
                         }
                     }
@@ -64,18 +61,31 @@ M.core_filetree = {
         for (i in children) {
             if (children[i].className == 'file-tree-folder') {
                 children[i].isLeaf = false;
+                children[i].isDir = true;
             } else {
                 children[i].isLeaf = true;
+                children[i].isFile = true;
             }
         }
         tree.render();
         this.y3 = Y;
-    }, 
+    },
     dynload: function(node, oncompletecb) {
-        M.core_filetree.request(node.href, node, oncompletecb);
+        var tmp = document.createElement('p');
+        tmp.innerHTML = node.html;
+        var links = tmp.getElementsByTagName('a');
+        var link = links[0].href;
+        M.core_filetree.request(link, node, oncompletecb);
     },
     onclick: function(e) {
-        YAHOO.util.Event.preventDefault(e); 
+        YAHOO.util.Event.preventDefault(e);
+        if (e.node.isFile) {
+            var tmp = document.createElement('p');
+            tmp.innerHTML = e.node.html;
+            var links = tmp.getElementsByTagName('a');
+            var link = links[0].href;
+            window.location = link;
+        }
     },
     get_param: function(url, name, val) {
         name = name.replace(/[\[]/,"\\\[").replace(/[\]]/,"\\\]");
@@ -88,4 +98,4 @@ M.core_filetree = {
             return unescape(results[1]);
         }
     }
-}
+};

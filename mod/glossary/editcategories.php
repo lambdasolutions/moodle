@@ -84,7 +84,7 @@ if ( $hook >0 ) {
     if ( $action == "edit" ) {
         if ( $confirm ) {
             $action = "";
-            $cat = new object();
+            $cat = new stdClass();
             $cat->id = $hook;
             $cat->name = $name;
             $cat->usedynalink = $usedynalink;
@@ -158,8 +158,7 @@ if ( $hook >0 ) {
 
 } elseif ( $action == "add" ) {
     if ( $confirm ) {
-        $ILIKE = $DB->sql_ilike();
-        $dupcategory = $DB->get_records_sql("SELECT * FROM {glossary_categories} WHERE name $ILIKE ? AND glossaryid=?", array($name, $glossary->id));
+        $dupcategory = $DB->get_records_sql("SELECT * FROM {glossary_categories} WHERE ".$DB->sql_like('name','?', false)." AND glossaryid=?", array($name, $glossary->id));
         if ( $dupcategory ) {
         echo "<h3 class=\"main\">" . get_string("add"). " " . get_string("category","glossary"). "</h3>";
 
@@ -171,7 +170,7 @@ if ( $hook >0 ) {
 
         } else {
             $action = "";
-            $cat = new object();
+            $cat = new stdClass();
             $cat->name = $name;
             $cat->usedynalink = $usedynalink;
             $cat->glossaryid = $glossary->id;

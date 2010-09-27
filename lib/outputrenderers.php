@@ -355,7 +355,7 @@ class core_renderer extends renderer_base {
             $output .= html_writer::tag('div', get_string('legacythemeinuse'), array('class'=>'legacythemeinuse'));
         }
         if (!empty($CFG->debugpageinfo)) {
-            $output .= '<div class="performanceinfo">This page is: ' . $this->page->debug_summary() . '</div>';
+            $output .= '<div class="performanceinfo pageinfo">This page is: ' . $this->page->debug_summary() . '</div>';
         }
         if (debugging(null, DEBUG_DEVELOPER) and has_capability('moodle/site:config', get_context_instance(CONTEXT_SYSTEM))) {  // Only in developer mode
             $output .= '<div class="purgecaches"><a href="'.$CFG->wwwroot.'/admin/purgecaches.php?confirm=1&amp;sesskey='.sesskey().'">'.get_string('purgecaches', 'admin').'</a></div>';
@@ -388,7 +388,7 @@ class core_renderer extends renderer_base {
      * @return string HTML fragment.
      */
     public function login_info() {
-        global $USER, $CFG, $DB;
+        global $USER, $CFG, $DB, $SESSION;
 
         if (during_initial_install()) {
             return '';
@@ -399,7 +399,7 @@ class core_renderer extends renderer_base {
         if (session_is_loggedinas()) {
             $realuser = session_get_realuser();
             $fullname = fullname($realuser, true);
-            $realuserinfo = " [<a href=\"$CFG->wwwroot/course/loginas.php?id=$course->id&amp;return=1&amp;sesskey=".sesskey()."\">$fullname</a>] ";
+            $realuserinfo = " [<a href=\"$CFG->wwwroot/course/loginas.php?id=$course->id&amp;sesskey=".sesskey()."\">$fullname</a>] ";
         } else {
             $realuserinfo = '';
         }
@@ -418,10 +418,10 @@ class core_renderer extends renderer_base {
             if (is_mnet_remote_user($USER) and $idprovider = $DB->get_record('mnet_host', array('id'=>$USER->mnethostid))) {
                 $username .= " from <a href=\"{$idprovider->wwwroot}\">{$idprovider->name}</a>";
             }
-            if (isset($USER->username) && $USER->username == 'guest') {
+            if (isguestuser()) {
                 $loggedinas = $realuserinfo.get_string('loggedinasguest').
                           " (<a href=\"$loginurl\">".get_string('login').'</a>)';
-            } else if (!empty($USER->access['rsw'][$context->path])) {
+            } else if (is_role_switched($course->id)) { // Has switched roles
                 $rolename = '';
                 if ($role = $DB->get_record('role', array('id'=>$USER->access['rsw'][$context->path]))) {
                     $rolename = ': '.format_string($role->name);
@@ -442,7 +442,7 @@ class core_renderer extends renderer_base {
         if (isset($SESSION->justloggedin)) {
             unset($SESSION->justloggedin);
             if (!empty($CFG->displayloginfailures)) {
-                if (!empty($USER->username) and $USER->username != 'guest') {
+                if (!isguestuser()) {
                     if ($count = count_login_failures($CFG->displayloginfailures, $USER->username, $USER->lastlogin)) {
                         $loggedinas .= '&nbsp;<div class="loginfailures">';
                         if (empty($count->accounts)) {
@@ -567,6 +567,10 @@ class core_renderer extends renderer_base {
      */
     public function header() {
         global $USER, $CFG;
+
+        if (session_is_loggedinas()) {
+            $this->page->add_body_class('userloggedinas');
+        }
 
         $this->page->set_state(moodle_page::STATE_PRINTING_HEADER);
 
@@ -721,6 +725,17 @@ class core_renderer extends renderer_base {
      * The content is described
      * by a {@link block_contents} object.
      *
+     * <div id="inst{$instanceid}" class="block_{$blockname} block">
+     *      <div class="header"></div>
+     *      <div class="content">
+     *          ...CONTENT...
+     *          <div class="footer">
+     *          </div>
+     *      </div>
+     *      <div class="annotation">
+     *      </div>
+     * </div>
+     *
      * @param block_contents $bc HTML for the content
      * @param string $region the region the block is appearing in.
      * @return string the HTML to be output.
@@ -748,36 +763,84 @@ class core_renderer extends renderer_base {
 
         $output .= html_writer::start_tag('div', $bc->attributes);
 
-        $controlshtml = $this->block_controls($bc->controls);
+        $output .= $this->block_header($bc);
+        $output .= $this->block_content($bc);
+
+        $output .= html_writer::end_tag('div');
+
+        $output .= $this->block_annotation($bc);
+
+        $output .= $skipdest;
+
+        $this->init_block_hider_js($bc);
+        return $output;
+    }
+
+    /**
+     * Produces a header for a block
+     *
+     * @param block_contents $bc
+     * @return string
+     */
+    protected function block_header(block_contents $bc) {
 
         $title = '';
         if ($bc->title) {
             $title = html_writer::tag('h2', $bc->title, null);
         }
 
+        $controlshtml = $this->block_controls($bc->controls);
+
+        $output = '';
         if ($title || $controlshtml) {
             $output .= html_writer::tag('div', html_writer::tag('div', html_writer::tag('div', '', array('class'=>'block_action')). $title . $controlshtml, array('class' => 'title')), array('class' => 'header'));
         }
+        return $output;
+    }
 
-        $output .= html_writer::start_tag('div', array('class' => 'content'));
-        if (!$title && !$controlshtml) {
+    /**
+     * Produces the content area for a block
+     *
+     * @param block_contents $bc
+     * @return string
+     */
+    protected function block_content(block_contents $bc) {
+        $output = html_writer::start_tag('div', array('class' => 'content'));
+        if (!$bc->title && !$this->block_controls($bc->controls)) {
             $output .= html_writer::tag('div', '', array('class'=>'block_action notitle'));
         }
         $output .= $bc->content;
+        $output .= $this->block_footer($bc);
+        $output .= html_writer::end_tag('div');
 
+        return $output;
+    }
+
+    /**
+     * Produces the footer for a block
+     *
+     * @param block_contents $bc
+     * @return string
+     */
+    protected function block_footer(block_contents $bc) {
+        $output = '';
         if ($bc->footer) {
             $output .= html_writer::tag('div', $bc->footer, array('class' => 'footer'));
         }
+        return $output;
+    }
 
-        $output .= html_writer::end_tag('div');
-        $output .= html_writer::end_tag('div');
-
+    /**
+     * Produces the annotation for a block
+     *
+     * @param block_contents $bc
+     * @return string
+     */
+    protected function block_annotation(block_contents $bc) {
+        $output = '';
         if ($bc->annotation) {
             $output .= html_writer::tag('div', $bc->annotation, array('class' => 'blockannotation'));
         }
-        $output .= $skipdest;
-
-        $this->init_block_hider_js($bc);
         return $output;
     }
 
@@ -788,14 +851,15 @@ class core_renderer extends renderer_base {
      */
     protected function init_block_hider_js(block_contents $bc) {
         if (!empty($bc->attributes['id']) and $bc->collapsible != block_contents::NOT_HIDEABLE) {
-            $userpref = 'block' . $bc->blockinstanceid . 'hidden';
-            user_preference_allow_ajax_update($userpref, PARAM_BOOL);
-            $this->page->requires->yui2_lib('dom');
-            $this->page->requires->yui2_lib('event');
-            $plaintitle = strip_tags($bc->title);
-            $this->page->requires->js_function_call('new block_hider', array($bc->attributes['id'], $userpref,
-                    get_string('hideblocka', 'access', $plaintitle), get_string('showblocka', 'access', $plaintitle),
-                    $this->pix_url('t/switch_minus')->out(false), $this->pix_url('t/switch_plus')->out(false)));
+            $config = new stdClass;
+            $config->id = $bc->attributes['id'];
+            $config->title = strip_tags($bc->title);
+            $config->preference = 'block' . $bc->blockinstanceid . 'hidden';
+            $config->tooltipVisible = get_string('hideblocka', 'access', $config->title);
+            $config->tooltipHidden = get_string('showblocka', 'access', $config->title);
+
+            $this->page->requires->js_init_call('M.util.init_block_hider', array($config));
+            user_preference_allow_ajax_update($config->preference, PARAM_BOOL);
         }
     }
 
@@ -1269,7 +1333,7 @@ class core_renderer extends renderer_base {
      * Render icon
      * @param string $pix short pix name
      * @param string $alt mandatory alt attribute
-     * @param strin $component standard compoennt name like 'moodle', 'mod_form', etc.
+     * @param string $component standard compoennt name like 'moodle', 'mod_forum', etc.
      * @param array $attributes htm lattributes
      * @return string HTML fragment
      */
@@ -1321,27 +1385,36 @@ class core_renderer extends renderer_base {
         $ratinghtml = ''; //the string we'll return
 
         //permissions check - can they view the aggregate?
-        if ( ($rating->itemuserid==$USER->id
-                && $rating->settings->permissions->view && $rating->settings->pluginpermissions->view)
-            || ($rating->itemuserid!=$USER->id
-                && $rating->settings->permissions->viewany && $rating->settings->pluginpermissions->viewany) ) {
+        $canviewaggregate = false;
 
+        //if its the current user's item and they have permission to view the aggregate on their own items
+        if ( $rating->itemuserid==$USER->id && $rating->settings->permissions->view && $rating->settings->pluginpermissions->view) {
+            $canviewaggregate = true;
+        }
+
+        //if the item doesnt belong to anyone or its another user's items and they can see the aggregate on items they don't own
+        //Note that viewany doesnt mean you can see the aggregate or ratings of your own items
+        if ( (empty($rating->itemuserid) or $rating->itemuserid!=$USER->id) && $rating->settings->permissions->viewany && $rating->settings->pluginpermissions->viewany ) {
+            $canviewaggregate = true;
+        }
+
+        if ($canviewaggregate==true) {
             $aggregatelabel = '';
             switch ($rating->settings->aggregationmethod) {
                 case RATING_AGGREGATE_AVERAGE :
-                    $aggregatelabel .= get_string("aggregateavg", "forum");
+                    $aggregatelabel .= get_string("aggregateavg", "rating");
                     break;
                 case RATING_AGGREGATE_COUNT :
-                    $aggregatelabel .= get_string("aggregatecount", "forum");
+                    $aggregatelabel .= get_string("aggregatecount", "rating");
                     break;
                 case RATING_AGGREGATE_MAXIMUM :
-                    $aggregatelabel .= get_string("aggregatemax", "forum");
+                    $aggregatelabel .= get_string("aggregatemax", "rating");
                     break;
                 case RATING_AGGREGATE_MINIMUM :
-                    $aggregatelabel .= get_string("aggregatemin", "forum");
+                    $aggregatelabel .= get_string("aggregatemin", "rating");
                     break;
                 case RATING_AGGREGATE_SUM :
-                    $aggregatelabel .= get_string("aggregatesum", "forum");
+                    $aggregatelabel .= get_string("aggregatesum", "rating");
                     break;
             }
 
@@ -1490,6 +1563,7 @@ class core_renderer extends renderer_base {
     /**
      * Print a help icon.
      *
+     * @deprecated since Moodle 2.0
      * @param string $page The keyword that defines a help page
      * @param string $title A descriptive text for accessibility only
      * @param string $component component name
@@ -1497,6 +1571,7 @@ class core_renderer extends renderer_base {
      * @return string HTML fragment
      */
     public function old_help_icon($helpidentifier, $title, $component = 'moodle', $linktext = '') {
+        debugging('The method old_help_icon() is deprecated, please fix the code and use help_icon() method instead', DEBUG_DEVELOPER);
         $icon = new old_help_icon($helpidentifier, $title, $component);
         if ($linktext === true) {
             $icon->linktext = $title;
@@ -1645,7 +1720,7 @@ class core_renderer extends renderer_base {
         if (empty($attributes['width'])) {
             $attributes['width'] = 1;
         }
-        if (empty($options['height'])) {
+        if (empty($attributes['height'])) {
             $attributes['height'] = 1;
         }
         $attributes['class'] = 'spacer';
@@ -1839,6 +1914,7 @@ class core_renderer extends renderer_base {
         if (empty($currentfile)) {
             $currentfile = get_string('nofilesattached', 'repository');
         }
+        $maxsize = get_string('maxfilesize', 'moodle', display_size(get_max_upload_file_size()));
         $html = <<<EOD
 <div class="filemanager-loading mdl-align" id='filepicker-loading-{$client_id}'>
 $icon_progress
@@ -1846,6 +1922,7 @@ $icon_progress
 <div id="filepicker-wrapper-{$client_id}" class="mdl-left" style="display:none">
     <div>
         <button id="filepicker-button-{$client_id}">$straddfile</button>
+        <span> $maxsize </span>
     </div>
 EOD;
         if ($options->env != 'url') {
@@ -1962,6 +2039,7 @@ EOD;
                 // can not be used from command line or when outputting custom XML
                 @header($_SERVER['SERVER_PROTOCOL'] . ' 404 Not Found');
             }
+            $this->page->set_context(null); // ugly hack - make sure page context is set to something, we do not want bogus warnings here
             $this->page->set_url('/'); // no url
             //$this->page->set_pagelayout('base'); //TODO: MDL-20676 blocks on error pages are weird, unfortunately it somehow detect the pagelayout from URL :-(
             $this->page->set_title(get_string('error'));
@@ -2495,7 +2573,6 @@ class core_renderer_cli extends core_renderer {
      * @return string HTML fragment
      */
     public function header() {
-        output_starting_hook();
         return $this->page->heading . "\n";
     }
 
@@ -2578,7 +2655,10 @@ class core_renderer_ajax extends core_renderer {
      * @return string A template fragment for a fatal error
      */
     public function fatal_error($message, $moreinfourl, $link, $backtrace, $debuginfo = null) {
-        global $FULLME, $USER;
+        global $CFG;
+
+        $this->page->set_context(null); // ugly hack - make sure page context is set to something, we do not want bogus warnings here
+
         $e = new stdClass();
         $e->error      = $message;
         $e->stacktrace = NULL;

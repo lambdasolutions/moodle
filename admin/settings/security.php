@@ -23,12 +23,12 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
         array('student', 'teacher', 'editingteacher')));
 
     $max_upload_choices = get_max_upload_sizes();
-    // maxbytes set to 0 will allow the maxium server lmit for uploads
+    // maxbytes set to 0 will allow the maximum server limit for uploads
     $max_upload_choices[0] = get_string('serverlimit', 'admin');
     $temp->add(new admin_setting_configselect('maxbytes', get_string('maxbytes', 'admin'), get_string('configmaxbytes', 'admin'), 0, $max_upload_choices));
     // 100MB
     $defaultuserquota = 104857600;
-    $params = new stdclass;
+    $params = new stdClass();
     $params->bytes = $defaultuserquota;
     $params->displaysize = display_size($defaultuserquota);
     $temp->add(new admin_setting_configtext('userquota', get_string('userquota', 'admin'), get_string('configuserquota', 'admin', $params), $defaultuserquota));

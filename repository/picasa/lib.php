@@ -19,11 +19,11 @@
  * Picasa Repository Plugin
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dan Poltawski
- * @author Dan Poltawski <talktodan@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage picasa
+ * @copyright  2009 Dan Poltawski
+ * @author     Dan Poltawski <talktodan@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once($CFG->libdir.'/googleapi.php');
@@ -69,7 +69,7 @@ class repository_picasa extends repository {
         $authurl = google_authsub::login_url($returnurl, google_picasa::REALM);
         if($this->options['ajax']){
             $ret = array();
-            $popup_btn = new stdclass;
+            $popup_btn = new stdClass();
             $popup_btn->type = 'popup';
             $popup_btn->url = $authurl;
             $ret['login'] = array($popup_btn);

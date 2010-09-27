@@ -106,9 +106,9 @@ class blog_entry {
             $cmt->context = get_context_instance(CONTEXT_USER, $user->id);
             $cmt->courseid = $PAGE->course->id;
             $cmt->area = 'format_blog';
-            $cmt->env = 'blog';
             $cmt->itemid = $this->id;
             $cmt->showcount = $CFG->blogshowcommentscount;
+            $cmt->component = 'blog';
             $comment = new comment($cmt);
             $cmttext = $comment->output(true);
         }
@@ -157,7 +157,7 @@ class blog_entry {
         $topiccell->text .= $OUTPUT->container_start('author');
 
         $fullname = fullname($user, has_capability('moodle/site:viewfullnames', get_context_instance(CONTEXT_COURSE, $PAGE->course->id)));
-        $by = new object();
+        $by = new stdClass();
         $by->name =  html_writer::link(new moodle_url('/user/view.php', array('id' => $user->id, 'course' => $PAGE->course->id)), $fullname);
         $by->date = $template['created'];
 
@@ -340,18 +340,17 @@ class blog_entry {
         $this->created      = time();
 
         // Insert the new blog entry.
-        if ($this->id = $DB->insert_record('post', $this)) {
+        $this->id = $DB->insert_record('post', $this);
 
-            // Update tags.
-            $this->add_tags_info();
+        // Update tags.
+        $this->add_tags_info();
 
-            if (!empty($CFG->useblogassociations)) {
-                $this->add_associations();
-                add_to_log(SITEID, 'blog', 'add', 'index.php?userid='.$this->userid.'&entryid='.$this->id, $this->subject);
-            }
-
-            tag_set('post', $this->id, $this->tags);
+        if (!empty($CFG->useblogassociations)) {
+            $this->add_associations();
+            add_to_log(SITEID, 'blog', 'add', 'index.php?userid='.$this->userid.'&entryid='.$this->id, $this->subject);
         }
+
+        tag_set('post', $this->id, $this->tags);
     }
 
     /**
@@ -501,10 +500,10 @@ class blog_entry {
             $ffurl    = file_encode_url($CFG->wwwroot.'/pluginfile.php', '/'.SYSCONTEXTID.'/blog/attachment/'.$this->id.'/'.$filename);
             $mimetype = $file->get_mimetype();
 
-            $icon     = substr(mimeinfo_from_type("icon", $mimetype), 0, -4);
+            $icon     = mimeinfo_from_type("icon", $mimetype);
             $type     = mimeinfo_from_type("type", $mimetype);
 
-            $image = $OUTPUT->pix_icon("/f/$icon", $filename, 'moodle', array('class'=>'icon'));
+            $image = $OUTPUT->pix_icon("f/$icon", $filename, 'moodle', array('class'=>'icon'));
 
             if ($return == "html") {
                 $output .= html_writer::link($ffurl, $image);
@@ -1052,7 +1051,7 @@ class blog_filter_user extends blog_filter {
      * @param int    $id
      */
     public function __construct($id=null, $type='user') {
-        global $CFG, $DB;
+        global $CFG, $DB, $USER;
         $this->availabletypes = array('user' => get_string('user'), 'group' => get_string('group'));
 
         if (empty($id)) {
@@ -1144,10 +1143,9 @@ class blog_filter_search extends blog_filter {
 
     public function __construct($searchterm) {
         global $DB;
-        $ilike = $DB->sql_ilike();
-        $this->conditions = array("(p.summary $ilike ? OR
-                                    p.content $ilike ? OR
-                                    p.subject $ilike ?)");
+        $this->conditions = array("(".$DB->sql_like('p.summary', '?', false)." OR
+                                    ".$DB->sql_like('p.content', '?', false)." OR
+                                    ".$DB->sql_like('p.subject', '?', false).")");
         $this->params[] = "%$searchterm%";
         $this->params[] = "%$searchterm%";
         $this->params[] = "%$searchterm%";

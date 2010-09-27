@@ -62,9 +62,7 @@ class block_completionstatus extends block_base {
         }
 
         // Check this user is enroled
-        $users = $info->internal_get_tracked_users(true);
-        if (!in_array($USER->id, array_keys($users))) {
-
+        if (!$info->is_tracked_user($USER->id)) {
             // If not enrolled, but are can view the report:
             if (has_capability('coursereport/completion:view', get_context_instance(CONTEXT_COURSE, $COURSE->id))) {
                 $this->content->text = '<a href="'.$CFG->wwwroot.'/course/report/completion/index.php?course='.$COURSE->id.
@@ -159,6 +157,13 @@ class block_completionstatus extends block_base {
 
         // Is course complete?
         $coursecomplete = $info->is_course_complete($USER->id);
+		
+        // Load course completion
+        $params = array(
+            'userid' => $USER->id,
+            'course' => $COURSE->id
+        );
+        $ccompletion = new completion_completion($params);
 
         // Has this user completed any criteria?
         $criteriacomplete = $info->count_course_user_data($USER->id);
@@ -167,7 +172,7 @@ class block_completionstatus extends block_base {
             $this->content->text .= '<i>'.get_string('pending', 'completion').'</i>';
         } else if ($coursecomplete) {
             $this->content->text .= get_string('complete');
-        } else if (!$criteriacomplete) {
+        } else if (!$criteriacomplete && !$ccompletion->timestarted) {
             $this->content->text .= '<i>'.get_string('notyetstarted', 'completion').'</i>';
         } else {
             $this->content->text .= '<i>'.get_string('inprogress','completion').'</i>';

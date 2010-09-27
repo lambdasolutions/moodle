@@ -250,7 +250,9 @@ function enrol_category_sync_full() {
     if (!$roles = get_roles_with_capability('enrol/category:synchronised', CAP_ALLOW, $syscontext)) {
         // yay, nothing to do, so let's remove all leftovers
         if ($instances = $DB->get_records('enrol', array('enrol'=>'category'))) {
-            $plugin->delete_instance($instance);
+            foreach ($instances as $instance) {
+                $plugin->delete_instance($instance);
+            }
         }
     }
 
@@ -258,7 +260,7 @@ function enrol_category_sync_full() {
     $params['courselevel'] = CONTEXT_COURSE;
     $params['catlevel'] = CONTEXT_COURSECAT;
 
-    // first of all add necessay enrol instances to all courses
+    // first of all add necessary enrol instances to all courses
     $parentcat = $DB->sql_concat("cat.path", "'/%'");
     $sql = "SELECT DISTINCT c.*
               FROM {course} c

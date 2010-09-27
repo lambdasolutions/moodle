@@ -119,12 +119,14 @@ class course_publication_form extends moodleform {
             $options = new stdClass();
             $options->ids = array($publication->hubcourseid);
             $options->allsitecourses = 1;
-            $params = array('', $share, !$share, $options);
+            $params = array('search' => '', 'downloadable' => $share,
+                'enrollable' => !$share, 'options' => $options);
             $serverurl = $huburl . "/local/hub/webservice/webservices.php";
             require_once($CFG->dirroot . "/webservice/xmlrpc/lib.php");
             $xmlrpcclient = new webservice_xmlrpc_client($serverurl, $registeredhub->token);
             try {
-                $publishedcourses = $xmlrpcclient->call($function, $params);
+                $result = $xmlrpcclient->call($function, $params);
+                $publishedcourses = $result['courses'];
             } catch (Exception $e) {
                 $error = $OUTPUT->notification(get_string('errorcourseinfo', 'hub', $e->getMessage()));
                 $mform->addElement('static', 'errorhub', '', $error);
@@ -226,7 +228,7 @@ class course_publication_form extends moodleform {
         $mform->addHelpButton('description', 'description', 'hub');
 
         $languages = get_string_manager()->get_list_of_languages();
-        asort($languages, SORT_LOCALE_STRING);
+        textlib_get_instance()->asort($languages);
         $mform->addElement('select', 'language', get_string('language'), $languages);
         $mform->setDefault('language', $defaultlanguage);
         $mform->addHelpButton('language', 'language', 'hub');

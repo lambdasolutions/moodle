@@ -24,7 +24,7 @@
  *   edit      - edit the definition of a role
  *   view      - view the definition of a role
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage role
  * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -85,7 +85,8 @@ abstract class capability_table_base {
     public function display() {
         if (count($this->capabilities) > capability_table_base::NUM_CAPS_FOR_SEARCH) {
             global $PAGE;
-            $PAGE->requires->js_init_call('M.core_role.init_cap_table_filter', array($this->id, get_string('filter'), get_string('clear')));
+            $PAGE->requires->strings_for_js(array('filter','clear'),'moodle');
+            $PAGE->requires->js_init_call('M.core_role.init_cap_table_filter', array($this->id, $this->context->id));
         }
         echo '<table class="' . implode(' ', $this->classes) . '" id="' . $this->id . '">' . "\n<thead>\n";
         echo '<tr><th class="name" align="left" scope="col">' . get_string('capability','role') . '</th>';
@@ -374,11 +375,11 @@ class permissions_table extends capability_table_base {
  */
 abstract class capability_table_with_risks extends capability_table_base {
     protected $allrisks;
-    protected $allpermissions; // We don't need perms ourself, but all our subclasses do.
+    protected $allpermissions; // We don't need perms ourselves, but all our subclasses do.
     protected $strperms; // Language string cache.
     protected $risksurl; // URL in moodledocs about risks.
     protected $riskicons = array(); // Cache to avoid regenerating the HTML for each risk icon.
-    /** The capabilities to highlight as default/interited. */
+    /** The capabilities to highlight as default/inherited. */
     protected $parentpermissions;
     protected $displaypermissions;
     protected $permissions;
@@ -438,7 +439,7 @@ abstract class capability_table_with_risks extends capability_table_base {
 
         foreach ($this->capabilities as $cap) {
             if ($cap->locked || $this->skip_row($cap)) {
-            /// The user is not allowed to change the permission for this capapability
+            /// The user is not allowed to change the permission for this capability
                 continue;
             }
 
@@ -536,7 +537,7 @@ abstract class capability_table_with_risks extends capability_table_base {
 
 /**
  * As well as tracking the permissions information about the role we are creating
- * or editing, we aslo track the other infromation about the role. (This class is
+ * or editing, we also track the other information about the role. (This class is
  * starting to be more and more like a formslib form in some respects.)
  */
 class define_role_table_advanced extends capability_table_with_risks {
@@ -620,7 +621,7 @@ class define_role_table_advanced extends capability_table_with_risks {
         }
 
         // Description.
-        $description = optional_param('description', null, PARAM_CLEAN);
+        $description = optional_param('description', null, PARAM_RAW);
         if (!is_null($description)) {
             $this->role->description = $description;
         }
@@ -901,7 +902,7 @@ class view_role_definition_table extends define_role_table_advanced {
 
 class override_permissions_table_advanced extends capability_table_with_risks {
     protected $strnotset;
-    protected $haslockedcapabiltites = false;
+    protected $haslockedcapabilities = false;
 
     /**
      * Constructor
@@ -925,7 +926,7 @@ class override_permissions_table_advanced extends capability_table_with_risks {
             foreach ($this->capabilities as $capid => $cap) {
                 if (!is_safe_capability($cap)) {
                     $this->capabilities[$capid]->locked = true;
-                    $this->haslockedcapabiltites = true;
+                    $this->haslockedcapabilities = true;
                 }
             }
         }
@@ -934,13 +935,13 @@ class override_permissions_table_advanced extends capability_table_with_risks {
     protected function load_parent_permissions() {
         global $DB;
 
-    /// Get the capabiltites from the parent context, so that can be shown in the interface.
+    /// Get the capabilities from the parent context, so that can be shown in the interface.
         $parentcontext = get_context_instance_by_id(get_parent_contextid($this->context));
         $this->parentpermissions = role_context_capabilities($this->roleid, $parentcontext);
     }
 
-    public function has_locked_capabiltites() {
-        return $this->haslockedcapabiltites;
+    public function has_locked_capabilities() {
+        return $this->haslockedcapabilities;
     }
 
     protected function add_permission_cells($capability) {
@@ -1308,7 +1309,7 @@ abstract class role_allow_role_page {
     /// Load the current settings
         $this->allowed = array();
         foreach ($this->roles as $role) {
-            // Make an array $role->id => false. This is probalby too clever for its own good.
+            // Make an array $role->id => false. This is probably too clever for its own good.
             $this->allowed[$role->id] = array_combine(array_keys($this->roles), array_fill(0, count($this->roles), false));
         }
         $rs = $DB->get_recordset($this->tablename);
@@ -1474,9 +1475,9 @@ class role_allow_switch_page extends role_allow_role_page {
  * some blocks) then return a potential_assignees_below_course object. Otherwise
  * return a potential_assignees_course_and_above.
  *
- * @param $context a context.
- * @param $name passed to user selector constructor.
- * @param $options to user selector constructor.
+ * @param stdClass $context a context.
+ * @param string $name passed to user selector constructor.
+ * @param array $options to user selector constructor.
  * @return user_selector_base an appropriate user selector.
  */
 function roles_get_potential_user_selector($context, $name, $options) {
@@ -1507,15 +1508,16 @@ class admins_potential_selector extends user_selector_base {
     }
 
     public function find_users($search) {
-        global $DB;
+        global $CFG, $DB;
         list($wherecondition, $params) = $this->search_sql($search, '');
 
         $fields      = 'SELECT ' . $this->required_fields_sql('');
         $countfields = 'SELECT COUNT(1)';
 
         $sql = " FROM {user}
-                WHERE $wherecondition";
+                WHERE $wherecondition AND mnethostid = :localmnet";
         $order = ' ORDER BY lastname ASC, firstname ASC';
+        $params['localmnet'] = $CFG->mnet_localhost_id; // it could be dangerous to make remote users admins and also this could lead to other problems
 
         $availableusers = $DB->get_records_sql($fields . $sql . $order, $params);
 

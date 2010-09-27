@@ -52,7 +52,7 @@ class mod_resource_mod_form extends moodleform_mod {
         if (!empty($CFG->formatstringstriptags)) {
             $mform->setType('name', PARAM_TEXT);
         } else {
-            $mform->setType('name', PARAM_CLEAN);
+            $mform->setType('name', PARAM_CLEANHTML);
         }
         $mform->addRule('name', null, 'required', null, 'client');
         $this->add_intro_editor($config->requiremodintro);
@@ -89,6 +89,7 @@ class mod_resource_mod_form extends moodleform_mod {
             $mform->addElement('select', 'display', get_string('displayselect', 'resource'), $options);
             $mform->setDefault('display', $config->display);
             $mform->setAdvanced('display', $config->display_adv);
+            $mform->addHelpButton('display', 'displayselect', 'resource');
         }
 
         if (array_key_exists(RESOURCELIB_DISPLAY_POPUP, $options)) {

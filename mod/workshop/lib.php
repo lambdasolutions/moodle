@@ -60,7 +60,7 @@ function workshop_supports($feature) {
  * will save a new instance and return the id number
  * of the new instance.
  *
- * @param stdclass $workshop An object from the form in mod_form.php
+ * @param stdClass $workshop An object from the form in mod_form.php
  * @return int The id of the newly inserted workshop record
  */
 function workshop_add_instance(stdclass $workshop) {
@@ -111,7 +111,7 @@ function workshop_add_instance(stdclass $workshop) {
  * (defined by the form in mod_form.php) this function
  * will update an existing instance with new data.
  *
- * @param stdclass $workshop An object from the form in mod_form.php
+ * @param stdClass $workshop An object from the form in mod_form.php
  * @return bool success
  */
 function workshop_update_instance(stdclass $workshop) {
@@ -166,22 +166,46 @@ function workshop_delete_instance($id) {
     global $CFG, $DB;
     require_once($CFG->libdir.'/gradelib.php');
 
-
     if (! $workshop = $DB->get_record('workshop', array('id' => $id))) {
         return false;
     }
+
     // delete all associated aggregations
     $DB->delete_records('workshop_aggregations', array('workshopid' => $workshop->id));
+
     // get the list of ids of all submissions
     $submissions = $DB->get_records('workshop_submissions', array('workshopid' => $workshop->id), '', 'id');
+
     // get the list of all allocated assessments
     $assessments = $DB->get_records_list('workshop_assessments', 'submissionid', array_keys($submissions), '', 'id');
+
     // delete the associated records from the workshop core tables
     $DB->delete_records_list('workshop_grades', 'assessmentid', array_keys($assessments));
     $DB->delete_records_list('workshop_assessments', 'id', array_keys($assessments));
     $DB->delete_records_list('workshop_submissions', 'id', array_keys($submissions));
-    // todo call the static clean-up methods of all available subplugins
-    // ...
+
+    // call the static clean-up methods of all available subplugins
+    $strategies = get_plugin_list('workshopform');
+    foreach ($strategies as $strategy => $path) {
+        require_once($path.'/lib.php');
+        $classname = 'workshop_'.$strategy.'_strategy';
+        call_user_func($classname.'::delete_instance', $workshop->id);
+    }
+
+    $allocators = get_plugin_list('workshopallocation');
+    foreach ($allocators as $allocator => $path) {
+        require_once($path.'/lib.php');
+        $classname = 'workshop_'.$allocator.'_allocator';
+        call_user_func($classname.'::delete_instance', $workshop->id);
+    }
+
+    $evaluators = get_plugin_list('workshopeval');
+    foreach ($evaluators as $evaluator => $path) {
+        require_once($path.'/lib.php');
+        $classname = 'workshop_'.$evaluator.'_evaluation';
+        call_user_func($classname.'::delete_instance', $workshop->id);
+    }
+
     // finally remove the workshop record itself
     $DB->delete_records('workshop', array('id' => $workshop->id));
 
@@ -287,7 +311,7 @@ function workshop_user_complete($course, $user, $mod, $workshop) {
  * that has occurred in workshop activities and print it out.
  * Return true if there was output, or false is there was none.
  *
- * @param stdclass $course
+ * @param stdClass $course
  * @param bool $viewfullnames
  * @param int $timestart
  * @return boolean
@@ -991,9 +1015,9 @@ function workshop_get_extra_capabilities() {
  * Needed by grade_update_mod_grades() in lib/gradelib.php. Also used by
  * {@link workshop_update_grades()}.
  *
- * @param stdclass $workshop instance object with extra cmidnumber and modname property
- * @param stdclass $submissiongrades data for the first grade item
- * @param stdclass $assessmentgrades data for the second grade item
+ * @param stdClass $workshop instance object with extra cmidnumber and modname property
+ * @param stdClass $submissiongrades data for the first grade item
+ * @param stdClass $assessmentgrades data for the second grade item
  * @return void
  */
 function workshop_grade_item_update(stdclass $workshop, $submissiongrades=null, $assessmentgrades=null) {
@@ -1023,7 +1047,7 @@ function workshop_grade_item_update(stdclass $workshop, $submissiongrades=null, 
  *
  * Needed by grade_update_mod_grades() in lib/gradelib.php
  *
- * @param stdclass $workshop instance object with extra cmidnumber and modname property
+ * @param stdClass $workshop instance object with extra cmidnumber and modname property
  * @param int $userid        update grade of specific user only, 0 means all participants
  * @return void
  */
@@ -1082,9 +1106,9 @@ function workshop_update_grades(stdclass $workshop, $userid=0) {
  * The file area workshop_intro for the activity introduction field is added automatically
  * by {@link file_browser::get_file_info_context_module()}
  *
- * @param stdclass $course
- * @param stdclass $cm
- * @param stdclass $context
+ * @param stdClass $course
+ * @param stdClass $cm
+ * @param stdClass $context
  * @return array of [(string)filearea] => (string)description
  */
 function workshop_get_file_areas($course, $cm, $context) {
@@ -1108,16 +1132,16 @@ function workshop_get_file_areas($course, $cm, $context) {
  * Besides that, areas workshop_instructauthors and mod_workshop instructreviewers contain the media
  * embedded using the mod_form.php.
  *
- * @param stdclass $course
- * @param stdclass $cm
- * @param stdclass $context
+ * @param stdClass $course
+ * @param stdClass $cm
+ * @param stdClass $context
  * @param string $filearea
  * @param array $args
  * @param bool $forcedownload
  * @return void this should never return to the caller
  */
 function workshop_pluginfile($course, $cm, $context, $filearea, array $args, $forcedownload) {
-    global $DB;
+    global $DB, $CFG;
 
     if ($context->contextlevel != CONTEXT_MODULE) {
         return false;
@@ -1192,11 +1216,11 @@ function workshop_pluginfile($course, $cm, $context, $filearea, array $args, $fo
 /**
  * File browsing support for workshop file areas
  *
- * @param stdclass $browser
- * @param stdclass $areas
- * @param stdclass $course
- * @param stdclass $cm
- * @param stdclass $context
+ * @param stdClass $browser
+ * @param stdClass $areas
+ * @param stdClass $course
+ * @param stdClass $cm
+ * @param stdClass $context
  * @param string $filearea
  * @param int $itemid
  * @param string $filepath
@@ -1277,9 +1301,9 @@ function workshop_get_file_info($browser, $areas, $course, $cm, $context, $filea
  * This can be called by an AJAX request so do not rely on $PAGE as it might not be set up properly.
  *
  * @param navigation_node $navref An object representing the navigation tree node of the workshop module instance
- * @param stdclass $course
- * @param stdclass $module
- * @param stdclass $cm
+ * @param stdClass $course
+ * @param stdClass $module
+ * @param stdClass $cm
  */
 function workshop_extend_navigation(navigation_node $navref, stdclass $course, stdclass $module, stdclass $cm) {
     global $CFG;

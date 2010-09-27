@@ -475,7 +475,7 @@ class default_questiontype {
         global $CFG, $DB, $OUTPUT;
 
         if (!isset($question->options)) {
-            $question->options = new object;
+            $question->options = new stdClass();
         }
 
         $extra_question_fields = $this->extra_question_fields();
@@ -782,7 +782,7 @@ class default_questiontype {
         $teacherresponses = $this->get_possible_responses($question, $state);
         //only one response
         list($tsubqid, $tresponses) = each($teacherresponses);
-        $responsedetail = new object();
+        $responsedetail = new stdClass();
         $responsedetail->subqid = $tsubqid;
         $responsedetail->response = $response;
         if ($aid = $this->check_response($question, $state)){
@@ -1633,46 +1633,6 @@ class default_questiontype {
         }
     }
 
-/// BACKUP FUNCTIONS ////////////////////////////
-
-    /*
-     * Backup the data in the question
-     *
-     * This is used in question/backuplib.php
-     */
-    function backup($bf,$preferences,$question,$level=6) {
-        global $DB;
-
-        $status = true;
-        $extraquestionfields = $this->extra_question_fields();
-
-        if (is_array($extraquestionfields)) {
-            $questionextensiontable = array_shift($extraquestionfields);
-            $record = $DB->get_record($questionextensiontable, array($this->questionid_column_name() => $question));
-            if ($record) {
-                $tagname = strtoupper($this->name());
-                $status = $status && fwrite($bf, start_tag($tagname, $level, true));
-                foreach ($extraquestionfields as $field) {
-                    if (!isset($record->$field)) {
-                        echo "No data for field $field when backuping " .
-                                $this->name() . ' question id ' . $question;
-                        return false;
-                    }
-                    fwrite($bf, full_tag(strtoupper($field), $level + 1, false, $record->$field));
-                }
-                $status = $status && fwrite($bf, end_tag($tagname, $level, true));
-            }
-        }
-
-        $extraasnwersfields = $this->extra_answer_fields();
-        if (is_array($extraasnwersfields)) {
-            //TODO backup the answers, with any extra data.
-        } else {
-            $status = $status && question_backup_answers($bf, $preferences, $question);
-        }
-        return $status;
-    }
-
 /// RESTORE FUNCTIONS /////////////////
 
     /*
@@ -1853,7 +1813,7 @@ class default_questiontype {
                     if ($newcategory->contextid == $question->contextid) {
                         continue;
                     }
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     // only contextid changed
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);

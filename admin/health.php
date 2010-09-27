@@ -5,11 +5,9 @@
 
     // extra whitespace test - intentionally breaks cookieless mode
     $extraws = '';
-    while (true) {
+    while (ob_get_level()) {
         $extraws .= ob_get_contents();
-        if (!@ob_end_clean()) {
-            break;
-        }
+        ob_end_clean();
     }
 
     require_once($CFG->libdir.'/adminlib.php');
@@ -104,6 +102,7 @@ STYLES;
 
 
 function health_find_problems() {
+    global $OUTPUT;
 
     echo $OUTPUT->heading(get_string('healthcenter'));
 
@@ -328,6 +327,8 @@ class problem_000008 extends problem_base {
         return 'PHP: memory_limit cannot be controlled by Moodle';
     }
     function exists() {
+        global $CFG;
+
         $oldmemlimit = @ini_get('memory_limit');
         if(empty($oldmemlimit)) {
             // PHP not compiled with memory limits, this means that it's

@@ -95,7 +95,7 @@ if (!$formdata = $form->get_data()) {
     require_once('import_form.php');
     echo $OUTPUT->heading(get_string('uploadrecords', 'data'), 3);
     $form = new mod_data_import_form(new moodle_url('/mod/data/import.php'));
-    $formdata = new stdclass;
+    $formdata = new stdClass();
     $formdata->d = $data->id;
     $form->set_data($formdata);
     $form->display();
@@ -143,7 +143,7 @@ if (!$formdata = $form->get_data()) {
 
                 // Insert new data_content fields with NULL contents:
                 foreach ($fields as $field) {
-                    $content = new object();
+                    $content = new stdClass();
                     $content->recordid = $recordid;
                     $content->fieldid = $field->id;
                     $DB->insert_record('data_content', $content);
@@ -152,7 +152,7 @@ if (!$formdata = $form->get_data()) {
                 foreach ($record as $key => $value) {
                     $name = $fieldnames[$key];
                     $field = $fields[$name];
-                    $content = new object();
+                    $content = new stdClass();
                     $content->fieldid = $field->id;
                     $content->recordid = $recordid;
                     if ($field->type == 'textarea') {

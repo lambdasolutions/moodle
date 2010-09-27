@@ -303,9 +303,16 @@ class restore_course_search extends restore_search_base {
     static $VAR_PAGELIMIT = 'pagelimit';
     static $VAR_SEARCH = 'search';
 
-    public function __construct(array $config=array()) {
+    protected $currentcourseid = null;
+
+    /**
+     * @param array $config
+     * @param int $currentcouseid The current course id so it can be ignored
+     */
+    public function __construct(array $config=array(), $currentcouseid = null) {
         parent::__construct($config);
         $this->require_capability('moodle/restore:restorecourse');
+        $this->currentcourseid = $currentcouseid;
     }
     /**
      *
@@ -315,31 +322,41 @@ class restore_course_search extends restore_search_base {
         global $DB;
 
         list($ctxselect, $ctxjoin) = context_instance_preload_sql('c.id', CONTEXT_COURSE, 'ctx');
-        $like = $DB->sql_ilike();
         $params = array(
             'fullnamesearch' => $this->get_search().'%',
-            'shortnamesearch' => '%'.$this->get_search().'%'
+            'shortnamesearch' => '%'.$this->get_search().'%',
+            'siteid' => SITEID
         );
 
         $select     = " SELECT c.id,c.fullname,c.shortname,c.visible,c.sortorder ";
         $from       = " FROM {course} c ";
-        $where      = " WHERE c.fullname $like :fullnamesearch OR c.shortname $like :shortnamesearch ";
+        $where      = " WHERE (".$DB->sql_like('c.fullname', ':fullnamesearch', false)." OR ".$DB->sql_like('c.shortname', ':shortnamesearch', false).") AND c.id <> :siteid";
         $orderby    = " ORDER BY c.sortorder";
+
+        if ($this->currentcourseid !== null) {
+            $where .= " AND c.id <> :currentcourseid";
+            $params['currentcourseid'] = $this->currentcourseid;
+        }
 
         return array($select.$ctxselect.$from.$ctxjoin.$where.$orderby, $params);
     }
     protected function get_countsql() {
         global $DB;
-        
-        $like = $DB->sql_ilike();
+
         $params = array(
             'fullnamesearch' => $this->get_search().'%',
-            'shortnamesearch' => '%'.$this->get_search().'%'
+            'shortnamesearch' => '%'.$this->get_search().'%',
+            'siteid' => SITEID
         );
 
         $select     = " SELECT COUNT(c.id) ";
         $from       = " FROM {course} c ";
-        $where      = " WHERE c.fullname $like :fullnamesearch OR c.shortname $like :shortnamesearch ";
+        $where      = " WHERE (".$DB->sql_like('c.fullname', ':fullnamesearch', false)." OR ".$DB->sql_like('c.shortname', ':shortnamesearch', false).") AND c.id <> :siteid";
+
+        if ($this->currentcourseid !== null) {
+            $where .= " AND c.id <> :currentcourseid";
+            $params['currentcourseid'] = $this->currentcourseid;
+        }
 
         return array($select.$from.$where, $params);
     }
@@ -379,14 +396,13 @@ class restore_category_search extends restore_search_base  {
         global $DB;
 
         list($ctxselect, $ctxjoin) = context_instance_preload_sql('c.id', CONTEXT_COURSECAT, 'ctx');
-        $like = $DB->sql_ilike();
         $params = array(
             'namesearch' => $this->get_search().'%',
         );
 
         $select     = " SELECT c.id,c.name,c.visible,c.sortorder,c.description,c.descriptionformat ";
         $from       = " FROM {course_categories} c ";
-        $where      = " WHERE c.name $like :namesearch ";
+        $where      = " WHERE ".$DB->sql_like('c.name', ':namesearch', false);
         $orderby    = " ORDER BY c.sortorder";
 
         return array($select.$ctxselect.$from.$ctxjoin.$where.$orderby, $params);
@@ -394,14 +410,13 @@ class restore_category_search extends restore_search_base  {
     protected function get_countsql() {
         global $DB;
 
-        $like = $DB->sql_ilike();
         $params = array(
             'namesearch' => $this->get_search().'%',
         );
 
         $select     = " SELECT COUNT(c.id) ";
         $from       = " FROM {course_categories} c ";
-        $where      = " WHERE c.name $like :namesearch ";
+        $where      = " WHERE ".$DB->sql_like('c.name', ':namesearch', false);
 
         return array($select.$from.$where, $params);
     }

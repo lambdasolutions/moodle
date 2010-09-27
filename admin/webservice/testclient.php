@@ -93,6 +93,7 @@ if (!$function or !$protocol) {
     echo $OUTPUT->box_start();
     $url = new moodle_url('/admin/settings.php?section=debugging');
     $atag =html_writer::start_tag('a', array('href' => $url)).get_string('debug', 'admin').html_writer::end_tag('a');
+    $descparams = new stdClass();
     $descparams->atag = $atag;
     $descparams->mode = get_string('debugnormal', 'admin');
     $amfclienturl = new moodle_url('/webservice/amf/testclient/index.php');
@@ -149,7 +150,6 @@ if ($mform->is_cancelled()) {
 
     echo 'URL: '.s($serverurl);
     echo $OUTPUT->box_start();
-    echo '<code>';
 
     try {
         $response = $testclient->simpletest($serverurl, $function, $params);
@@ -159,7 +159,6 @@ if ($mform->is_cancelled()) {
         echo str_replace("\n", '<br />', s($ex));
     }
 
-    echo '</code>';
     echo $OUTPUT->box_end();
     $mform->display();
     echo $OUTPUT->footer();

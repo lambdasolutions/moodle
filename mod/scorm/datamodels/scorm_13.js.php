@@ -12,6 +12,9 @@
             }
         }
     }
+    if (!isset($currentorg)) {
+        $currentorg = '';
+    }
 ?>
 
 // Used need to debug cmi content (if you uncomment this, you must comment the definition inside SCORMapi1_3)
@@ -319,10 +322,10 @@ function SCORMapi1_3() {
                 if (adl.nav.request != '_none_') {
                     switch (adl.nav.request) {
                         case 'continue':
-                            setTimeout('top.nextSCO();',500);
+                            setTimeout('scorm_get_next();',500);
                         break;
                         case 'previous':
-                            setTimeout('top.prevSCO();',500);
+                            setTimeout('scorm_get_prev();',500);
                         break;
                         case 'choice':
                         break;
@@ -337,7 +340,7 @@ function SCORMapi1_3() {
                     }
                 } else {
                     if (<?php echo $scorm->auto ?> == 1) {
-                        setTimeout('top.nextSCO();',500);
+                        setTimeout('scorm_get_next();',500);
                     }
                 }
                 // trigger TOC update
@@ -1278,6 +1281,5 @@ var API_1484_11 = new SCORMapi1_3();
 // pull in the debugging utilities
 if (scorm_debugging($scorm)) {
     include_once($CFG->dirroot.'/mod/scorm/datamodels/debug.js.php');
-    echo 'AppendToLog("Moodle SCORM 1.3 API Loaded, Activity: '.$scorm->name.', SCO: '.$sco->identifier.'", 0);';
 }
  ?>

@@ -61,7 +61,7 @@ class restore_course_task extends restore_task {
         // Define the task contextid (the course one)
         $this->contextid = get_context_instance(CONTEXT_COURSE, $this->get_courseid())->id;
 
-        // Executed conditionally if restoring to new course or deleting or if overwrite_conf setting is enabled
+        // Executed conditionally if restoring to new course or if overwrite_conf setting is enabled
         if ($this->get_target() == backup::TARGET_NEW_COURSE || $this->get_setting_value('overwrite_conf') == true) {
             $this->add_step(new restore_course_structure_step('course_info', 'course.xml'));
         }
@@ -140,8 +140,7 @@ class restore_course_task extends restore_task {
         $overwrite = new restore_course_overwrite_conf_setting('overwrite_conf', base_setting::IS_BOOLEAN, false);
         $overwrite->set_ui(new backup_setting_ui_select($overwrite, $overwrite->get_name(), array(1=>get_string('yes'), 0=>get_string('no'))));
         $overwrite->get_ui()->set_label(get_string('setting_overwriteconf', 'backup'));
-        $fixedtargets = array(backup::TARGET_NEW_COURSE, backup::TARGET_EXISTING_DELETING, backup::TARGET_CURRENT_DELETING);
-        if (in_array($this->get_target(), $fixedtargets)) {
+        if ($this->get_target() == backup::TARGET_NEW_COURSE) {
             $overwrite->set_value(true);
             $overwrite->set_status(backup_setting::LOCKED_BY_CONFIG);
             $overwrite->set_visibility(backup_setting::HIDDEN);

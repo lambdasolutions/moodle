@@ -24,7 +24,7 @@
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
 
-/// This class represent the XMLDB base class where all the common piezes
+/// This class represent the XMLDB base class where all the common pieces
 /// are defined
 
 class xmldb_object {
@@ -433,8 +433,6 @@ class xmldb_object {
      */
     function comma2array($string) {
 
-        $arr = array();
-
         $foundquotes  = array();
         $foundconcats = array();
 
@@ -460,7 +458,7 @@ class xmldb_object {
     /// Explode safely the string
         $arr = explode (',', $string);
 
-    /// Put the concat and quoted elements back again, triming every element
+    /// Put the concat and quoted elements back again, trimming every element
         if ($arr) {
             foreach ($arr as $key => $element) {
             /// Clear some spaces

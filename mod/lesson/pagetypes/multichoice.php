@@ -99,10 +99,10 @@ class lesson_page_type_multichoice extends lesson_page {
     }
 
     public function check_answer() {
-        global $DB, $CFG;
+        global $DB, $CFG, $PAGE;
         $result = parent::check_answer();
 
-        $formattextdefoptions = new object();
+        $formattextdefoptions = new stdClass();
         $formattextdefoptions->noclean = true;
         $formattextdefoptions->para = false;
 
@@ -155,6 +155,8 @@ class lesson_page_type_multichoice extends lesson_page {
                     }
                 }
             }
+            $correctpageid = null;
+            $wrongpageid = null;
             // this is for custom scores.  If score on answer is positive, it is correct
             if ($this->lesson->custom) {
                 $ncorrect = 0;
@@ -496,7 +498,7 @@ class lesson_display_answer_form_multichoice_singleanswer extends moodleform {
             $mform->addElement('html', '<div class="answeroption">');
             $mform->addElement('radio','answerid',null,format_text($answer->answer, $answer->answerformat, $options),$answer->id);
             $mform->setType('answer'.$i, PARAM_INT);
-            if (isset($USER->modattempts[$lessonid]) && $answer->id == $attempt->answerid) {
+            if (isset($USER->modattempts[$lessonid]) && $answer->id == $USER->modattempts[$lessonid]->answerid) {
                 $mform->setDefault('answerid', true);
             }
             $mform->addElement('html', '</div>');

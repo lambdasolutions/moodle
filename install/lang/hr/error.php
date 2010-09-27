@@ -29,6 +29,15 @@
  */
 
 $string['cannotcreatelangdir'] = 'Nije moguće stvoriti lang mapu';
+$string['cannotcreatetempdir'] = 'Nije moguće stvoriti privremenu (TEMP) mapu';
+$string['cannotdownloadcomponents'] = 'Nije moguće preuzimanje komponenti';
 $string['cannotdownloadzipfile'] = 'Ne mogu preuzeti ZIP datoteku';
+$string['cannotfindcomponent'] = 'Nije moguće pronaći komponentu';
+$string['cannotsavemd5file'] = 'Nije moguće pohraniti md5 datoteku';
+$string['cannotsavezipfile'] = 'Nije moguće pohraniti ZIP datoteku';
 $string['cannotunzipfile'] = 'Nije moguće otpakirati datoteku';
+$string['componentisuptodate'] = 'Komponenta je dostupna u svojoj najnovijoj inačici.';
+$string['invalidmd5'] = 'Neispravna md5 datoteka';
+$string['missingrequiredfield'] = 'Nedostaje neko obavezno polje';
+$string['wrongdestpath'] = 'Pogrešna odredišna putanja.';
 $string['wrongzipfilename'] = 'Pogrešno ime ZIP datoteke';

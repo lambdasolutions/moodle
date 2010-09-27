@@ -173,7 +173,7 @@ function resource_user_outline($course, $user, $mod, $resource) {
         $numviews = count($logs);
         $lastlog = array_pop($logs);
 
-        $result = new object();
+        $result = new stdClass();
         $result->info = get_string('numviews', '', $numviews);
         $result->time = $lastlog->time;
 
@@ -237,7 +237,7 @@ function resource_get_coursemodule_info($coursemodule) {
         return NULL;
     }
 
-    $info = new object();
+    $info = new stdClass();
     $info->name = $resource->name;
 
     if ($resource->tobemigrated) {
@@ -248,7 +248,7 @@ function resource_get_coursemodule_info($coursemodule) {
     $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder');
     if (count($files) >= 1) {
         $mainfile = array_pop($files);
-        $info->icon = str_replace(array('.gif', '.png'), '', file_extension_icon($mainfile->get_filename()));
+        $info->icon = file_extension_icon($mainfile->get_filename());
         $resource->mainfile = $mainfile->get_filename();
     }
 
@@ -385,7 +385,7 @@ function resource_pluginfile($course, $cm, $context, $filearea, $args, $forcedow
     $relativepath = implode('/', $args);
     $fullpath = "/$context->id/mod_resource/$filearea/0/$relativepath";
     if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
-        $resource = $DB->get_record('resource', array('id'=>$cminfo->instance), 'id, legacyfiles', MUST_EXIST);
+        $resource = $DB->get_record('resource', array('id'=>$cm->instance), 'id, legacyfiles', MUST_EXIST);
         if ($resource->legacyfiles != RESOURCELIB_LEGACYFILES_ACTIVE) {
             return false;
         }
@@ -401,6 +401,7 @@ function resource_pluginfile($course, $cm, $context, $filearea, $args, $forcedow
     $mimetype = $file->get_mimetype();
     if ($mimetype = 'text/html' or $mimetype = 'text/plain') {
         $filter = $DB->get_field('resource', 'filterfiles', array('id'=>$cm->instance));
+        $CFG->embeddedsoforcelinktarget = true;
     } else {
         $filter = 0;
     }

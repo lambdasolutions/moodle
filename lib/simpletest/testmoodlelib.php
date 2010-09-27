@@ -231,13 +231,13 @@ class moodlelib_test extends UnitTestCase {
     function test_optional_param() {
         $_POST['username'] = 'post_user';
         $_GET['username'] = 'get_user';
-        $this->assertEqual(optional_param('username', 'default_user', PARAM_CLEAN), 'post_user');
+        $this->assertEqual(optional_param('username', 'default_user', PARAM_RAW), 'post_user');
 
         unset($_POST['username']);
-        $this->assertEqual(optional_param('username', 'default_user', PARAM_CLEAN), 'get_user');
+        $this->assertEqual(optional_param('username', 'default_user', PARAM_RAW), 'get_user');
 
         unset($_GET['username']);
-        $this->assertEqual(optional_param('username', 'default_user', PARAM_CLEAN), 'default_user');
+        $this->assertEqual(optional_param('username', 'default_user', PARAM_RAW), 'default_user');
     }
 
     function test_clean_param_raw() {
@@ -246,8 +246,9 @@ class moodlelib_test extends UnitTestCase {
     }
 
     function test_clean_param_clean() {
-        $this->assertEqual(clean_param('#()*#,9789\'".,<42897></?$(*DSFMO#$*)(SDJ)($*)', PARAM_CLEAN),
-            '#()*#,9789\'".,');
+        // PARAM_CLEAN is an ugly hack, do not use in new code (skodak)
+        // instead use more specific type, or submit sothing that can be verified properly
+        $this->assertEqual(clean_param('xx<script>', PARAM_CLEAN), 'xx');
     }
 
     function test_clean_param_alpha() {
@@ -268,6 +269,27 @@ class moodlelib_test extends UnitTestCase {
     function test_clean_param_sequence() {
         $this->assertEqual(clean_param('#()*#,9789\'".,<42897></?$(*DSFMO#$*)(SDJ)($*)', PARAM_SEQUENCE),
                 ',9789,42897');
+    }
+
+    function test_clean_param_text() {
+        $this->assertEqual(PARAM_TEXT, PARAM_MULTILANG);
+        //standard
+        $this->assertEqual(clean_param('xx<lang lang="en">aa</lang><lang lang="yy">pp</lang>', PARAM_TEXT), 'xx<lang lang="en">aa</lang><lang lang="yy">pp</lang>');
+        $this->assertEqual(clean_param('<span lang="en" class="multilang">aa</span><span lang="xy" class="multilang">bb</span>', PARAM_TEXT), '<span lang="en" class="multilang">aa</span><span lang="xy" class="multilang">bb</span>');
+        $this->assertEqual(clean_param('xx<lang lang="en">aa'."\n".'</lang><lang lang="yy">pp</lang>', PARAM_TEXT), 'xx<lang lang="en">aa'."\n".'</lang><lang lang="yy">pp</lang>');
+        //malformed
+        $this->assertEqual(clean_param('<span lang="en" class="multilang">aa</span>', PARAM_TEXT), '<span lang="en" class="multilang">aa</span>');
+        $this->assertEqual(clean_param('<span lang="en" class="nothing" class="multilang">aa</span>', PARAM_TEXT), 'aa');
+        $this->assertEqual(clean_param('<lang lang="en" class="multilang">aa</lang>', PARAM_TEXT), 'aa');
+        $this->assertEqual(clean_param('<lang lang="en!!">aa</lang>', PARAM_TEXT), 'aa');
+        $this->assertEqual(clean_param('<span lang="en==" class="multilang">aa</span>', PARAM_TEXT), 'aa');
+        $this->assertEqual(clean_param('a<em>b</em>c', PARAM_TEXT), 'abc');
+        $this->assertEqual(clean_param('a><xx >c>', PARAM_TEXT), 'a>c>'); // standard strip_tags() behaviour
+        $this->assertEqual(clean_param('a<b', PARAM_TEXT), 'a');
+        $this->assertEqual(clean_param('a>b', PARAM_TEXT), 'a>b');
+        $this->assertEqual(clean_param('<lang lang="en">a>a</lang>', PARAM_TEXT), '<lang lang="en">a>a</lang>'); // standard strip_tags() behaviour
+        $this->assertEqual(clean_param('<lang lang="en">a<a</lang>', PARAM_TEXT), 'a');
+        $this->assertEqual(clean_param('<lang lang="en">a<br>a</lang>', PARAM_TEXT), '<lang lang="en">aa</lang>');
     }
 
     function test_clean_param_url() {
@@ -319,7 +341,7 @@ class moodlelib_test extends UnitTestCase {
         $this->assertEqual(clean_param('john#$%&() ', PARAM_USERNAME), 'john');
         $this->assertEqual(clean_param('JOHNdóé ', PARAM_USERNAME), 'johnd');
         $this->assertEqual(clean_param('john.,:;-_/|\ñÑ[]A_X-,D {} ~!@#$%^&*()_+ ?><[] ščřžžý ?ýá?ý??doe ', PARAM_USERNAME), 'john.-_a_x-d@_doe');
-        
+
 
         // Test success condition, if extendedusernamechars == ENABLE;
         $CFG->extendedusernamechars = TRUE;
@@ -330,7 +352,7 @@ class moodlelib_test extends UnitTestCase {
         $this->assertEqual(clean_param('joHN´doe', PARAM_USERNAME), 'john´doe');
         $this->assertEqual(clean_param('johnDOE', PARAM_USERNAME), 'johndoe');
         $this->assertEqual(clean_param('johndóé ', PARAM_USERNAME), 'johndóé');
-                
+
         $CFG->extendedusernamechars = $currentstatus;
     }
 
@@ -387,25 +409,6 @@ class moodlelib_test extends UnitTestCase {
         } catch (invalid_parameter_exception $ex) {
             $this->assertTrue(true);
         }
-    }
-
-    function test_make_user_directory() {
-        global $CFG;
-
-        // Test success conditions
-        $this->assertEqual("$CFG->dataroot/user/0/0", make_user_directory(0, true));
-        $this->assertEqual("$CFG->dataroot/user/0/1", make_user_directory(1, true));
-        $this->assertEqual("$CFG->dataroot/user/0/999", make_user_directory(999, true));
-        $this->assertEqual("$CFG->dataroot/user/1000/1000", make_user_directory(1000, true));
-        $this->assertEqual("$CFG->dataroot/user/2147483000/2147483647", make_user_directory(2147483647, true)); // Largest int possible
-
-        // Test fail conditions
-        $this->assertFalse(make_user_directory(2147483648, true)); // outside int boundary
-        $this->assertFalse(make_user_directory(-1, true));
-        $this->assertFalse(make_user_directory('string', true));
-        $this->assertFalse(make_user_directory(false, true));
-        $this->assertFalse(make_user_directory(true, true));
-
     }
 
     function test_shorten_text() {

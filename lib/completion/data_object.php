@@ -86,7 +86,7 @@ abstract class data_object {
     public function load_optional_fields() {
         global $DB;
         foreach ($this->optional_fields as $field=>$default) {
-            if (array_key_exists($field, $this)) {
+            if (property_exists($this, $field)) {
                 continue;
             }
             if (empty($this->id)) {
@@ -104,15 +104,19 @@ abstract class data_object {
      * @param array $params associative arrays varname=>value
      * @return object data_object instance or false if none found.
      */
-    public static abstract function fetch($params);
+    public static function fetch($params) {
+        throw new coding_exception('fetch() method needs to be overridden in each subclass of data_object');
+    }
 
     /**
      * Finds and returns all data_object instances based on params.
      *
      * @param array $params associative arrays varname=>value
-     * @return array array of data_object insatnces or false if none found.
+     * @return array array of data_object instances or false if none found.
      */
-    public static function fetch_all($params) {}
+    public static function fetch_all($params) {
+        throw new coding_exception('fetch_all() method needs to be overridden in each subclass of data_object');
+    }
 
     /**
      * Factory method - uses the parameters to retrieve matching instance from the DB.
@@ -164,7 +168,7 @@ abstract class data_object {
 
         global $DB;
         if ($datas = $DB->get_records_select($table, $wheresql, $params)) {
-            
+
             $result = array();
             foreach($datas as $data) {
                 $instance = new $classname();
@@ -174,7 +178,7 @@ abstract class data_object {
             return $result;
 
         } else {
-            
+
             return false;
         }
     }
@@ -226,7 +230,7 @@ abstract class data_object {
      * Returns object with fields and values that are defined in database
      */
     public function get_record_data() {
-        $data = new object();
+        $data = new stdClass();
 
         foreach ($this as $var=>$value) {
             if (in_array($var, $this->required_fields) or array_key_exists($var, $this->optional_fields)) {
@@ -302,8 +306,8 @@ abstract class data_object {
     }
 
     /**
-     * Called immediately after the object data has been inserted, updated, or 
-     * deleted in the database. Default does nothing, can be overridden to 
+     * Called immediately after the object data has been inserted, updated, or
+     * deleted in the database. Default does nothing, can be overridden to
      * hook in special behaviour.
      *
      * @param bool $deleted

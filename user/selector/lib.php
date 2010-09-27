@@ -412,7 +412,7 @@ abstract class user_selector_base {
      *      this uses ? style placeholders.
      */
     protected function search_sql($search, $u) {
-        global $DB;
+        global $DB, $CFG;
         $params = array();
         $tests = array();
 
@@ -429,15 +429,14 @@ abstract class user_selector_base {
             foreach ($this->extrafields as $field) {
                 $conditions[] = $u . $field;
             }
-            $ilike = ' ' . $DB->sql_ilike();
             if ($this->searchanywhere) {
                 $searchparam = '%' . $search . '%';
             } else {
                 $searchparam = $search . '%';
             }
             $i = 0;
-            foreach ($conditions as &$condition) {
-                $condition .= "$ilike :con{$i}00";
+            foreach ($conditions as $key=>$condition) {
+                $conditions[$key] = $DB->sql_like($condition, ":con{$i}00", false, false);
                 $params["con{$i}00"] = $searchparam;
                 $i++;
             }
@@ -445,7 +444,8 @@ abstract class user_selector_base {
         }
 
         // Add some additional sensible conditions
-        $tests[] = $u . "username <> 'guest'";
+        $tests[] = $u . "id <> :guestid";
+        $params['guestid'] = $CFG->siteguest;
         $tests[] = $u . 'deleted = 0';
         $tests[] = $u . 'confirmed = 1';
 
@@ -477,7 +477,7 @@ abstract class user_selector_base {
      * text of the message depends on whether the search term is non-blank.
      *
      * @param string $search the search term, as passed in to the find users method.
-     * @param unknown_type $count the number of users that currently match.
+     * @param int $count the number of users that currently match.
      * @return array in the right format to return from the find_users method.
      */
     protected function too_many_results($search, $count) {
@@ -738,27 +738,30 @@ class group_non_members_selector extends groups_user_selector_base {
     }
 
     /**
-     * Outputs a Javascript array containing the other groups non-members are in.
-     * Used on the add group members page.
+     * Creates a global JS variable (userSummaries) that is used by the group selector
+     * to print related information when the user clicks on a user in the groups UI.
+     *
+     * Used by /group/clientlib.js
+     *
+     * @global moodle_database $DB
+     * @global moodle_page $PAGE
+     * @param int $courseid
      */
     public function print_user_summaries($courseid) {
-        global $DB;
+        global $DB, $PAGE;
 
-        echo <<<END
-        <script type="text/javascript">
-//<![CDATA[
-var userSummaries = Array(
-END;
+        $usersummaries = array();
+        
         // Get other groups user already belongs to
         $usergroups = array();
         $potentialmembersids = $this->potentialmembersids;
         if( empty($potentialmembersids)==false ) {
             list($membersidsclause, $params) = $DB->get_in_or_equal($potentialmembersids, SQL_PARAMS_NAMED, 'pm0');
             $sql = "SELECT u.id AS userid, g.*
-                   FROM {user} u
-                   JOIN {groups_members} gm ON u.id = gm.userid
-                   JOIN {groups} g ON gm.groupid = g.id
-                  WHERE u.id $membersidsclause AND g.courseid = :courseid ";
+                    FROM {user} u
+                    JOIN {groups_members} gm ON u.id = gm.userid
+                    JOIN {groups} g ON gm.groupid = g.id
+                    WHERE u.id $membersidsclause AND g.courseid = :courseid ";
             $params['courseid'] = $courseid;
             if ($rs = $DB->get_recordset_sql($sql, $params)) {
                 foreach ($rs as $usergroup) {
@@ -767,32 +770,21 @@ END;
                 $rs->close();
             }
 
-            $membercnt = count($potentialmembersids);
-            $i=1;
             foreach ($potentialmembersids as $userid) {
-             if (isset($usergroups[$userid])) {
-                 $usergrouplist = '<ul>';
-
-                 foreach ($usergroups[$userid] as $groupitem) {
-                     $usergrouplist .= '<li>'.addslashes_js(format_string($groupitem->name)).'</li>';
-                 }
-                 $usergrouplist .= '</ul>';
-             }
-             else {
-                 $usergrouplist = '';
-             }
-             echo "'$usergrouplist'";
-             if ($i < $membercnt) {
-                 echo ', ';
-             }
-             $i++;
+                if (isset($usergroups[$userid])) {
+                    $usergrouplist = html_writer::start_tag('ul');
+                    foreach ($usergroups[$userid] as $groupitem) {
+                        $usergrouplist .= html_writer::tag('li', format_string($groupitem->name));
+                    }
+                    $usergrouplist .= html_writer::end_tag('ul');
+                } else {
+                    $usergrouplist = '';
+                }
+                $usersummaries[] = $usergrouplist;
             }
         }
-echo <<<END
-);
-//]]>
-</script>
-END;
+
+        $PAGE->requires->data_for_js('userSummaries', $usersummaries);
     }
 
     public function find_users($search) {

@@ -74,7 +74,7 @@ class external_service_form extends moodleform {
             $currentcapabilityexist = true;
         }
 
-        // Prepare the list of capabilites to choose from
+        // Prepare the list of capabilities to choose from
         $systemcontext = get_context_instance(CONTEXT_SYSTEM);
         $allcapabilities = fetch_context_capabilities($systemcontext);
         $capabilitychoices = array();
@@ -105,7 +105,13 @@ class external_service_form extends moodleform {
         $mform->addElement('hidden', 'id');
         $mform->setType('id', PARAM_INT);
 
-        $this->add_action_buttons(true, get_string('addaservice', 'webservice'));
+        if (!empty($service->id)) {
+            $buttonlabel = get_string('editaservice', 'webservice');
+        } else {
+            $buttonlabel = get_string('addaservice', 'webservice');
+        }
+
+        $this->add_action_buttons(true, $buttonlabel);
 
         $this->set_data($service);
     }
@@ -194,7 +200,7 @@ class web_service_token_form extends moodleform {
         $systemcontext = get_context_instance(CONTEXT_SYSTEM);
         foreach ($services as $serviceid => $service) {
             //check that the user has the required capability
-            //(only for generation by the profil page)
+            //(only for generation by the profile page)
             if (empty($data->nouserselection)
                     || empty($service->requiredcapability)
                     || has_capability($service->requiredcapability, $systemcontext, $USER->id)) {

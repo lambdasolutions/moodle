@@ -2,7 +2,7 @@
 
 /**
  * @author Martin Dougiamas
- * @author Iñaki Arenaza
+ * @author Iï¿½aki Arenaza
  * @license http://www.gnu.org/copyleft/gpl.html GNU Public License
  * @package moodle multiauth
  *
@@ -274,7 +274,7 @@ class auth_plugin_ldap extends auth_plugin_base {
             return false; //error or not found
         }
         $user_array = truncate_userinfo($user_array);
-        $user = new object();
+        $user = new stdClass();
         foreach ($user_array as $key=>$value) {
             $user->{$key} = $value;
         }
@@ -490,9 +490,7 @@ class auth_plugin_ldap extends auth_plugin_base {
             print_error('auth_ldap_create_error', 'auth_ldap');
         }
 
-        if (! ($user->id = $DB->insert_record('user', $user)) ) {
-            print_error('auth_emailnoinsert', 'auth_email');
-        }
+        $user->id = $DB->insert_record('user', $user);
 
         // Save any custom profile field information
         profile_save_data($user);
@@ -551,12 +549,8 @@ class auth_plugin_ldap extends auth_plugin_base {
                 if (!$this->user_activate($username)) {
                     return AUTH_CONFIRM_FAIL;
                 }
-                if (!$DB->set_field('user', 'confirmed', 1, array('id'=>$user->id))) {
-                    return AUTH_CONFIRM_FAIL;
-                }
-                if (!$DB->set_field('user', 'firstaccess', time(), array('id'=>$user->id))) {
-                    return AUTH_CONFIRM_FAIL;
-                }
+                $DB->set_field('user', 'confirmed', 1, array('id'=>$user->id));
+                $DB->set_field('user', 'firstaccess', time(), array('id'=>$user->id));
                 return AUTH_CONFIRM_OK;
             }
         } else {
@@ -714,14 +708,11 @@ class auth_plugin_ldap extends auth_plugin_base {
                             echo "\t"; print_string('auth_dbdeleteusererror', 'auth_db', $user->username); echo "\n";
                         }
                     } else if ($this->config->removeuser == AUTH_REMOVEUSER_SUSPEND) {
-                        $updateuser = new object();
+                        $updateuser = new stdClass();
                         $updateuser->id = $user->id;
                         $updateuser->auth = 'nologin';
-                        if ($DB->update_record('user', $updateuser)) {
-                            echo "\t"; print_string('auth_dbsuspenduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
-                        } else {
-                            echo "\t"; print_string('auth_dbsuspendusererror', 'auth_db', $user->username); echo "\n";
-                        }
+                        $DB->update_record('user', $updateuser);
+                        echo "\t"; print_string('auth_dbsuspenduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
                     }
                 }
             } else {
@@ -742,14 +733,11 @@ class auth_plugin_ldap extends auth_plugin_base {
                 print_string('userentriestorevive', 'auth_ldap', count($revive_users));
 
                 foreach ($revive_users as $user) {
-                    $updateuser = new object();
+                    $updateuser = new stdClass();
                     $updateuser->id = $user->id;
                     $updateuser->auth = $this->authtype;
-                    if ($DB->update_record('user', $updateuser)) {
-                        echo "\t"; print_string('auth_dbreviveduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
-                    } else {
-                        echo "\t"; print_string('auth_dbrevivedusererror', 'auth_db', $user->username); echo "\n";
-                    }
+                    $DB->update_record('user', $updateuser);
+                    echo "\t"; print_string('auth_dbreviveduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
                 }
             } else {
                 print_string('nouserentriestorevive', 'auth_ldap');
@@ -861,18 +849,15 @@ class auth_plugin_ldap extends auth_plugin_base {
                     $user->lang = $CFG->lang;
                 }
 
-                if ($id = $DB->insert_record('user', $user)) {
-                    echo "\t"; print_string('auth_dbinsertuser', 'auth_db', array('name'=>$user->username, 'id'=>$id)); echo "\n";
-                    if (!empty($this->config->forcechangepassword)) {
-                        set_user_preference('auth_forcepasswordchange', 1, $id);
-                    }
+                $id = $DB->insert_record('user', $user);
+                echo "\t"; print_string('auth_dbinsertuser', 'auth_db', array('name'=>$user->username, 'id'=>$id)); echo "\n";
+                if (!empty($this->config->forcechangepassword)) {
+                    set_user_preference('auth_forcepasswordchange', 1, $id);
+                }
 
-                    // Add course creators if needed
-                    if ($creatorrole !== false and $this->iscreator($user->username)) {
-                        role_assign($creatorrole->id, $id, $sitecontext->id, $this->roleauth);
-                    }
-                } else {
-                    echo "\t"; print_string('auth_dbinsertusererror', 'auth_db', $user->username); echo "\n";
+                // Add course creators if needed
+                if ($creatorrole !== false and $this->iscreator($user->username)) {
+                    role_assign($creatorrole->id, $id, $sitecontext->id, $this->roleauth);
                 }
 
             }
@@ -1098,7 +1083,7 @@ class auth_plugin_ldap extends auth_plugin_base {
             if (empty($user_entry)) {
                 $attribs = join (', ', $search_attribs);
                 error_log($this->errorlogtag.get_string('updateusernotfound', 'auth_ldap',
-                                                          array('userdn'=>$user_dn, 
+                                                          array('userdn'=>$user_dn,
                                                                 'attribs'=>$attribs)));
                 return false; // old user not found!
             } else if (count($user_entry) > 1) {
@@ -1493,13 +1478,13 @@ class auth_plugin_ldap extends auth_plugin_base {
      * Returns the URL for changing the user's password, or empty if the default can
      * be used.
      *
-     * @return string url
+     * @return moodle_url
      */
     function change_password_url() {
         if (empty($this->config->stdchangepassword)) {
-            return $this->config->changepasswordurl;
+            return new moodle_url($this->config->changepasswordurl);
         } else {
-            return '';
+            return null;
         }
     }
 

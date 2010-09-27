@@ -139,9 +139,7 @@ function quiz_add_quiz_question($id, &$quiz, $page = 0) {
 
     // Save new questionslist in database
     $quiz->questions = implode(',', $questions);
-    if (!$DB->set_field('quiz', 'questions', $quiz->questions, array('id' => $quiz->id))) {
-        print_error('cannotsavequestion', 'quiz');
-    }
+    $DB->set_field('quiz', 'questions', $quiz->questions, array('id' => $quiz->id));
 
     // update question grades
     $quiz->grades[$id] = $DB->get_field('question', 'defaultgrade', array('id' => $id));
@@ -410,7 +408,6 @@ function quiz_print_question_list($quiz, $pageurl, $allowdelete = true,
         if ($qnum && !array_key_exists($questions[$qnum]->qtype, $QTYPES)) {
             $questions[$qnum]->qtype = 'missingtype';
         }
-        $deletex = "delete.gif";
         if ($qnum != 0 || ($qnum == 0 && !$pageopen)) {
             //this is either a question or a page break after another
             //        (no page is currently open)

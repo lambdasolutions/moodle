@@ -128,7 +128,7 @@ die;
 
     while (!feof ($fp)) {
 
-        $newgroup = new object();//to make Martin happy
+        $newgroup = new stdClass();//to make Martin happy
         foreach ($optionalDefaults as $key => $value) {
             $newgroup->$key = current_language(); //defaults to current language
         }
@@ -177,7 +177,7 @@ die;
                 }
                 $newgroup->courseid = $mycourse->id;
             }
-            //else juse use current id
+            //else use use current id
             else{
                 $newgroup->courseid = $id;
             }

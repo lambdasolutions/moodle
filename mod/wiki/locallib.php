@@ -246,9 +246,7 @@ function wiki_save_page($wikipage, $newcontent, $userid) {
         $version->userid = $userid;
         $version->version++;
         $version->timecreated = time();
-        if (!$versionid = $DB->insert_record('wiki_versions', $version)) {
-            return false;
-        }
+        $versionid = $DB->insert_record('wiki_versions', $version);
 
         $wikipage->timemodified = $version->timecreated;
         $wikipage->userid = $userid;
@@ -334,9 +332,7 @@ function wiki_create_page($swid, $title, $format, $userid) {
     $version->userid = $userid;
 
     $versionid = null;
-    if (!$versionid = $DB->insert_record('wiki_versions', $version)) {
-        return false;
-    }
+    $versionid = $DB->insert_record('wiki_versions', $version);
 
     // Createing a new empty page
     $page = new stdClass();
@@ -526,10 +522,11 @@ function wiki_search_all($swid, $search) {
 }
 
 /**
- * Get complete set of user data
+ * Get user data
  */
 function wiki_get_user_info($userid) {
-    return get_complete_user_data('id', $userid);
+    global $DB;
+    return $DB->get_record('user', array('id' => $userid));
 }
 
 /**
@@ -657,10 +654,10 @@ function wiki_parser_table($table) {
 /**
  * Returns an absolute path link, unless there is no such link.
  *
- * @param url Link's URL
- * @param context filearea params
- * @param filearea
- * @param fileareaid
+ * @param string url Link's URL
+ * @param stdClass context filearea params
+ * @param string filearea
+ * @param int fileareaid
  *
  * @return File full path
  */
@@ -998,8 +995,8 @@ function wiki_delete_old_locks() {
 /**
  * Uploads files to permanent disk space.
  *
- * @param draftitemid Draft space ID
- * @param contextid
+ * @param int draftitemid Draft space ID
+ * @param int contextid
  *
  * @return array of files that have not been inserted.
  */
@@ -1081,38 +1078,10 @@ function wiki_get_comment($commentid){
  * @param $context. Current context
  * @param $pageid. Current pageid
  **/
-function wiki_get_comments($context, $pageid) {
-    global $CFG;
-    require_once($CFG->dirroot . '/comment/lib.php');
-    list($context, $course, $cm) = get_context_info_array($context->id);
-
-    $cmt = new stdclass();
-    $cmt->context = $context;
-    $cmt->itemid = $pageid;
-    $cmt->pluginname = 'wiki';
-    $cmt->area = 'wiki_page';
-    $cmt->course = $course;
-    $manager = new comment($cmt);
-
-    return ($manager->get_comments());
-
-}
-
-/**
- * Returns all comments from wiki comments section by user
- *
- * @param $userid. User whose we want get the comments
- **/
-function wiki_get_comments_by_user($userid) {
+function wiki_get_comments($contextid, $pageid) {
     global $DB;
 
-    $area = 'wiki_page';
-    $sql = "SELECT c.*
-            FROM {comments} c
-            WHERE c.userid = ? and c.commentarea = ?";
-
-    return $DB->get_records_sql($sql, array($userid, $area));
-
+    return $DB->get_records('comments', array('contextid' => $contextid, 'itemid' => $pageid, 'commentarea' => 'wiki_page'));
 }
 
 /**
@@ -1133,7 +1102,7 @@ function wiki_add_comment($context, $pageid, $content, $editor) {
     $cmt->itemid = $pageid;
     $cmt->area = 'wiki_page';
     $cmt->course = $course;
-    $cmt->pluginname = 'wiki';
+    $cmt->component = 'mod_wiki';
 
     $manager = new comment($cmt);
 
@@ -1159,12 +1128,12 @@ function wiki_delete_comment($idcomment, $context, $pageid) {
     require_once($CFG->dirroot . '/comment/lib.php');
 
     list($context, $course, $cm) = get_context_info_array($context->id);
-    $cmt = new stdclass;
+    $cmt = new stdClass();
     $cmt->context = $context;
     $cmt->itemid = $pageid;
     $cmt->area = 'wiki_page';
-    $cmt->pluginname = 'wiki';
     $cmt->course = $course;
+    $cmt->component = 'mod_wiki';
 
     $manager = new comment($cmt);
     $manager->delete($idcomment);

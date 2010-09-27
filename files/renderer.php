@@ -31,7 +31,7 @@ defined('MOODLE_INTERNAL') || die();
  */
 
 /**
- * File manager render
+ * File browser render
  *
  * @copyright 2010 Dongsheng Cai
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -45,35 +45,41 @@ class core_files_renderer extends plugin_renderer_base {
     }
 
     public function render_files_tree_viewer(files_tree_viewer $tree) {
+        $html = $this->output->heading_with_help(get_string('coursefiles'), 'courselegacyfiles', 'moodle');
 
-        $html = '<div>';
+        $html .= $this->output->container_start('coursefilesbreadcrumb');
         foreach($tree->path as $path) {
             $html .= $path;
             $html .= ' / ';
         }
-        $html .= '</div>';
+        $html .= $this->output->container_end();
 
-        $html .= '<div id="course-file-tree-view" class="filemanager-container">';
-        if (empty($tree->tree)) {
-            $html .= get_string('nofilesavailable', 'repository');
-        } else {
-            $this->page->requires->js_init_call('M.core_filetree.init');
-            $html .= '<ul>';
-            foreach($tree->tree as $node) {
-                $link_attributes = array();
-                if (!empty($node['isdir'])) {
-                    $class = ' class="file-tree-folder"';
-                } else {
-                    $class = ' class="file-tree-file"';
-                    $link_attributes['target'] = '_blank';
-                }
-                $html .= '<li '.$class.'>';
-                $html .= html_writer::link($node['url'], $node['filename'], $link_attributes);
-                $html .= '</li>';
+        $html .= $this->output->box_start();
+        $table = new html_table();
+        $table->head = array(get_string('filename', 'backup'), get_string('size'), get_string('modified'));
+        $table->align = array('left', 'right', 'right');
+        $table->width = '100%';
+        $table->data = array();
+
+        foreach ($tree->tree as $file) {
+            if (!empty($file['isdir'])) {
+                $table->data[] = array(
+                    html_writer::link($file['url'], $this->output->pix_icon('f/folder', 'icon') . ' ' . $file['filename']),
+                    '',
+                    $file['filedate'],
+                    );
+            } else {
+                $table->data[] = array(
+                    html_writer::link($file['url'], $this->output->pix_icon('f/'.mimeinfo('icon', $file['filename']), get_string('icon')) . ' ' . $file['filename']),
+                    $file['filesize'],
+                    $file['filedate'],
+                    );
             }
-            $html .= '</ul>';
         }
-        $html .= '</div>';
+
+        $html .= html_writer::table($table);
+        $html .= $this->output->single_button(new moodle_url('/files/coursefilesedit.php', array('contextid'=>$tree->context->id)), get_string('coursefilesedit'), 'get');
+        $html .= $this->output->box_end();
         return $html;
     }
 }
@@ -89,6 +95,7 @@ class core_files_renderer extends plugin_renderer_base {
 class files_tree_viewer implements renderable {
     public $tree;
     public $path;
+    public $context;
 
     /**
      * Constructor of moodle_file_tree_viewer class
@@ -99,54 +106,55 @@ class files_tree_viewer implements renderable {
         global $CFG;
 
         //note: this MUST NOT use get_file_storage() !!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
         $this->options = (array)$options;
-        if (isset($this->options['visible_areas'])) {
-            $visible_areas = (array)$this->options['visible_areas'];
-        } else {
-            $visible_areas = false;
-        }
+        $this->context = $options['context'];
 
         $this->tree = array();
         $children = $file_info->get_children();
+        $current_file_params = $file_info->get_params();
         $parent_info = $file_info->get_parent();
-
         $level = $parent_info;
         $this->path = array();
         while ($level) {
             $params = $level->get_params();
             $context = get_context_instance_by_id($params['contextid']);
-            // lock user in course level
-            if ($context->contextlevel == CONTEXT_COURSECAT or $context->contextlevel == CONTEXT_SYSTEM) {
+            // $this->context is current context
+            if ($context->id != $this->context->id or empty($params['filearea'])) {
                 break;
             }
+            // unset unused parameters
+            unset($params['component']);
+            unset($params['filearea']);
+            unset($params['filename']);
+            unset($params['itemid']);
             $url = new moodle_url('/files/index.php', $params);
-            $this->path[] = html_writer::link($url->out(false), $level->get_visible_name());
+            $this->path[] = html_writer::link($url, $level->get_visible_name());
             $level = $level->get_parent();
         }
         $this->path = array_reverse($this->path);
-        $this->path[] = $file_info->get_visible_name();
+        if ($current_file_params['filepath'] != '/') {
+            $this->path[] = $file_info->get_visible_name();
+        }
 
         foreach ($children as $child) {
             $filedate = $child->get_timemodified();
             $filesize = $child->get_filesize();
             $mimetype = $child->get_mimetype();
             $params = $child->get_params();
-            $url = new moodle_url('/files/index.php', $params);
+            unset($params['component']);
+            unset($params['filearea']);
+            unset($params['filename']);
+            unset($params['itemid']);
             $fileitem = array(
                     'params'   => $params,
                     'filename' => $child->get_visible_name(),
                     'filedate' => $filedate ? userdate($filedate) : '',
                     'filesize' => $filesize ? display_size($filesize) : ''
                     );
+            $url = new moodle_url('/files/index.php', $params);
             if ($child->is_directory()) {
                 $fileitem['isdir'] = true;
                 $fileitem['url'] = $url->out(false);
-                if ($visible_areas !== false) {
-                    if (!isset($visible_areas[$params['component']][$params['filearea']])) {
-                        continue;
-                    }
-                }
             } else {
                 $fileitem['url'] = $child->get_url();
             }

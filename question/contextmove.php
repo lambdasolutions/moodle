@@ -12,6 +12,9 @@
     require_once($CFG->dirroot."/question/editlib.php");
     require_once($CFG->dirroot."/question/contextmove_form.php");
 
+    //TODO: MDL-16094
+    throw new coding_exception('contextmove.php was not converted to new file api yet, sorry - see MDL-16094');
+
     list($thispageurl, $contexts, $cmid, $cm, $module, $pagevars) =
             question_edit_setup('categories', '/question/contextmove.php');
 
@@ -31,7 +34,7 @@
         }
         $contextto = $toparent->contextid;
     } else {
-        $toparent = new object();
+        $toparent = new stdClass();
         $toparent->id = 0;
         $toparent->contextid = $contextto;
     }
@@ -167,13 +170,11 @@
         }
         $sortorder = 0;
         foreach ($peers as $peer) {
-            if (! $DB->set_field('question_categories', "sortorder", $sortorder, array("id" => $peer))) {
-                print_error('listupdatefail', '', $onerrorurl);
-            }
+            $DB->set_field('question_categories', "sortorder", $sortorder, array("id" => $peer));
             $sortorder++;
         }
         //now move category
-        $cat = new object();
+        $cat = new stdClass();
         $cat->id = $cattomove->id;
         $cat->parent = $toparent->id;
         //set context of category we are moving and all children also!
@@ -192,7 +193,7 @@
 
     $PAGE->set_url($thispageurl->out());
     $PAGE->navbar->add($streditingcategories, $thispageurl->out());
-    $PAGE->navbar->add(get_string('movingcategory', 'question'));    
+    $PAGE->navbar->add(get_string('movingcategory', 'question'));
     $PAGE->set_header($COURSE->fullname);
     echo $OUTPUT->header();
 

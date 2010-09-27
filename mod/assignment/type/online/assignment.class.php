@@ -36,7 +36,7 @@ class assignment_online extends assignment_base {
             // prepare form and process submitted data
             $editoroptions = array('noclean'=>false, 'maxfiles'=>EDITOR_UNLIMITED_FILES, 'maxbytes'=>$this->course->maxbytes);
 
-            $data = new object();
+            $data = new stdClass();
             $data->id         = $this->cm->id;
             $data->edit       = 1;
             if ($submission) {
@@ -90,7 +90,7 @@ class assignment_online extends assignment_base {
             echo $OUTPUT->notification(get_string('submissionsaved', 'assignment'), 'notifysuccess');
         }
 
-        if (is_enrolled($this->context, $USER, 'mod/assignment:submit')) {
+        if (is_enrolled($this->context, $USER)) {
             if ($editmode) {
                 echo $OUTPUT->box_start('generalbox', 'onlineenter');
                 $mform->display();
@@ -174,7 +174,7 @@ class assignment_online extends assignment_base {
 
         $submission = $this->get_submission($USER->id, true);
 
-        $update = new object();
+        $update = new stdClass();
         $update->id           = $submission->id;
         $update->data1        = $data->text;
         $update->data2        = $data->textformat;
@@ -214,19 +214,19 @@ class assignment_online extends assignment_base {
 
         $link = new moodle_url("/mod/assignment/type/online/file.php?id={$this->cm->id}&userid={$submission->userid}");
         $action = new popup_action('click', $link, 'file'.$userid, array('height' => 450, 'width' => 580));
-        $popup = $OUTPUT->action_link($link, shorten_text(trim(strip_tags(format_text($submission->data1,$submission->data2))), 15), $action, array('title'=>get_string('submission', 'assignment')));
+        $popup = $OUTPUT->action_link($link, get_string('popupinnewwindow','assignment'), $action, array('title'=>get_string('submission', 'assignment')));
 
         $output = '<div class="files">'.
                   '<img align="middle" src="'.$OUTPUT->pix_url('f/html') . '" height="16" width="16" alt="html" />'.
                   $popup .
                   '</div>';
 
-        $wordcount = '<p id="wordcount">';
+        $wordcount = '<p id="wordcount">'. $popup . '&nbsp;';
     /// Decide what to count
         if ($CFG->assignment_itemstocount == ASSIGNMENT_COUNT_WORDS) {
-            $wordcount .= ' ('.get_string('numwords', '', count_words(format_text($submission->data1, $submission->data2))).')';
+            $wordcount .= '('.get_string('numwords', '', count_words(format_text($submission->data1, $submission->data2))).')';
         } else if ($CFG->assignment_itemstocount == ASSIGNMENT_COUNT_LETTERS) {
-            $wordcount .= ' ('.get_string('numletters', '', count_letters(format_text($submission->data1, $submission->data2))).')';
+            $wordcount .= '('.get_string('numletters', '', count_letters(format_text($submission->data1, $submission->data2))).')';
         }
         $wordcount .= '</p>';
 
@@ -298,7 +298,7 @@ class assignment_online extends assignment_base {
         if (in_array($exporter->get('formatclass'), array(PORTFOLIO_FORMAT_PLAINHTML, PORTFOLIO_FORMAT_RICHHTML))) {
             if ($files = $exporter->get('caller')->get('multifiles')) {
                 foreach ($files as $f) {
-                    $exporter->copy_existing_file($file);
+                    $exporter->copy_existing_file($f);
                 }
             }
             return $exporter->write_new_file($html, 'assignment.html', !empty($files));
@@ -311,9 +311,9 @@ class assignment_online extends assignment_base {
             $entry->author = $user;
             $leapwriter->add_entry($entry);
             if ($files = $exporter->get('caller')->get('multifiles')) {
+                $leapwriter->link_files($entry, $files, 'assignmentonline' . $this->assignment->id . 'file');
                 foreach ($files as $f) {
                     $exporter->copy_existing_file($f);
-                    $entry->add_attachment($f);
                 }
             }
             $exporter->write_new_file($leapwriter->to_xml(), $exporter->get('format')->manifest_name(), true);
@@ -382,14 +382,17 @@ class assignment_online extends assignment_base {
      */
     public function download_submissions() {
         global $CFG, $DB;
-        require_once($CFG->libdir.'/filelib.php');
+
+        @raise_memory_limit('256M');
 
         $submissions = $this->get_submissions('','');
         if (empty($submissions)) {
             error("there are no submissions to download");
         }
         $filesforzipping = array();
-        $tempdir = assignment_create_temp_dir($CFG->dataroot."/temp/", "assignment".$this->assignment->id); //location for temp files.
+
+        //NOTE: do not create any stuff in temp directories, we now support unicode file names and that would not work, sorry
+
         //online assignment can use html
         $filextn=".html";
 
@@ -407,17 +410,14 @@ class assignment_online extends assignment_base {
             if ((groups_is_member($groupid,$a_userid)or !$groupmode or !$groupid)) {
                 $a_assignid = $submission->assignment; //get name of this assignment for use in the file names.
                 $a_user = $DB->get_record("user", array("id"=>$a_userid),'id,username,firstname,lastname'); //get user firstname/lastname
-                $submissioncontent = "<html><body>". $submission->data1. "</body></html>";      //fetched from database
+                $submissioncontent = "<html><body>". format_text($submission->data1, $submission->data2). "</body></html>";      //fetched from database
                 //get file name.html
-                $fileforzipname =  $a_user->username . "_" . clean_filename($this->assignment->name) . $filextn;
-                $fd = fopen($tempdir . $fileforzipname,'wb');   //create if not exist, write binary
-                fwrite( $fd, $submissioncontent);
-                fclose( $fd );
-                $filesforzipping[$fileforzipname] = $tempdir.$fileforzipname;
+                $fileforzipname =  clean_filename(fullname($a_user) . "_" .$a_userid.$filextn);
+                $filesforzipping[$fileforzipname] = array($submissioncontent);
             }
         }      //end of foreach
+
         if ($zipfile = assignment_pack_files($filesforzipping)) {
-            remove_dir($tempdir); //remove old tempdir with individual files.
             send_temp_file($zipfile, $filename); //send file and delete after sending.
         }
     }

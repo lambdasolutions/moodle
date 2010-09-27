@@ -48,10 +48,29 @@
  * was complex due to us wanting to remvoe the outmoded blocks that this
  * block was going to replace.
  *
+ * @global moodle_database $DB
  * @param int $oldversion
  * @param object $block
  */
 function xmldb_block_navigation_upgrade($oldversion, $block) {
+    global $DB;
     // Implemented at 2009082800
+
+    if ($oldversion < 2010091400) {
+
+        $sql = "SELECT bp.id FROM {block_instances} bi 
+                LEFT JOIN {block_positions} bp ON bp.blockinstanceid=bi.id
+                WHERE bi.blockname='navigation' AND bp.visible=0";
+        $blockpositions = $DB->get_records_sql($sql);
+        if ($blockpositions) {
+            foreach ($blockpositions as $bp) {
+                $bp->visible = 1;
+                $DB->update_record('block_positions', $bp);
+            }
+        }
+
+        upgrade_block_savepoint(true, 2010091400, 'navigation');
+    }
+
     return true;
 }

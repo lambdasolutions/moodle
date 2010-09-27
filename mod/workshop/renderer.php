@@ -48,8 +48,6 @@ class mod_workshop_renderer extends plugin_renderer_base {
         $sty = empty($message->sty) ? 'info' : $message->sty;
 
         $o = html_writer::tag('span', $message->text);
-        $closer = html_writer::tag('a', get_string('messageclose', 'workshop'), array('href' => $this->page->url->out()));
-        $o .= $this->output->container($closer, 'status-message-closer');
         if (isset($message->extra)) {
             $o .= $message->extra;
         }
@@ -99,7 +97,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
      * authorid, authorfirstname, authorlastname, authorpicture, authorimagealt and email. Optional
      * property is status (graded, notgraded).
      *
-     * @param stdclass $submission     The submission record
+     * @param stdClass $submission     The submission record
      * @param bool     $showauthorname Should the author name be displayed
      * @return string html to be echoed
      */
@@ -159,7 +157,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
      *
      * By default, this looks similar to a forum post.
      *
-     * @param stdclass $submission     The submission data
+     * @param stdClass $submission     The submission data
      * @param bool     $showauthorname Should the author name be displayed
      * @return string html to be echoed
      */
@@ -220,7 +218,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
      * If format==html, then format a html string. If format==text, then format a text-only string.
      * Otherwise, returns html for non-images and html to display the image inline.
      *
-     * @param stdclass $submission Submission record
+     * @param stdClass $submission Submission record
      * @param string format        The format of the returned string
      * @return string              HTML code to be echoed
      */
@@ -284,7 +282,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
      *
      * The passed submission object must define at least: id and title
      *
-     * @param stdclass $data prepared by workshop::prepare_example_summary()
+     * @param stdClass $data prepared by workshop::prepare_example_summary()
      * @return string html to be echoed
      */
     public function example_summary(stdclass $summary) {
@@ -330,7 +328,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
      *
      * By default, this looks similar to a forum post.
      *
-     * @param stdclass $example        The example submission data
+     * @param stdClass $example        The example submission data
      * @return string html to be echoed
      */
     public function example_full(stdclass $example) {
@@ -407,7 +405,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
     /**
      * Renders the tasks for the single phase in the user plan
      *
-     * @param stdclass $tasks
+     * @param stdClass $tasks
      * @return string html code
      */
     protected function user_plan_tasks(array $tasks) {
@@ -443,8 +441,8 @@ class mod_workshop_renderer extends plugin_renderer_base {
      * Grades must be already rounded to the set number of decimals or must be null (in which later case,
      * the [[nullgrade]] string shall be displayed).
      *
-     * @param stdclass $data prepared by {@link workshop::prepare_grading_report()}
-     * @param stdclass $options display options object with properties ->showauthornames ->showreviewernames ->sortby ->sorthow
+     * @param stdClass $data prepared by {@link workshop::prepare_grading_report()}
+     * @param stdClass $options display options object with properties ->showauthornames ->showreviewernames ->sortby ->sorthow
      *          ->showsubmissiongrade ->showgradinggrade
      * @return string html code
      */
@@ -620,7 +618,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
 }
 
     /**
-     * @param stdclass $participant
+     * @param stdClass $participant
      * @param array $userinfo
      * @return string
      */
@@ -633,7 +631,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @param stdclass $participant
+     * @param stdClass $participant
      * @return string
      */
     protected function grading_report_submission(stdclass $participant) {
@@ -652,7 +650,7 @@ class mod_workshop_renderer extends plugin_renderer_base {
 
     /**
      * @todo Highlight the nulls
-     * @param stdclass|null $assessment
+     * @param stdClass|null $assessment
      * @param bool $shownames
      * @param string $separator between the grade and the reviewer/author
      * @return string

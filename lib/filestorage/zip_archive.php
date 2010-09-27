@@ -68,7 +68,7 @@ class zip_archive extends file_archive {
 
         switch($mode) {
             case file_archive::OPEN:      $flags = 0; break;
-            case file_archive::OVERWRITE: $flags = ZIPARCHIVE::OVERWRITE; break;
+            case file_archive::OVERWRITE: $flags = ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE; break; //changed in PHP 5.2.8
             case file_archive::CREATE:
             default :                     $flags = ZIPARCHIVE::CREATE; break;
         }
@@ -111,7 +111,7 @@ class zip_archive extends file_archive {
     /**
      * Returns file stream for reading of content
      * @param int $index of file
-     * @return stream or false if error
+     * @return resource or false if error
      */
     public function get_stream($index) {
         if (!isset($this->za)) {
@@ -146,7 +146,7 @@ class zip_archive extends file_archive {
             return false;
         }
 
-        $info = new object();
+        $info = new stdClass();
         $info->index             = $index;
         $info->original_pathname = $result['name'];
         $info->pathname          = $this->unmangle_pathname($result['name']);

@@ -125,9 +125,9 @@ function uninstall_plugin($type, $name) {
 
     // recursively uninstall all module subplugins first
     if ($type === 'mod') {
-        if (file_exists("$CFG->dirroot/$name/db/subplugins.php")) {
+        if (file_exists("$CFG->dirroot/mod/$name/db/subplugins.php")) {
             $subplugins = array();
-            include("$moddir/db/subplugins.php");
+            include("$CFG->dirroot/mod/$name/db/subplugins.php");
             foreach ($subplugins as $subplugintype=>$dir) {
                 $instances = get_plugin_list($subplugintype);
                 foreach ($instances as $subpluginname => $notusedpluginpath) {
@@ -272,6 +272,84 @@ function uninstall_plugin($type, $name) {
     events_uninstall($component);
 
     echo $OUTPUT->notification(get_string('success'), 'notifysuccess');
+}
+
+/**
+ * Returns the version of installed component
+ *
+ * @param string $component component name
+ * @param string $source either 'disk' or 'installed' - where to get the version information from
+ * @return string|bool version number or false if the component is not found
+ */
+function get_component_version($component, $source='installed') {
+    global $CFG, $DB;
+
+    list($type, $name) = normalize_component($component);
+
+    // moodle core or a core subsystem
+    if ($type === 'core') {
+        if ($source === 'installed') {
+            if (empty($CFG->version)) {
+                return false;
+            } else {
+                return $CFG->version;
+            }
+        } else {
+            if (!is_readable($CFG->dirroot.'/version.php')) {
+                return false;
+            } else {
+                $version = null; //initialize variable for IDEs
+                include($CFG->dirroot.'/version.php');
+                return $version;
+            }
+        }
+    }
+
+    // activity module
+    if ($type === 'mod') {
+        if ($source === 'installed') {
+            return $DB->get_field('modules', 'version', array('name'=>$name));
+        } else {
+            $mods = get_plugin_list('mod');
+            if (empty($mods[$name]) or !is_readable($mods[$name].'/version.php')) {
+                return false;
+            } else {
+                $module = new stdclass();
+                include($mods[$name].'/version.php');
+                return $module->version;
+            }
+        }
+    }
+
+    // block
+    if ($type === 'block') {
+        if ($source === 'installed') {
+            return $DB->get_field('block', 'version', array('name'=>$name));
+        } else {
+            $blocks = get_plugin_list('block');
+            if (empty($blocks[$name]) or !is_readable($blocks[$name].'/version.php')) {
+                return false;
+            } else {
+                $plugin = new stdclass();
+                include($blocks[$name].'/version.php');
+                return $plugin->version;
+            }
+        }
+    }
+
+    // all other plugin types
+    if ($source === 'installed') {
+        return get_config($type.'_'.$name, 'version');
+    } else {
+        $plugins = get_plugin_list($type);
+        if (empty($plugins[$name])) {
+            return false;
+        } else {
+            $plugin = new stdclass();
+            include($plugins[$name].'/version.php');
+            return $plugin->version;
+        }
+    }
 }
 
 /**
@@ -486,9 +564,7 @@ function is_dataroot_insecure($fetchtest=false) {
     preg_match('|(https?://[^/]+)|i', $CFG->wwwroot, $matches);
     $httpdocroot = $matches[1];
     $datarooturl = $httpdocroot.'/'. substr($dataroot, strlen($siteroot));
-    if (make_upload_directory('diag', false) === false) {
-        return INSECURE_DATAROOT_WARNING;
-    }
+    make_upload_directory('diag');
     $testfile = $CFG->dataroot.'/diag/public.txt';
     if (!file_exists($testfile)) {
         file_put_contents($testfile, 'test file, do not delete');
@@ -925,7 +1001,7 @@ class admin_externalpage implements part_of_admin_tree {
      * @param string $url The external URL that we should link to when someone requests this external page.
      * @param mixed $req_capability The role capability/permission a user must have to access this external page. Defaults to 'moodle/site:config'.
      * @param boolean $hidden Is this external page hidden in admin tree block? Default false.
-     * @param context $context The context the page relates to. Not sure what happens
+     * @param stdClass $context The context the page relates to. Not sure what happens
      *      if you specify something other than system or front page. Defaults to system.
      */
     public function __construct($name, $visiblename, $url, $req_capability='moodle/site:config', $hidden=false, $context=NULL) {
@@ -987,7 +1063,7 @@ class admin_externalpage implements part_of_admin_tree {
                 $found = true;
             }
         if ($found) {
-            $result = new object();
+            $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
             return array($this->name => $result);
@@ -1066,11 +1142,11 @@ class admin_settingpage implements part_of_admin_tree {
      * @param string $visiblename The displayed name for this external page. Usually obtained through get_string().
      * @param mixed $req_capability The role capability/permission a user must have to access this external page. Defaults to 'moodle/site:config'.
      * @param boolean $hidden Is this external page hidden in admin tree block? Default false.
-     * @param context $context The context the page relates to. Not sure what happens
+     * @param stdClass $context The context the page relates to. Not sure what happens
      *      if you specify something other than system or front page. Defaults to system.
      */
     public function __construct($name, $visiblename, $req_capability='moodle/site:config', $hidden=false, $context=NULL) {
-        $this->settings    = new object();
+        $this->settings    = new stdClass();
         $this->name        = $name;
         $this->visiblename = $visiblename;
         if (is_array($req_capability)) {
@@ -1118,7 +1194,7 @@ class admin_settingpage implements part_of_admin_tree {
         }
 
         if ($found) {
-            $result = new object();
+            $result = new stdClass();
             $result->page     = $this;
             $result->settings = $found;
             return array($this->name => $result);
@@ -1133,7 +1209,7 @@ class admin_settingpage implements part_of_admin_tree {
                 $found = true;
             }
         if ($found) {
-            $result = new object();
+            $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
             return array($this->name => $result);
@@ -1265,7 +1341,7 @@ abstract class admin_setting {
     public function __construct($name, $visiblename, $description, $defaultsetting) {
         $this->parse_setting_name($name);
         $this->visiblename    = $visiblename;
-        $this->description    = markdown_to_html($description);
+        $this->description    = $description;
         $this->defaultsetting = $defaultsetting;
     }
 
@@ -1361,7 +1437,7 @@ abstract class admin_setting {
         set_config($name, $value, $this->plugin);
 
         // log change
-        $log = new object();
+        $log = new stdClass();
         $log->userid       = during_initial_install() ? 0 :$USER->id; // 0 as user id during install
         $log->timemodified = time();
         $log->plugin       = $this->plugin;
@@ -1514,7 +1590,7 @@ class admin_setting_heading extends admin_setting {
             $return .= $OUTPUT->heading($this->visiblename, 3, 'main');
         }
         if ($this->description != '') {
-            $return .= $OUTPUT->box(highlight($query, $this->description), 'generalbox formsettingheading');
+            $return .= $OUTPUT->box(highlight($query, markdown_to_html($this->description)), 'generalbox formsettingheading');
         }
         return $return;
     }
@@ -1547,7 +1623,7 @@ class admin_setting_configtext extends admin_setting {
         if (!is_null($size)) {
             $this->size  = $size;
         } else {
-            $this->size  = ($paramtype == PARAM_INT) ? 5 : 30;
+            $this->size  = ($paramtype === PARAM_INT) ? 5 : 30;
         }
         parent::__construct($name, $visiblename, $description, $defaultsetting);
     }
@@ -1593,7 +1669,7 @@ class admin_setting_configtext extends admin_setting {
 
         } else {
             $cleaned = clean_param($data, $this->paramtype);
-            if ("$data" == "$cleaned") { // implicit conversion to string is needed to do exact comparison
+            if ("$data" === "$cleaned") { // implicit conversion to string is needed to do exact comparison
                 return true;
             } else {
                 return get_string('validateerror', 'admin');
@@ -2207,7 +2283,7 @@ class admin_setting_configselect extends admin_setting {
      * @param string $name unique ascii name, either 'mysetting' for settings that in config, or 'myplugin/mysetting' for ones in config_plugins.
      * @param string $visiblename localised
      * @param string $description long localised info
-     * @param string $defaultsetting
+     * @param string|int $defaultsetting
      * @param array $choices array of $value=>$label for each selection
      */
     public function __construct($name, $visiblename, $description, $defaultsetting, $choices) {
@@ -3000,7 +3076,7 @@ class admin_setting_sitesetcheckbox extends admin_setting_configcheckbox {
      */
     public function write_setting($data) {
         global $DB, $SITE;
-        $record = new object();
+        $record = new stdClass();
         $record->id            = SITEID;
         $record->{$this->name} = ($data == '1' ? 1 : 0);
         $record->timemodified  = time();
@@ -3059,7 +3135,7 @@ class admin_setting_sitesettext extends admin_setting_configtext {
             return $validated;
         }
 
-        $record = new object();
+        $record = new stdClass();
         $record->id            = SITEID;
         $record->{$this->name} = $data;
         $record->timemodified  = time();
@@ -3100,7 +3176,7 @@ class admin_setting_special_frontpagedesc extends admin_setting {
      */
     public function write_setting($data) {
         global $DB, $SITE;
-        $record = new object();
+        $record = new stdClass();
         $record->id            = SITEID;
         $record->{$this->name} = $data;
         $record->timemodified  = time();
@@ -4366,7 +4442,7 @@ class admin_page_managemods extends admin_externalpage {
             }
         }
         if ($found) {
-            $result = new object();
+            $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
             return array($this->name => $result);
@@ -4619,7 +4695,7 @@ class admin_page_manageblocks extends admin_externalpage {
             }
         }
         if ($found) {
-            $result = new object();
+            $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
             return array($this->name => $result);
@@ -4666,7 +4742,7 @@ class admin_page_manageqtypes extends admin_externalpage {
             }
         }
         if ($found) {
-            $result = new object();
+            $result = new stdClass();
             $result->page     = $this;
             $result->settings = array();
             return array($this->name => $result);
@@ -5102,7 +5178,7 @@ class admin_setting_managelicenses extends admin_setting {
         $txt = get_strings(array('administration', 'settings', 'name', 'enable', 'disable', 'none'));
         $licenses = license_manager::get_licenses();
 
-        $return = $OUTPUT->heading(get_string('managelicenses', 'admin'), 3, 'main', true);
+        $return = $OUTPUT->heading(get_string('availablelicenses', 'admin'), 3, 'main', true);
 
         $return .= $OUTPUT->box_start('generalbox editorsui');
 
@@ -5391,7 +5467,7 @@ class admin_setting_manageportfolio extends admin_setting {
 function admin_externalpage_setup($section, $extrabutton = '', array $extraurlparams = null, $actualurl = '') {
     global $CFG, $PAGE, $USER, $SITE, $OUTPUT;
 
-    $PAGE->set_context(get_context_instance(CONTEXT_SYSTEM));
+    $PAGE->set_context(null); // hack - set context to something, by default to system context
 
     $site = get_site();
     require_login();
@@ -5575,7 +5651,7 @@ function admin_write_settings($formdata) {
         $original = serialize($setting->get_setting()); // comparison must work for arrays too
         $error = $setting->write_setting($data[$fullname]);
         if ($error !== '') {
-            $adminroot->errors[$fullname] = new object();
+            $adminroot->errors[$fullname] = new stdClass();
             $adminroot->errors[$fullname]->data  = $data[$fullname];
             $adminroot->errors[$fullname]->id    = $setting->get_id();
             $adminroot->errors[$fullname]->error = $error;
@@ -5807,7 +5883,7 @@ function format_admin_setting($setting, $title='', $form='', $description='', $l
     </label>
   </div>
   <div class="form-setting">'.$form.$defaultinfo.'</div>
-  <div class="form-description">'.highlight($query, $description).'</div>
+  <div class="form-description">'.highlight($query, markdown_to_html($description)).'</div>
 </div>';
 
     $adminroot = admin_get_root();
@@ -6227,16 +6303,43 @@ class admin_setting_managerepository extends admin_setting {
                         $params['onlyvisible'] = false;
                         $params['type'] = $typename;
                         $admininstancenumber = count(repository::static_function($typename, 'get_instances', $params));
-                        $admininstancenumbertext =   " <br/> ". $admininstancenumber . " " . get_string('instancesforadmin', 'repository');
+                        // site instances
+                        $admininstancenumbertext = get_string('instancesforsite', 'repository', $admininstancenumber);
                         $params['context'] = array();
-                        $instancenumber =  count(repository::static_function($typename, 'get_instances', $params)) - $admininstancenumber;
-                        $instancenumbertext =  "<br/>" . $instancenumber . " " . get_string('instancesforothers', 'repository');
+                        $instances = repository::static_function($typename, 'get_instances', $params);
+                        $courseinstances = array();
+                        $userinstances = array();
+
+                        foreach ($instances as $instance) {
+                            if ($instance->context->contextlevel == CONTEXT_COURSE) {
+                                $courseinstances[] = $instance;
+                            } else if ($instance->context->contextlevel == CONTEXT_USER) {
+                                $userinstances[] = $instance;
+                            }
+                        }
+                        // course instances
+                        $instancenumber = count($courseinstances);
+                        $courseinstancenumbertext = get_string('instancesforcourses', 'repository', $instancenumber);
+
+                        // user private instances
+                        $instancenumber =  count($userinstances);
+                        $userinstancenumbertext = get_string('instancesforusers', 'repository', $instancenumber);
                     } else {
                         $admininstancenumbertext = "";
-                        $instancenumbertext = "";
+                        $courseinstancenumbertext = "";
+                        $userinstancenumbertext = "";
                     }
 
-                    $settings .= '<a href="' . $this->baseurl . '&amp;action=edit&amp;repos=' . $typename . '">' . $settingsstr .'</a>' . $admininstancenumbertext . $instancenumbertext . "\n";
+                    $settings .= '<a href="' . $this->baseurl . '&amp;action=edit&amp;repos=' . $typename . '">' . $settingsstr .'</a>';
+
+                    $settings .= $OUTPUT->container_start('mdl-left');
+                    $settings .= '<br/>';
+                    $settings .= $admininstancenumbertext;
+                    $settings .= '<br/>';
+                    $settings .= $courseinstancenumbertext;
+                    $settings .= '<br/>';
+                    $settings .= $userinstancenumbertext;
+                    $settings .= $OUTPUT->container_end();
                 }
                 // Get the current visibility
                 if ($i->get_visible()) {
@@ -6473,6 +6576,92 @@ class admin_setting_manageexternalservices extends admin_setting {
         // add a token to the table
         $return .= "<a href=\"$esurl?id=0\">$stradd</a>";
 
+        return highlight($query, $return);
+    }
+}
+/**
+ * Special class for plagiarism administration.
+ *
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class admin_setting_manageplagiarism extends admin_setting {
+/**
+ * Calls parent::__construct with specific arguments
+ */
+    public function __construct() {
+        $this->nosave = true;
+        parent::__construct('plagiarismui', get_string('plagiarismsettings', 'plagiarism'), '', '');
+    }
+
+    /**
+     * Always returns true
+     *
+     * @return true
+     */
+    public function get_setting() {
+        return true;
+    }
+
+    /**
+     * Always returns true
+     *
+     * @return true
+     */
+    public function get_defaultsetting() {
+        return true;
+    }
+
+    /**
+     * Always returns '' and doesn't write anything
+     *
+     * @return string Always returns ''
+     */
+    public function write_setting($data) {
+    // do not write any setting
+        return '';
+    }
+
+    /**
+     * Return XHTML to display control
+     *
+     * @param mixed $data Unused
+     * @param string $query
+     * @return string highlight
+     */
+    public function output_html($data, $query='') {
+        global $CFG, $OUTPUT;
+
+        // display strings
+        $txt = get_strings(array('settings', 'name'));
+
+        $plagiarismplugins = get_plugin_list('plagiarism');
+        if (empty($plagiarismplugins)) {
+            return get_string('nopluginsinstalled', 'plagiarism');
+        }
+
+        $return = $OUTPUT->heading(get_string('availableplugins', 'plagiarism'), 3, 'main');
+        $return .= $OUTPUT->box_start('generalbox authsui');
+
+        $table = new html_table();
+        $table->head  = array($txt->name, $txt->settings);
+        $table->align = array('left', 'center');
+        $table->data  = array();
+        $table->attributes['class'] = 'manageplagiarismtable generaltable';
+
+        // iterate through auth plugins and add to the display table
+        $authcount = count($plagiarismplugins);
+        foreach ($plagiarismplugins as $plugin => $dir) {
+            if (file_exists($dir.'/settings.php')) {
+                $displayname = "<span>".get_string($plugin, 'plagiarism_'.$plugin)."</span>";
+                // settings link
+                $settings = "<a href=\"$CFG->wwwroot/plagiarism/$plugin/settings.php\">{$txt->settings}</a>";
+                // add a row to the table
+                $table->data[] =array($displayname, $settings);
+            }
+        }
+        $return .= html_writer::table($table);
+        $return .= get_string('configplagiarismplugins', 'plagiarism');
+        $return .= $OUTPUT->box_end();
         return highlight($query, $return);
     }
 }
@@ -6860,7 +7049,7 @@ class admin_setting_managewebserviceprotocols extends admin_setting {
         foreach ($protocols_available as $protocol => $location) {
             $name = get_string('pluginname', 'webservice_'.$protocol);
 
-            $plugin = new object();
+            $plugin = new stdClass();
             if (file_exists($CFG->dirroot.'/webservice/'.$protocol.'/version.php')) {
                 include($CFG->dirroot.'/webservice/'.$protocol.'/version.php');
             }

@@ -6,6 +6,9 @@ $hasfooter = (empty($PAGE->layout_options['nofooter']));
 $hassidepre = $PAGE->blocks->region_has_content('side-pre', $OUTPUT);
 $hassidepost = $PAGE->blocks->region_has_content('side-post', $OUTPUT);
 
+$custommenu = $OUTPUT->custom_menu();
+$hascustommenu = (empty($PAGE->layout_options['nocustommenu']) && !empty($custommenu));
+
 $bodyclasses = array();
 if ($hassidepre && !$hassidepost) {
     $bodyclasses[] = 'side-pre-only';
@@ -13,6 +16,10 @@ if ($hassidepre && !$hassidepost) {
     $bodyclasses[] = 'side-post-only';
 } else if (!$hassidepost && !$hassidepre) {
     $bodyclasses[] = 'content-only';
+}
+
+if ($hascustommenu) {
+    $bodyclasses[] = 'has-custom-menu';
 }
 
 echo $OUTPUT->doctype() ?>
@@ -42,6 +49,9 @@ echo $OUTPUT->doctype() ?>
           }
           echo $PAGE->headingmenu; ?>
         </div>
+        <?php if ($hascustommenu) { ?>
+        <div id="custommenu"><?php echo $custommenu; ?></div>
+        <?php } ?>
       <?php } ?>
     </div>
 
@@ -79,20 +89,24 @@ echo $OUTPUT->doctype() ?>
         </div>
     </div>
     
+    <div class="clearfix"></div>
 <?php if ($hasfooter) { ?>
   
     <div id="page-footer" class="clearfix">
       <p class="helplink"><?php echo page_doc_link(get_string('moodledocslink')) ?></p>
       <?php echo $OUTPUT->login_info(); ?>
     </div>
-
+    
+    
 <?php }
 
 if ($hasheading || $hasnavbar) { ?>
   
+ 	<div class="myclear"></div>
   </div> <!-- END #page -->
+  
 </div> <!-- END #page-wrapper -->
-
+	
 <?php } ?>
 
 <div id="page-footer-bottom">

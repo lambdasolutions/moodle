@@ -90,7 +90,7 @@ class enrol_mnet_mnetservice_enrol {
                 unset($course->customint1); // the client does not need to know this
                 $context = get_context_instance(CONTEXT_COURSE, $course->remoteid);
                 // Rewrite file URLs so that they are correct
-                $course->summary = file_rewrite_pluginfile_urls($course->summary, 'pluginfile.php', $context->id, 'course', 'summary');
+                $course->summary = file_rewrite_pluginfile_urls($course->summary, 'pluginfile.php', $context->id, 'course', 'summary', false);
                 $courses[$course->remoteid] = $course;
             }
         }
@@ -145,7 +145,9 @@ class enrol_mnet_mnetservice_enrol {
             // users {@link http://tracker.moodle.org/browse/MDL-21327}
             $user = mnet_strip_user((object)$userdata, mnet_fields_to_import($client));
             $user->mnethostid = $client->id;
-            if (!$user->id = $DB->insert_record('user', $user)) {
+            try {
+                $user->id = $DB->insert_record('user', $user);
+            } catch (Exception $e) {
                 throw new mnet_server_exception(5011, 'couldnotcreateuser', 'enrol_mnet');
             }
         }
@@ -216,7 +218,7 @@ class enrol_mnet_mnetservice_enrol {
         $user = $DB->get_record('user', array('username'=>$username, 'mnethostid'=>$client->id));
 
         if ($user === false) {
-            throw new mnet_exception(5014, 'usernotfound', 'enrol_mnet');
+            throw new mnet_server_exception(5014, 'usernotfound', 'enrol_mnet');
         }
 
         if (! $course = $DB->get_record('course', array('id'=>$courseid))) {
@@ -310,7 +312,7 @@ class enrol_mnet_mnetservice_enrol {
      * @return array
      */
     public function course_enrolments($courseid, $roles=null) {
-        global $DB;
+        global $DB, $CFG;
 
         if (!$client = get_mnet_remote_client()) {
             die('Callable via XML-RPC only');
@@ -323,11 +325,12 @@ class enrol_mnet_mnetservice_enrol {
                   JOIN {role} r ON e.roleid = r.id
                  WHERE u.mnethostid = :mnethostid
                        AND e.courseid = :courseid
-                       AND u.username != 'guest'
+                       AND u.id <> :guestid
                        AND u.confirmed = 1
                        AND u.deleted = 0";
         $params['mnethostid'] = $client->id;
         $params['courseid'] = $courseid;
+        $params['guestid'] = $CFG->siteguest;
 
         if (!is_null($roles)) {
             if (!is_array($roles)) {

@@ -99,18 +99,14 @@ function note_save(&$note) {
     if (empty($note->id)) {
         // insert new note
         $note->created = $note->lastmodified;
-        if ($id = $DB->insert_record('post', $note)) {
-            $note = $DB->get_record('post', array('id'=>$id));
-            $result = true;
-        } else {
-            $result = false;
-        }
+        $id = $DB->insert_record('post', $note);
+        $note = $DB->get_record('post', array('id'=>$id));
     } else {
         // update old note
-        $result = $DB->update_record('post', $note);
+        $DB->update_record('post', $note);
     }
     unset($note->module);
-    return $result;
+    return true;
 }
 
 /**
@@ -177,7 +173,7 @@ function note_print($note, $detail = NOTES_SHOW_FULL) {
     $context = get_context_instance(CONTEXT_COURSE, $note->courseid);
     $systemcontext = get_context_instance(CONTEXT_SYSTEM);
 
-    $authoring = new object();
+    $authoring = new stdClass();
     $authoring->name = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.$author->id.'&amp;course='.$note->courseid.'">'.fullname($author).'</a>';
     $authoring->date = userdate($note->lastmodified);
 

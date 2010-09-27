@@ -43,9 +43,7 @@ $context = get_context_instance(CONTEXT_COURSE, $course->id);
 
 if (($marker >=0) && has_capability('moodle/course:setcurrentsection', $context) && confirm_sesskey()) {
     $course->marker = $marker;
-    if (! $DB->set_field("course", "marker", $marker, array("id"=>$course->id))) {
-        print_error("cannotmarktopic");
-    }
+    $DB->set_field("course", "marker", $marker, array("id"=>$course->id));
 }
 
 $streditsummary  = get_string('editsummary');
@@ -105,7 +103,7 @@ if ($thissection->summary or $thissection->sequence or $PAGE->user_is_editing())
 
     $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
     $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
-    $summaryformatoptions = new object();
+    $summaryformatoptions = new stdClass();
     $summaryformatoptions->noclean = true;
     echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
 
@@ -154,13 +152,7 @@ while ($section <= $course->numsections) {
 
     if (!empty($displaysection) and $displaysection != $section) {  // Check this topic is visible
         if ($showsection) {
-            $strsummary = strip_tags(format_string($thissection->summary,true));
-            if (strlen($strsummary) < 57) {
-                $strsummary = ' - '.$strsummary;
-            } else {
-                $strsummary = ' - '.substr($strsummary, 0, 60).'...';
-            }
-            $sectionmenu[$section] = s($section.$strsummary);
+            $sectionmenu[$section] = get_section_name($course, $thissection);
         }
         $section++;
         continue;
@@ -233,7 +225,7 @@ while ($section <= $course->numsections) {
             if ($thissection->summary) {
                 $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
                 $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
-                $summaryformatoptions = new object();
+                $summaryformatoptions = new stdClass();
                 $summaryformatoptions->noclean = true;
                 echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
             } else {

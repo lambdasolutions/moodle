@@ -29,28 +29,41 @@ list($context, $course, $cm) = get_context_info_array($contextid);
 $PAGE->set_context($context);
 $PAGE->set_url('/comment/comment_ajax.php');
 
-require_login($course, true, $cm);
+$action    = optional_param('action',    '', PARAM_ALPHA);
+
+// XXX: display comments in frontpage without login
+if ($context->id != get_context_instance(CONTEXT_COURSE, SITEID)->id
+    or $action == 'add'
+    or $action == 'delete') {
+    $ignore_permission = false;
+    require_login($course, true, $cm);
+} else {
+    $ignore_permission = true;
+}
 require_sesskey();
 
-$action    = optional_param('action',    '', PARAM_ALPHA);
 $area      = optional_param('area',      '', PARAM_ALPHAEXT);
 $client_id = optional_param('client_id', '', PARAM_RAW);
 $commentid = optional_param('commentid', -1, PARAM_INT);
 $content   = optional_param('content',   '', PARAM_RAW);
 $itemid    = optional_param('itemid',    '', PARAM_INT);
 $page      = optional_param('page',      0,  PARAM_INT);
+$component = optional_param('component', '',  PARAM_ALPHAEXT);
 
 echo $OUTPUT->header(); // send headers
 
 // initilising comment object
 if (!empty($client_id)) {
-    $args = new stdclass;
+    $args = new stdClass();
     $args->context   = $context;
     $args->course    = $course;
     $args->cm        = $cm;
     $args->area      = $area;
     $args->itemid    = $itemid;
     $args->client_id = $client_id;
+    $args->component = $component;
+    // only for comments in frontpage
+    $args->ignore_permission = $ignore_permission;
     $manager = new comment($args);
 } else {
     die;

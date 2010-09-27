@@ -110,22 +110,21 @@ function chat_add_instance($chat) {
 
     $chat->timemodified = time();
 
-    if ($returnid = $DB->insert_record("chat", $chat)) {
+    $returnid = $DB->insert_record("chat", $chat);
 
-        $event = NULL;
-        $event->name        = $chat->name;
-        $event->description = format_module_intro('chat', $chat, $chat->coursemodule);
-        $event->courseid    = $chat->course;
-        $event->groupid     = 0;
-        $event->userid      = 0;
-        $event->modulename  = 'chat';
-        $event->instance    = $returnid;
-        $event->eventtype   = 'chattime';
-        $event->timestart   = $chat->chattime;
-        $event->timeduration = 0;
+    $event = NULL;
+    $event->name        = $chat->name;
+    $event->description = format_module_intro('chat', $chat, $chat->coursemodule);
+    $event->courseid    = $chat->course;
+    $event->groupid     = 0;
+    $event->userid      = 0;
+    $event->modulename  = 'chat';
+    $event->instance    = $returnid;
+    $event->eventtype   = 'chattime';
+    $event->timestart   = $chat->chattime;
+    $event->timeduration = 0;
 
-        calendar_event::create($event);
-    }
+    calendar_event::create($event);
 
     return $returnid;
 }
@@ -137,7 +136,7 @@ function chat_add_instance($chat) {
  *
  * @global object
  * @param object $chat
- * @return int
+ * @return bool
  */
 function chat_update_instance($chat) {
     global $DB;
@@ -146,22 +145,21 @@ function chat_update_instance($chat) {
     $chat->id = $chat->instance;
 
 
-    if ($returnid = $DB->update_record("chat", $chat)) {
+    $DB->update_record("chat", $chat);
 
-        $event = new object();
+    $event = new stdClass();
 
-        if ($event->id = $DB->get_field('event', 'id', array('modulename'=>'chat', 'instance'=>$chat->id))) {
+    if ($event->id = $DB->get_field('event', 'id', array('modulename'=>'chat', 'instance'=>$chat->id))) {
 
-            $event->name        = $chat->name;
-            $event->description = format_module_intro('chat', $chat, $chat->coursemodule);
-            $event->timestart   = $chat->chattime;
+        $event->name        = $chat->name;
+        $event->description = format_module_intro('chat', $chat, $chat->coursemodule);
+        $event->timestart   = $chat->chattime;
 
-            $calendarevent = calendar_event::load($event->id);
-            $calendarevent->update($event);
-        }
+        $calendarevent = calendar_event::load($event->id);
+        $calendarevent->update($event);
     }
 
-    return $returnid;
+    return true;
 }
 
 /**
@@ -246,7 +244,7 @@ function chat_user_complete($course, $user, $mod, $chat) {
  * @global object
  * @global object
  * @param object $course
- * @param array $viewfullnames
+ * @param bool $viewfullnames
  * @param int|string $timestart Timestamp
  * @return bool
  */
@@ -485,7 +483,7 @@ function chat_refresh_events($courseid = 0) {
 
     foreach ($chats as $chat) {
         $cm = get_coursemodule_from_id('chat', $chat->id);
-        $event = new object();
+        $event = new stdClass();
         $event->name        = $chat->name;
         $event->description = format_module_intro('chat', $chat, $cm->id);
         $event->timestart   = $chat->chattime;
@@ -610,7 +608,7 @@ function chat_login_user($chatid, $version, $groupid, $course) {
         $DB->update_record('chat_users', $chatuser);
 
     } else {
-        $chatuser = new object();
+        $chatuser = new stdClass();
         $chatuser->chatid   = $chatid;
         $chatuser->userid   = $USER->id;
         $chatuser->groupid  = $groupid;
@@ -634,7 +632,7 @@ function chat_login_user($chatid, $version, $groupid, $course) {
         if ($version == 'sockets') {
             // do not send 'enter' message, chatd will do it
         } else {
-            $message = new object();
+            $message = new stdClass();
             $message->chatid    = $chatuser->chatid;
             $message->userid    = $chatuser->userid;
             $message->groupid   = $groupid;
@@ -669,7 +667,7 @@ function chat_delete_old_users() {
     if ($oldusers = $DB->get_records_select('chat_users', $query, $params) ) {
         $DB->delete_records_select('chat_users', $query, $params);
         foreach ($oldusers as $olduser) {
-            $message = new object();
+            $message = new stdClass();
             $message->chatid    = $olduser->chatid;
             $message->userid    = $olduser->userid;
             $message->groupid   = $olduser->groupid;
@@ -727,7 +725,7 @@ function chat_update_chat_times($chatid=0) {
         }
         $DB->update_record("chat", $chat);
 
-        $event = new object();           // Update calendar too
+        $event = new stdClass();           // Update calendar too
 
         $cond = "modulename='chat' AND instance = :chatid AND timestart <> :chattime";
         $params = array('chattime'=>$chat->chattime, 'chatid'=>$chatid);
@@ -753,7 +751,7 @@ function chat_update_chat_times($chatid=0) {
 function chat_format_message_manually($message, $courseid, $sender, $currentuser, $chat_lastrow=NULL) {
     global $CFG, $USER, $OUTPUT;
 
-    $output = new object();
+    $output = new stdClass();
     $output->beep = false;       // by default
     $output->refreshusers = false; // by default
 
@@ -804,7 +802,7 @@ function chat_format_message_manually($message, $courseid, $sender, $currentuser
 
     /// Parse the text to clean and filter it
 
-    $options = new object();
+    $options = new stdClass();
     $options->para = false;
     $text = format_text($text, FORMAT_MOODLE, $options, $courseid);
 
@@ -910,7 +908,7 @@ function chat_format_message_theme ($message, $courseid, $currentuser, $theme = 
 
     static $users;     // Cache user lookups
 
-    $result = new object();
+    $result = new stdClass();
 
     if (file_exists($CFG->dirroot . '/mod/chat/gui_ajax/theme/'.$theme.'/config.php')) {
         include($CFG->dirroot . '/mod/chat/gui_ajax/theme/'.$theme.'/config.php');
@@ -961,7 +959,7 @@ function chat_format_message_theme ($message, $courseid, $currentuser, $theme = 
     $text = $message->message;
 
     /// Parse the text to clean and filter it
-    $options = new object();
+    $options = new stdClass();
     $options->para = false;
     $text = format_text($text, FORMAT_MOODLE, $options, $courseid);
 
@@ -1078,7 +1076,7 @@ function chat_format_userlist($users, $course) {
  */
 function chat_print_error($level, $msg) {
     header('Content-Length: ' . ob_get_length() );
-    $error = new stdclass;
+    $error = new stdClass();
     $error->level = $level;
     $error->msg   = $msg;
     $response['error'] = $error;
@@ -1161,7 +1159,7 @@ function chat_reset_course_form_defaults($course) {
 }
 
 /**
- * Actual implementation of the rest coures functionality, delete all the
+ * Actual implementation of the reset course functionality, delete all the
  * chat messages for course $data->courseid.
  *
  * @global object
@@ -1254,7 +1252,7 @@ function chat_extend_navigation($navigation, $course, $module, $cm) {
         $links[] = new action_link($url, get_string('noframesjs', 'message'), $action);
 
         foreach ($links as $link) {
-            $navigation->add($link->text, $link, navigation_node::TYPE_ACTIVITY, null ,null, new pix_icon('c/group' , ''));
+            $navigation->add($link->text, $link, navigation_node::TYPE_SETTING, null ,null, new pix_icon('c/group' , ''));
         }
     }
 

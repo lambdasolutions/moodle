@@ -62,13 +62,11 @@ class core_course_renderer extends plugin_renderer_base {
      * @return string
      */
     public function course_category_tree(array $structure) {
-        $this->strings->allowguests = get_string('allowguests');
-        $this->strings->requireskey = get_string('requireskey');
         $this->strings->summary = get_string('summary');
 
         // Generate an id and the required JS call to make this a nice widget
         $id = html_writer::random_id('course_category_tree');
-        $this->page->requires->js_init_call('M.util.init_toggle_class_on_click', array($id, '.category.with_children', 'collapsed'));
+        $this->page->requires->js_init_call('M.util.init_toggle_class_on_click', array($id, '.category.with_children .category_label', 'collapsed'));
 
         // Start content generation
         $content = html_writer::start_tag('div', array('class'=>'course_category_tree', 'id'=>$id));
@@ -122,21 +120,26 @@ class core_course_renderer extends plugin_renderer_base {
             $coursecount = 0;
             foreach ($category->courses as $course) {
                 $classes = array('course');
+                $linkclass = 'course_link';
+                if (!$course->visible) {
+                    $linkclass .= ' dimmed';
+                }
                 $coursecount ++;
                 $classes[] = ($coursecount%2)?'odd':'even';
                 $content .= html_writer::start_tag('div', array('class'=>join(' ', $classes)));
-                $content .= html_writer::link(new moodle_url('/course/view.php', array('id'=>$course->id)), s($course->fullname), array('class'=>'course_link'));
+                $content .= html_writer::link(new moodle_url('/course/view.php', array('id'=>$course->id)), format_text($course->fullname), array('class'=>$linkclass));
                 $content .= html_writer::start_tag('div', array('class'=>'course_info clearfix'));
 
-                //TODO: add enrol info
-                $content .= html_writer::tag('div', '', array('class'=>'course_info_spacer'));
-                $content .= html_writer::tag('div', '', array('class'=>'course_info_spacer'));
+                // print enrol info
+                if ($icons = enrol_get_course_info_icons($course)) {
+                    foreach ($icons as $pix_icon) {
+                        $content .= $this->render($pix_icon);
+                    }
+                }
 
                 if ($course->summary) {
                     $image = html_writer::empty_tag('img', array('src'=>$this->output->pix_url('i/info'), 'alt'=>$this->strings->summary));
                     $content .= html_writer::link(new moodle_url('/course/info.php', array('id'=>$course->id)), $image, array('title'=>$this->strings->summary));
-                } else {
-                    $content .= html_writer::tag('div', '', array('class'=>'course_info_spacer'));
                 }
                 $content .= html_writer::end_tag('div');
                 $content .= html_writer::end_tag('div');

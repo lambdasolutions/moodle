@@ -20,7 +20,7 @@
  *
  * @package    mod
  * @subpackage lesson
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
+ * @copyright  1999 onwards Martin Dougiamas  {@link http://moodle.com}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  **/
 
@@ -55,7 +55,7 @@ function lesson_add_instance($data, $mform) {
 
     if ($filename = $mform->get_new_filename('mediafilepicker')) {
         if ($file = $mform->save_stored_file('mediafilepicker', $context->id, 'mod_lesson', 'mediafile', 0, '/', $filename)) {
-            $DB->set_field('lesson', 'mediafile', $file->get_filename(), array('id'=>$lesson->id));
+            $DB->set_field('lesson', 'mediafile', '/'.$file->get_filename(), array('id'=>$lesson->id));
         }
     }
 
@@ -89,7 +89,7 @@ function lesson_update_instance($data, $mform) {
     $context = get_context_instance(CONTEXT_MODULE, $cmid);
     if ($filename = $mform->get_new_filename('mediafilepicker')) {
         if ($file = $mform->save_stored_file('mediafilepicker', $context->id, 'mod_lesson', 'mediafile', 0, '/', $filename, true)) {
-            $DB->set_field('lesson', 'mediafile', $file->get_filename(), array('id'=>$data->id));
+            $DB->set_field('lesson', 'mediafile', '/'.$file->get_filename(), array('id'=>$data->id));
         } else {
             $DB->set_field('lesson', 'mediafile', '', array('id'=>$data->id));
         }
@@ -155,12 +155,12 @@ function lesson_delete_course($course, $feedback=true) {
  * @return object
  */
 function lesson_user_outline($course, $user, $mod, $lesson) {
-    global $DB;
-
     global $CFG;
+
     require_once("$CFG->libdir/gradelib.php");
     $grades = grade_get_grades($course->id, 'mod', 'lesson', $lesson->id, $user->id);
 
+    $return = new stdClass();
     if (empty($grades->items[0]->grades)) {
         $return->info = get_string("no")." ".get_string("attempts", "lesson");
     } else {
@@ -403,7 +403,7 @@ function lesson_update_grades($lesson, $userid=0, $nullifnone=true) {
         lesson_grade_item_update($lesson, $grades);
 
     } else if ($userid and $nullifnone) {
-        $grade = new object();
+        $grade = new stdClass();
         $grade->userid   = $userid;
         $grade->rawgrade = NULL;
         lesson_grade_item_update($lesson, $grade);
@@ -695,7 +695,7 @@ function lesson_reset_gradebook($courseid, $type='') {
 }
 
 /**
- * Actual implementation of the rest coures functionality, delete all the
+ * Actual implementation of the reset course functionality, delete all the
  * lesson attempts for course $data->courseid.
  *
  * @global stdClass

@@ -108,7 +108,7 @@ function message_print_contact_selector($countunreadtotal, $usergroup, $user1, $
 
                 message_print_participants($coursecontexts[$courseidtoshow], $courseidtoshow, $PAGE->url, $showcontactactionlinks);
             } else {
-                //shouldnt get here. User trying to access a course theyre not in perhaps.
+                //shouldn't get here. User trying to access a course they're not in perhaps.
                 add_to_log(SITEID, 'message', 'view', 'index.php', $usergroup);
             }
         }
@@ -570,7 +570,7 @@ function message_print_search($advancedsearch = false, $user1=null) {
 }
 
 function message_print_settings() {
-    global $USER, $OUTPUT;
+    global $USER, $OUTPUT, $PAGE;
 
     if ($frm = data_submitted() and confirm_sesskey()) {
 
@@ -869,7 +869,7 @@ function message_print_search_results($frm, $showicontext=false, $user1=null) {
                 echo '<td class="summary">'.message_get_fragment($message->fullmessage, $keywords);
                 echo '<br /><div class="link">';
 
-                //find the user involved that isnt the current user
+                //find the user involved that isn't the current user
                 $user2id = null;
                 if ($user1->id == $message->useridto) {
                     $user2id = $message->useridfrom;
@@ -896,7 +896,7 @@ function message_print_search_results($frm, $showicontext=false, $user1=null) {
     }
 
     if (!$personsearch && !$messagesearch) {
-        //they didnt enter any search terms
+        //they didn't enter any search terms
         echo $OUTPUT->notification(get_string('emptysearchstring', 'message'));
     }
 
@@ -1091,7 +1091,6 @@ function message_search_users($courseid, $searchtext, $sort='', $exceptions='') 
     global $CFG, $USER, $DB;
 
     $fullname = $DB->sql_fullname();
-    $LIKE     = $DB->sql_ilike();
 
     if (!empty($exceptions)) {
         $except = ' AND u.id NOT IN ('. $exceptions .') ';
@@ -1113,7 +1112,7 @@ function message_search_users($courseid, $searchtext, $sort='', $exceptions='') 
                                        LEFT JOIN {message_contacts} mc
                                             ON mc.contactid = u.id AND mc.userid = ?
                                       WHERE u.deleted = '0' AND u.confirmed = '1'
-                                            AND ($fullname $LIKE ?)
+                                            AND (".$DB->sql_like($fullname, '?', false).")
                                             $except
                                      $order", $params);
     } else {
@@ -1121,7 +1120,7 @@ function message_search_users($courseid, $searchtext, $sort='', $exceptions='') 
         $context = get_context_instance(CONTEXT_COURSE, $courseid);
         $contextlists = get_related_contexts_string($context);
 
-        // everyone who has a role assignement in this course or higher
+        // everyone who has a role assignment in this course or higher
         $params = array($USER->id, "%$searchtext%");
         $users = $DB->get_records_sql("SELECT $ufields,
                                          FROM {user} u, mc.id as contactlistid, mc.blocked
@@ -1130,7 +1129,7 @@ function message_search_users($courseid, $searchtext, $sort='', $exceptions='') 
                                               ON mc.contactid = u.id AND mc.userid = ?
                                         WHERE u.deleted = '0' AND u.confirmed = '1'
                                               AND ra.contextid $contextlists
-                                              AND ($fullname $LIKE ?)
+                                              AND (".$DB->sql_like($fullname, '?', false).")
                                               $except
                                        $order", $params);
 
@@ -1156,8 +1155,6 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
         $NOTREGEXP = $DB->sql_regex(false);
     }
 
-    $LIKE = $DB->sql_ilike();
-
     $searchcond = array();
     $params = array();
     $i = 0;
@@ -1174,7 +1171,7 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
     foreach ($searchterms as $searchterm) {
         $i++;
 
-        $NOT = ''; /// Initially we aren't going to perform NOT LIKE searches, only MSSQL and Oracle
+        $NOT = false; /// Initially we aren't going to perform NOT LIKE searches, only MSSQL and Oracle
 
         if ($dropshortwords && strlen($searchterm) < 2) {
             continue;
@@ -1183,7 +1180,7 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
     /// simpler LIKE search
         if (!$DB->sql_regex_supported()) {
             if (substr($searchterm, 0, 1) == '-') {
-                $NOT = ' NOT ';
+                $NOT = true;
             }
             $searchterm = trim($searchterm, '+-');
         }
@@ -1201,13 +1198,13 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
             $params['ss'.$i] = "(^|[^a-zA-Z0-9])$searchterm([^a-zA-Z0-9]|$)";
 
         } else {
-            $searchcond[] = "m.fullmessage $NOT $LIKE :ss$i";
+            $searchcond[] = $DB->sql_like("m.fullmessage", ":ss$i", false, true, $NOT);
             $params['ss'.$i] = "%$searchterm%";
         }
     }
 
     if (empty($searchcond)) {
-        $searchcond = " m.fullmessage $LIKE :ss1";
+        $searchcond = " ".$DB->sql_like('m.fullmessage', ':ss1', false);
         $params['ss1'] = "%";
     } else {
         $searchcond = implode(" AND ", $searchcond);
@@ -1421,8 +1418,8 @@ function message_print_message_history($user1,$user2,$search='',$messagelimit=0,
     echo '<div class="heading">'.fullname($user1).'</div>';
     echo '</td>';
     echo '<td align="center">';
-    echo '<img src="'.$CFG->wwwroot.'/pix/t/left.gif" alt="'.get_string('from').'" />';
-    echo '<img src="'.$CFG->wwwroot.'/pix/t/right.gif" alt="'.get_string('to').'" />';
+    echo '<img src="'.$OUTPUT->pix_url('t/left').'" alt="'.get_string('from').'" />';
+    echo '<img src="'.$OUTPUT->pix_url('t/right').'" alt="'.get_string('to').'" />';
     echo '</td>';
     echo '<td align="center" id="user2">';
     echo $OUTPUT->user_picture($user2, array('size'=>100, 'courseid'=>SITEID));
@@ -1455,6 +1452,7 @@ function message_print_message_history($user1,$user2,$search='',$messagelimit=0,
     if ($messages = message_get_history($user1, $user2, $messagelimit)) {
         $tablecontents = '';
 
+        $current = new stdClass();
         $current->mday = '';
         $current->month = '';
         $current->year = '';
@@ -1495,7 +1493,7 @@ function message_format_message(&$message, &$user, $format='', $keywords='', $cl
         }
     }
     $time = userdate($message->timecreated, $dateformat);
-    $options = new object();
+    $options = new stdClass();
     $options->para = false;
     $messagetext = format_text($message->fullmessage, $message->fullmessageformat, $options);
     if ($keywords) {
@@ -1512,7 +1510,7 @@ function message_format_message(&$message, &$user, $format='', $keywords='', $cl
 function message_post_message($userfrom, $userto, $message, $format, $messagetype) {
     global $CFG, $SITE, $USER, $DB;
 
-    $eventdata = new object();
+    $eventdata = new stdClass();
     $eventdata->component        = 'moodle';
     $eventdata->name             = 'instantmessage';
     $eventdata->userfrom         = $userfrom;
@@ -1637,18 +1635,15 @@ function message_move_userfrom_unread2read($userid) {
 
     global $DB;
 
-    // move all unread messages from message table to messasge_read
+    // move all unread messages from message table to message_read
     if ($messages = $DB->get_records_select('message', 'useridfrom = ?', array($userid), 'timecreated')) {
         foreach ($messages as $message) {
             $message->timeread = 0; //the message was never read
             $messageid = $message->id;
             unset($message->id);
-            if ($DB->insert_record('message_read', $message)) {
-                $DB->delete_records('message', array('id' => $messageid));
-                $DB->delete_records('message_working', array('unreadmessageid' => $messageid));
-            } else {
-                return false;
-            }
+            $DB->insert_record('message_read', $message);
+            $DB->delete_records('message', array('id' => $messageid));
+            $DB->delete_records('message_working', array('unreadmessageid' => $messageid));
         }
     }
     return true;
@@ -1678,9 +1673,8 @@ function message_get_popup_messages($destuserid, $fromuserid=NULL){
             //delete what we've processed and check if can move message
             $DB->delete_records('message_working', array('id' => $msgp->id));
             if ( $DB->count_records('message_working', array('unreadmessageid'=>$messageid)) == 0){
-                if ($DB->insert_record('message_read', $message)) {
-                    $DB->delete_records('message', array('id' => $messageid));
-                }
+                $DB->insert_record('message_read', $message);
+                $DB->delete_records('message', array('id' => $messageid));
             }
         }
     }
@@ -1706,9 +1700,8 @@ function message_mark_messages_read($touserid, $fromuserid){
 
         //have all message processors completed dealing with this message?
         if ( $DB->count_records('message_working', array('unreadmessageid'=>$messageid)) == 0){
-            if ($DB->insert_record('message_read', $message)) {
-                $DB->delete_records('message', array('id' => $messageid));
-            }
+            $DB->insert_record('message_read', $message);
+            $DB->delete_records('message', array('id' => $messageid));
         }
     }
 }

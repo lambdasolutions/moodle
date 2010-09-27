@@ -86,8 +86,8 @@ class sqlite_sql_generator extends sql_generator {
         }
 
         // From http://sqlite.org/autoinc.html
-        $value = (int)$this->mdb->get_field_sql('SELECT MAX(id) FROM {'.$tablename.'}');
-        return array("UPDATE sqlite_sequence SET seq=$value WHERE name='$this->prefix$tablename'");
+        $value = (int)$this->mdb->get_field_sql('SELECT MAX(id) FROM {'.$table.'}');
+        return array("UPDATE sqlite_sequence SET seq=$value WHERE name='{$this->prefix}{$table}'");
     }
 
     /**
@@ -400,7 +400,7 @@ class sqlite_sql_generator extends sql_generator {
         foreach ($columns as $key => $column) {
             // Enum found, let's add it to the constraints list
             if (!empty($column->enums) && (!$filter || $column->name == $filter)) {
-                    $result = new object;
+                    $result = new stdClass();
                     $result->name = $key;
                     $result->description = implode(', ', $column->enums);
                     $results[$key] = $result;

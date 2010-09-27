@@ -19,10 +19,10 @@
  * Google Docs Plugin
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dan Poltawski <talktodan@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage googledocs
+ * @copyright  2009 Dan Poltawski <talktodan@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once($CFG->libdir.'/googleapi.php');
@@ -66,7 +66,7 @@ class repository_googledocs extends repository {
         global $CFG;
         if($ajax){
             $ret = array();
-            $popup_btn = new stdclass;
+            $popup_btn = new stdClass();
             $popup_btn->type = 'popup';
             $returnurl = $CFG->wwwroot.'/repository/repository_callback.php?callback=yes&repo_id='.$this->id;
             $popup_btn->url = google_authsub::login_url($returnurl, google_docs::REALM);

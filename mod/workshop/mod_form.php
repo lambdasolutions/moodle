@@ -55,7 +55,7 @@ class mod_workshop_mod_form extends moodleform_mod {
         if (!empty($CFG->formatstringstriptags)) {
             $mform->setType('name', PARAM_TEXT);
         } else {
-            $mform->setType('name', PARAM_CLEAN);
+            $mform->setType('name', PARAM_CLEANHTML);
         }
         $mform->addRule('name', null, 'required', null, 'client');
         $mform->addRule('name', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
@@ -169,7 +169,7 @@ class mod_workshop_mod_form extends moodleform_mod {
         $mform->addElement('date_time_selector', 'assessmentend', $label, array('optional' => true));
         $mform->setAdvanced('assessmentend');
 
-        // Common module settinga, Restrict availability, Activity completion etc. ----
+        // Common module settings, Restrict availability, Activity completion etc. ----
         $features = array('groups'=>true, 'groupings'=>true, 'groupmembersonly'=>true,
                 'outcomes'=>true, 'gradecat'=>false, 'idnumber'=>false);
 

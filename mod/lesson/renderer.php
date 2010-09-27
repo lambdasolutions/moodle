@@ -284,7 +284,7 @@ class mod_lesson_renderer extends plugin_renderer_base {
             $cell = new html_table_cell();
             $cell->colspan = 2;
             $cell->style = 'text-align:center';
-            $cell->text = format_text($page->contents, $page->contentsformat, $options);
+            $cell->text = $page->contents;
             $pagetable->data[] = new html_table_row(array($cell));
 
             $cell = new html_table_cell();
@@ -516,7 +516,7 @@ class mod_lesson_renderer extends plugin_renderer_base {
             }
 
             // collect all of the branch tables viewed
-            if ($viewedbranches = $DB->get_records("lesson_branch", array ("lessonid"=>$lesson->id, "userid"=>$USER->id, "retry"=>$ntries), 'timeseen DESC', 'pageid, id')) {
+            if ($viewedbranches = $DB->get_records("lesson_branch", array ("lessonid"=>$lesson->id, "userid"=>$USER->id, "retry"=>$ntries), 'timeseen DESC', 'id, pageid')) {
                 $viewedpageids = array_merge($viewedpageids, array_keys($viewedbranches));
             }
 

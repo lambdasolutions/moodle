@@ -18,16 +18,21 @@
 /**
  * CLI sync for full category enrol synchronisation.
  *
+ * Sample execution:
+ * $sudo -u www-data /usr/bin/php /var/www/moodle/enrol/category/cli/sync.php
+ *
+ * Notes:
+ *   - it is required to use the web server account when executing PHP CLI scripts
+ *   - you need to change the "www-data" to match the apache user account
+ *   - use "su" if "sudo" not available
+ *
  * @package    enrol
  * @subpackage category
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-if (isset($_SERVER['REMOTE_ADDR'])) {
-    error_log("enrol/category/cli/sync.php can not be called from web server!");
-    exit;
-}
+define('CLI_SCRIPT', true);
 
 require(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
 require_once("$CFG->dirroot/enrol/category/locallib.php");

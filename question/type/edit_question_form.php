@@ -174,7 +174,7 @@ class question_edit_form extends moodleform {
 
         if (!empty($this->question->id)){
             $mform->addElement('header', 'createdmodifiedheader', get_string('createdmodifiedheader', 'question'));
-            $a = new object();
+            $a = new stdClass();
             if (!empty($this->question->createdby)){
                 $a->time = userdate($this->question->timecreated);
                 $a->user = fullname($DB->get_record('user', array('id' => $this->question->createdby)));
@@ -184,7 +184,7 @@ class question_edit_form extends moodleform {
             }
             $mform->addElement('static', 'created', get_string('created', 'question'), get_string('byandon', 'question', $a));
             if (!empty($this->question->modifiedby)){
-                $a = new object();
+                $a = new stdClass();
                 $a->time = userdate($this->question->timemodified);
                 $a->user = fullname($DB->get_record('user', array('id' => $this->question->modifiedby)));
                 $mform->addElement('static', 'modified', get_string('modified', 'question'), get_string('byandon', 'question', $a));
@@ -281,7 +281,7 @@ class question_edit_form extends moodleform {
     function get_per_answer_fields(&$mform, $label, $gradeoptions, &$repeatedoptions, &$answersoption) {
         $repeated = array();
         $repeated[] =& $mform->createElement('header', 'answerhdr', $label);
-        $repeated[] =& $mform->createElement('text', 'answer', get_string('answer', 'quiz'), array('size' => 50));
+        $repeated[] =& $mform->createElement('text', 'answer', get_string('answer', 'quiz'), array('size' => 80));
         $repeated[] =& $mform->createElement('select', 'fraction', get_string('grade'), $gradeoptions);
         $repeated[] =& $mform->createElement('editor', 'feedback', get_string('feedback', 'quiz'),
                                 array('course' => $this->coursefilesid), $this->editoroptions);
@@ -362,7 +362,7 @@ class question_edit_form extends moodleform {
         if (is_array($extra_question_fields) && !empty($question->options)) {
             array_shift($extra_question_fields);
             foreach ($extra_question_fields as $field) {
-                if (!empty($question->options->$field)) {
+                if (isset($question->options->$field)) {
                     $question->$field = $question->options->$field;
                 }
             }

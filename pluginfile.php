@@ -146,7 +146,7 @@ if ($component === 'blog') {
         //TODO: nobody implemented this yet in grade edit form!!
         send_file_not_found();
 
-        if ($CFG->forcelogin || $course->id !== SITEID) {
+        if ($CFG->forcelogin || $course->id != SITEID) {
             require_login($course);
         }
 
@@ -244,7 +244,7 @@ if ($component === 'blog') {
 
         // Respect forcelogin and require login unless this is the site.... it probably
         // should NEVER be the site
-        if ($CFG->forcelogin || $course->id !== SITEID) {
+        if ($CFG->forcelogin || $course->id != SITEID) {
             require_login($course);
         }
 
@@ -488,13 +488,17 @@ if ($component === 'blog') {
     } else if ($filearea === 'section') {
         if ($CFG->forcelogin) {
             require_login($course);
-        } else if ($course->id !== SITEID) {
+        } else if ($course->id != SITEID) {
             require_login($course);
         }
 
         $sectionid = (int)array_shift($args);
 
-        if ($course->numsections < $sectionid) {
+        if (!$section = $DB->get_record('course_sections', array('id'=>$sectionid, 'course'=>$course->id))) {
+            send_file_not_found();
+        }
+
+        if ($course->numsections < $section->section) {
             if (!has_capability('moodle/course:update', $context)) {
                 // disable access to invisible sections if can not edit course
                 // this is going to break some ugly hacks, but is necessary

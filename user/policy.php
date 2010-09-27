@@ -42,9 +42,7 @@ if (!isloggedin()) {
 
 if ($agree and confirm_sesskey()) {    // User has agreed
     if (!isguestuser()) {              // Don't remember guests
-        if (!$DB->set_field('user', 'policyagreed', 1, array('id'=>$USER->id))) {
-            print_error('cannotsaveagreement');
-        }
+        $DB->set_field('user', 'policyagreed', 1, array('id'=>$USER->id));
     }
     $USER->policyagreed = 1;
 
@@ -62,6 +60,7 @@ $strpolicyagree = get_string('policyagree');
 $strpolicyagreement = get_string('policyagreement');
 $strpolicyagreementclick = get_string('policyagreementclick');
 
+$PAGE->set_context(get_context_instance(CONTEXT_SYSTEM));
 $PAGE->set_title($strpolicyagreement);
 $PAGE->set_heading($SITE->fullname);
 $PAGE->navbar->add($strpolicyagreement);
@@ -82,7 +81,7 @@ echo '<a href="'.$CFG->sitepolicy.'" onclick="this.target=\'_blank\'">'.$strpoli
 echo '</object></div>';
 
 $formcontinue = new single_button(new moodle_url('policy.php', array('agree'=>1)), get_string('yes'));
-$formcancel = new single_button($CFG->wwwroot.'/login/logout.php', get_string('no'));
+$formcancel = new single_button(new moodle_url($CFG->wwwroot.'/login/logout.php', array('agree'=>0)), get_string('no'));
 echo $OUTPUT->confirm($strpolicyagree, $formcontinue, $formcancel);
 
 echo $OUTPUT->footer();

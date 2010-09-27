@@ -269,6 +269,7 @@ class portfolio_add_button {
         $url = new moodle_url('/portfolio/add.php');
         foreach ($this->callbackargs as $key => $value) {
             if (!empty($value) && !is_string($value) && !is_numeric($value)) {
+                $a = new stdClass();
                 $a->key = $key;
                 $a->value = print_r($value, true);
                 debugging(get_string('nonprimative', 'portfolio', $a));
@@ -950,7 +951,7 @@ function portfolio_cron() {
                 $e = portfolio_exporter::rewaken_object($d->id);
                 $e->process_stage_cleanup(true);
             } catch (Exception $e) {
-                mtrade('Exception thrown in portfolio cron while cleaning up ' . $d->id . ': ' . $e->getMessage());
+                mtrace('Exception thrown in portfolio cron while cleaning up ' . $d->id . ': ' . $e->getMessage());
             }
         }
     }
@@ -1102,7 +1103,7 @@ function portfolio_insane_notify_admins($insane, $instances=false) {
     $smallbody = get_string('insanebodysmall', 'portfolio', $a);
 
     foreach ($admins as $admin) {
-        $eventdata = new object();
+        $eventdata = new stdClass();
         $eventdata->modulename = 'portfolio';
         $eventdata->component = 'portfolio';
         $eventdata->name = 'notices';
@@ -1118,19 +1119,13 @@ function portfolio_insane_notify_admins($insane, $instances=false) {
 }
 
 function portfolio_export_pagesetup($PAGE, $caller) {
-    // for build navigation
-    if (!$course = $caller->get('course')) {
-        $course = $courseid;
-    }
-
-    // set up the course so that build_navigation works nice
-    $PAGE->set_course($course);
+    // set up the context so that build_navigation works nice
+    $caller->set_context($PAGE);
 
     list($extranav, $cm) = $caller->get_navigation();
 
     // and now we know the course for sure and maybe the cm, call require_login with it
-    // todo this will have to change when we have things exporting content outside the course context (eg blogs)
-    require_login($course, false, $cm);
+    require_login($PAGE->course, false, $cm);
 
     foreach ($extranav as $navitem) {
         $PAGE->navbar->add($navitem['name']);

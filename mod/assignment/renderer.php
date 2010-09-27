@@ -59,15 +59,16 @@ class mod_assignment_renderer extends plugin_renderer_base {
 
         $result = '<ul>';
         foreach ($dir['subdirs'] as $subdir) {
-            $image = $this->output->pix_icon("/f/folder", $subdir['dirname'], 'moodle', array('class'=>'icon'));
+            $image = $this->output->pix_icon("f/folder", $subdir['dirname'], 'moodle', array('class'=>'icon'));
             $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.s($subdir['dirname']).'</div> '.$this->htmllize_tree($tree, $subdir).'</li>';
         }
 
         foreach ($dir['files'] as $file) {
             $filename = $file->get_filename();
-            $icon = substr(mimeinfo("icon", $filename), 0, -4);
-            $image = $this->output->pix_icon("/f/$icon", $filename, 'moodle', array('class'=>'icon'));
-            $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.$file->fileurl.' '.$file->portfoliobutton.'</div></li>';
+            $icon = mimeinfo("icon", $filename);
+            $plagiarsmlinks = plagiarism_get_links(array('userid'=>$file->get_userid(), 'file'=>$file, 'cmid'=>$tree->cm->id, 'course'=>$tree->course));
+            $image = $this->output->pix_icon("f/$icon", $filename, 'moodle', array('class'=>'icon'));
+            $result .= '<li yuiConfig=\''.json_encode($yuiconfig).'\'><div>'.$image.' '.$file->fileurl.' '.$plagiarsmlinks.$file->portfoliobutton.'</div></li>';
         }
 
         $result .= '</ul>';
@@ -80,6 +81,8 @@ class assignment_files implements renderable {
     public $context;
     public $dir;
     public $portfolioform;
+    public $cm;
+    public $course;
     public function __construct($context, $itemid, $filearea='submission') {
         global $USER, $CFG;
         require_once($CFG->libdir . '/portfoliolib.php');

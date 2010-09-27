@@ -20,11 +20,11 @@
  * This is a repository class used to browse Amazon S3 content.
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage s3
+ * @copyright  2009 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once('S3.php');
@@ -73,7 +73,7 @@ class repository_s3 extends repository {
                 $folder = array(
                     'title' => $bucket,
                     'children' => array(),
-                    'thumbnail'=>$OUTPUT->pix_url('f/folder-32'),
+                    'thumbnail'=>$OUTPUT->pix_url('f/folder-32')->out(false),
                     'path'=>$bucket
                     );
                 $tree[] = $folder;
@@ -87,7 +87,7 @@ class repository_s3 extends repository {
                     'size'=>$file['size'],
                     'date'=>userdate($file['time']),
                     'source'=>$path.'/'.$file['name'],
-                    'thumbnail' => $OUTPUT->pix_url(file_extension_icon($file['name'], 32))
+                    'thumbnail' => $OUTPUT->pix_url(file_extension_icon($file['name'], 32))->out(false)
                     );
             }
         }

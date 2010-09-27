@@ -16,7 +16,7 @@ M.core_rating={
     },
 
     submit_rating : function(e, selectnode){
-        var theinputs = selectnode.ancestor('form').all('.ratinginput')
+        var theinputs = selectnode.ancestor('form').all('.ratinginput');
         var thedata = [];
 
         var inputssize = theinputs.size();
@@ -26,7 +26,7 @@ M.core_rating={
                 thedata[theinputs.item(i).get("name")] = theinputs.item(i).get("value");
             }
         }
-        
+
         this.Y.io.queue.stop();
         this.transaction.push({transaction:this.Y.io.queue(M.cfg.wwwroot+'/rating/rate_ajax.php', {
             method : 'POST',
@@ -42,14 +42,19 @@ M.core_rating={
                         var data = this.Y.JSON.parse(outcome.responseText);
                         if (data.success){
                             //if the user has access to the aggregate then update it
-                            if (data.itemid && data.aggregate && data.count) {
+                            if (data.itemid) { //do not test data.aggregate or data.count otherwise it doesn't refresh value=0 or no value
                                 var itemid = data.itemid;
-                                
+
                                 var node = this.Y.one('#ratingaggregate'+itemid);
                                 node.set('innerHTML',data.aggregate);
 
+                                //empty the count value if no ratings
                                 var node = this.Y.one('#ratingcount'+itemid);
-                                node.set('innerHTML',"("+data.count+")");
+                                if (data.count > 0) {
+                                    node.set('innerHTML',"("+data.count+")");
+                                } else {
+                                    node.set('innerHTML',"");
+                                }
                             }
                             return true;
                         }
@@ -69,4 +74,4 @@ M.core_rating={
         }),complete:false,outcome:null});
         this.Y.io.queue.start();
     }
-}
+};

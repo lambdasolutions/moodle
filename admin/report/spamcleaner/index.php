@@ -148,19 +148,20 @@ function search_spammers($keywords) {
         $keywords = array($keywords);    // Make it into an array
     }
 
-     $like = $DB->sql_ilike();
+    $params = array('userid'=>$USER->id);
 
     $keywordfull = array();
     foreach ($keywords as $keyword) {
-        $keyword = addslashes($keyword);   // Just to be safe
-        $keywordfull[] = " description $like '%$keyword%' ";
-        $keywordfull2[] = " p.summary $like '%$keyword%' ";
+        $keywordfull[] = $DB->sql_like('description', ':descpat', false);
+        $params['descpat'] = "%$keyword%";
+        $keywordfull2[] = $DB->sql_like('p.summary', ':sumpat', false);
+        $params['sumpat'] = "%$keyword%";
     }
     $conditions = '( '.implode(' OR ', $keywordfull).' )';
     $conditions2 = '( '.implode(' OR ', $keywordfull2).' )';
 
-    $sql = "SELECT * FROM {user} WHERE deleted = 0 AND id <> {$USER->id} AND $conditions";  // Exclude oneself
-    $sql2= "SELECT u.*, p.summary FROM {user} AS u, {post} AS p WHERE $conditions2 AND u.deleted = 0 AND u.id=p.userid AND u.id <> {$USER->id}";
+    $sql  = "SELECT * FROM {user} WHERE deleted = 0 AND id <> :userid AND $conditions";  // Exclude oneself
+    $sql2 = "SELECT u.*, p.summary FROM {user} AS u, {post} AS p WHERE $conditions2 AND u.deleted = 0 AND u.id=p.userid AND u.id <> :userid";
     $spamusers_desc = $DB->get_recordset_sql($sql);
     $spamusers_blog = $DB->get_recordset_sql($sql2);
 
@@ -234,7 +235,7 @@ function print_user_entry($user, $keywords, $count) {
 
     global $SESSION, $CFG;
 
-    $smalluserobject = new object;      // All we need to delete them later
+    $smalluserobject = new stdClass();      // All we need to delete them later
     $smalluserobject->id = $user->id;
     $smalluserobject->email = $user->email;
     $smalluserobject->auth = $user->auth;

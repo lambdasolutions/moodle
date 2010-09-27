@@ -27,7 +27,7 @@ abstract class moodleform_mod extends moodleform {
      */
     protected $_section;
     /**
-     * Coursemodle record of the module that is being updated. Will be null if this is an 'add' form and not an
+     * Course module record of the module that is being updated. Will be null if this is an 'add' form and not an
      * update one.
       *
      * @var mixed
@@ -76,15 +76,16 @@ abstract class moodleform_mod extends moodleform {
     protected function init_features() {
         global $CFG;
 
-        $this->_features = new object();
+        $this->_features = new stdClass();
         $this->_features->groups            = plugin_supports('mod', $this->_modname, FEATURE_GROUPS, true);
         $this->_features->groupings         = plugin_supports('mod', $this->_modname, FEATURE_GROUPINGS, false);
-        $this->_features->groupmembersonly  = plugin_supports('mod', $this->_modname, FEATURE_GROUPMEMBERSONLY, false);
+        $this->_features->groupmembersonly  = (!empty($CFG->enablegroupmembersonly) and plugin_supports('mod', $this->_modname, FEATURE_GROUPMEMBERSONLY, false));
         $this->_features->outcomes          = (!empty($CFG->enableoutcomes) and plugin_supports('mod', $this->_modname, FEATURE_GRADE_OUTCOMES, true));
         $this->_features->hasgrades         = plugin_supports('mod', $this->_modname, FEATURE_GRADE_HAS_GRADE, false);
         $this->_features->idnumber          = plugin_supports('mod', $this->_modname, FEATURE_IDNUMBER, true);
         $this->_features->introeditor       = plugin_supports('mod', $this->_modname, FEATURE_MOD_INTRO, true);
         $this->_features->defaultcompletion = plugin_supports('mod', $this->_modname, FEATURE_MODEDIT_DEFAULT_COMPLETION, true);
+        $this->_features->rating            = plugin_supports('mod', $this->_modname, FEATURE_RATE, false);
 
         $this->_features->gradecat          = ($this->_features->outcomes or $this->_features->hasgrades);
     }
@@ -121,12 +122,15 @@ abstract class moodleform_mod extends moodleform {
             if ($this->_features->gradecat) {
                 $gradecat = false;
                 if (!empty($CFG->enableoutcomes) and $this->_features->outcomes) {
-                    if ($outcomes = grade_outcome::fetch_all_available($COURSE->id)) {
+                    $outcomes = grade_outcome::fetch_all_available($COURSE->id);
+                    if (!empty($outcomes)) {
                         $gradecat = true;
                     }
                 }
-                if ($items = grade_item::fetch_all(array('itemtype'=>'mod', 'itemmodule'=>$modulename,
-                                                   'iteminstance'=>$instance, 'courseid'=>$COURSE->id))) {
+
+                $items = grade_item::fetch_all(array('itemtype'=>'mod', 'itemmodule'=>$modulename,'iteminstance'=>$instance, 'courseid'=>$COURSE->id));
+                //will be no items if, for example, this activity supports ratings but rating aggregate type == no ratings
+                if (!empty($items)) {
                     foreach ($items as $item) {
                         if (!empty($item->outcomeid)) {
                             $elname = 'outcome_'.$item->outcomeid;
@@ -135,6 +139,7 @@ abstract class moodleform_mod extends moodleform {
                             }
                         }
                     }
+
                     foreach ($items as $item) {
                         if (is_bool($gradecat)) {
                             $gradecat = $item->categoryid;
@@ -150,9 +155,13 @@ abstract class moodleform_mod extends moodleform {
 
                 if ($gradecat === false) {
                     // items and outcomes in different categories - remove the option
-                    // TODO: it might be better to add a "Mixed categories" text instead
+                    // TODO: add a "Mixed categories" text instead of removing elements with no explanation
                     if ($mform->elementExists('gradecat')) {
                         $mform->removeElement('gradecat');
+                        if ($this->_features->rating) {
+                            //if supports ratings then the max grade dropdown wasnt added so the grade box can be removed entirely
+                            $mform->removeElement('modstandardgrade');
+                        }
                     }
                 }
             }
@@ -337,22 +346,34 @@ abstract class moodleform_mod extends moodleform {
             }
         }
 
-        if (plugin_supports('mod', $this->_modname, FEATURE_RATE, false)) {
+
+        if ($this->_features->rating) {
             require_once($CFG->dirroot.'/rating/lib.php');
             $rm = new rating_manager();
 
             $mform->addElement('header', 'modstandardratings', get_string('ratings', 'rating'));
 
-            //$mform->addElement('checkbox', 'assessed', get_string('allowratings', 'ratings') , get_string('ratingsuse', 'ratings'));
+            $permission=CAP_ALLOW;
+            $rolenamestring = null;
+            if (!empty($this->_cm)) {
+                $context = get_context_instance(CONTEXT_MODULE, $this->_cm->id);
+
+                $rolenames = get_role_names_with_caps_in_context($context, array('moodle/rating:rate', 'mod/'.$this->_cm->modname.':rate'));
+                $rolenamestring = implode(', ', $rolenames);
+            } else {
+                $rolenamestring = get_string('capabilitychecknotavailable','rating');
+            }
+            $mform->addElement('static', 'rolewarning', get_string('rolewarning','rating'), $rolenamestring);
+            $mform->addHelpButton('rolewarning', 'rolewarning', 'rating');
 
             $mform->addElement('select', 'assessed', get_string('aggregatetype', 'rating') , $rm->get_aggregate_types());
             $mform->setDefault('assessed', 0);
-            $mform->addHelpButton('assessed', 'aggregatetype', 'forum');
+            $mform->addHelpButton('assessed', 'aggregatetype', 'rating');
 
             $mform->addElement('modgrade', 'scale', get_string('scale'), false);
             $mform->disabledIf('scale', 'assessed', 'eq', 0);
 
-            $mform->addElement('checkbox', 'ratingtime', get_string('ratingtime', 'forum'));
+            $mform->addElement('checkbox', 'ratingtime', get_string('ratingtime', 'rating'));
             $mform->disabledIf('ratingtime', 'assessed', 'eq', 0);
 
             $mform->addElement('date_time_selector', 'assesstimestart', get_string('from'));
@@ -363,6 +384,9 @@ abstract class moodleform_mod extends moodleform {
             $mform->disabledIf('assesstimefinish', 'assessed', 'eq', 0);
             $mform->disabledIf('assesstimefinish', 'ratingtime');
         }
+
+        //doing this here means splitting up the grade related settings on the lesson settings page
+        //$this->standard_grading_coursemodule_elements();
 
         $mform->addElement('header', 'modstandardelshdr', get_string('modstandardels', 'form'));
         if ($this->_features->groups) {
@@ -610,15 +634,21 @@ abstract class moodleform_mod extends moodleform {
         $mform->setType('return', PARAM_BOOL);
     }
 
-    public function coursemodule_grading_elements() {
-        global $COURSE;
+    public function standard_grading_coursemodule_elements() {
+        global $COURSE, $CFG;
         $mform =& $this->_form;
 
-        if (plugin_supports('mod', $this->_modname, FEATURE_GRADE_HAS_GRADE, false)) {
-            $mform->addElement('header', 'modstandardgrade', get_string('grade'));
+        if ($this->_features->hasgrades) {
 
-            $mform->addElement('modgrade', 'grade', get_string('grade'));
-            $mform->setDefault('grade', 100);
+            if (!$this->_features->rating || $this->_features->gradecat) {
+                $mform->addElement('header', 'modstandardgrade', get_string('grade'));
+            }
+
+            //if supports grades and grades arent being handled via ratings
+            if (!$this->_features->rating) {
+                $mform->addElement('modgrade', 'grade', get_string('grade'));
+                $mform->setDefault('grade', 100);
+            }
 
             if ($this->_features->gradecat) {
                 $categories = grade_get_categories_menu($COURSE->id, $this->_outcomesused);

@@ -129,20 +129,6 @@ class question_essay_qtype extends default_questiontype {
         return true;
     }
 
-
-    /**
-     * Backup the extra information specific to an essay question - over and above
-     * what is in the mdl_question table.
-     *
-     * @param file $bf The backup file to write to.
-     * @param object $preferences the blackup options controlling this backup.
-     * @param $questionid the id of the question being backed up.
-     * @param $level indent level in the backup file - so it can be formatted nicely.
-     */
-    function backup($bf, $preferences, $questionid, $level = 6) {
-        return question_backup_answers($bf, $preferences, $questionid, $level);
-    }
-
     /**
      * Runs all the code required to set up and save an essay question for testing purposes.
      * Alternate DB table prefix may be used to facilitate data deletion.
@@ -183,7 +169,7 @@ class question_essay_qtype extends default_questiontype {
             $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
             foreach ($files as $storedfile) {
                 if (!$storedfile->is_directory()) {
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);
                     $storedfile->delete();

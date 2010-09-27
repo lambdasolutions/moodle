@@ -48,6 +48,15 @@ define('ENROL_EXT_REMOVED_UNENROL', 0);
 /** When user disappears from external source, the enrolment is kept as is - one way sync */
 define('ENROL_EXT_REMOVED_KEEP', 1);
 
+/** enrol plugin feature describing requested restore type */
+define('ENROL_RESTORE_TYPE', 'enrolrestore');
+/** User custom backup/restore class  stored in backup/moodle2/ subdirectory */
+define('ENROL_RESTORE_CLASS', 'class');
+/** Restore all custom fields from enrol table without any changes and all user_enrolments records */
+define('ENROL_RESTORE_EXACT', 'exact');
+/** Restore enrol record like ENROL_RESTORE_EXACT, but no user enrolments */
+define('ENROL_RESTORE_NOUSERS', 'nousers');
+
 /**
  * When user disappears from external source, user enrolment is suspended, roles are kept as is.
  * In some cases user needs a role with some capability to be visible in UI - suc has in gradebook,
@@ -290,6 +299,7 @@ function enrol_course_updated($inserted, $course, $data) {
  * @return void
  */
 function enrol_add_course_navigation(navigation_node $coursenode, $course) {
+    global $CFG;
 
     $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
 
@@ -415,7 +425,7 @@ function enrol_add_course_navigation(navigation_node $coursenode, $course) {
  *   so name the fields you really need, which will
  *   be added and uniq'd
  *
- * @param strin|array $fields
+ * @param string|array $fields
  * @param string $sort
  * @param int $limit max number of courses
  * @return array
@@ -519,6 +529,61 @@ function enrol_get_my_courses($fields = NULL, $sort = 'visible DESC,sortorder AS
 }
 
 /**
+ * Returns course enrolment information icons.
+ *
+ * @param object $course
+ * @param array $instances enrol instances of this course, improves performance
+ * @return array of pix_icon
+ */
+function enrol_get_course_info_icons($course, array $instances = NULL) {
+    $icons = array();
+    if (is_null($instances)) {
+        $instances = enrol_get_instances($course->id, true);
+    }
+    $plugins = enrol_get_plugins(true);
+    foreach ($plugins as $name => $plugin) {
+        $pis = array();
+        foreach ($instances as $instance) {
+            if ($instance->status != ENROL_INSTANCE_ENABLED or $instance->courseid != $course->id) {
+                debugging('Invalid instances parameter submitted in enrol_get_info_icons()');
+                continue;
+            }
+            if ($instance->enrol == $name) {
+                $pis[$instance->id] = $instance;
+            }
+        }
+        if ($pis) {
+            $icons = array_merge($icons, $plugin->get_info_icons($pis));
+        }
+    }
+    return $icons;
+}
+
+/**
+ * Returns course enrolment detailed information.
+ *
+ * @param object $course
+ * @return array of html fragments - can be used to construct lists
+ */
+function enrol_get_course_description_texts($course) {
+    $lines = array();
+    $instances = enrol_get_instances($course->id, true);
+    $plugins = enrol_get_plugins(true);
+    foreach ($instances as $instance) {
+        if (!isset($plugins[$instance->enrol])) {
+            //weird
+            continue;
+        }
+        $plugin = $plugins[$instance->enrol];
+        $text = $plugin->get_description_text($instance);
+        if ($text !== NULL) {
+            $lines[] = $text;
+        }
+    }
+    return $lines;
+}
+
+/**
  * Returns list of courses user is enrolled into.
  *
  * - $fields is an array of fieldnames to ADD
@@ -527,7 +592,7 @@ function enrol_get_my_courses($fields = NULL, $sort = 'visible DESC,sortorder AS
  *
  * @param int $userid
  * @param bool $onlyactive return only active enrolments in courses user may see
- * @param strin|array $fields
+ * @param string|array $fields
  * @param string $sort
  * @return array
  */
@@ -648,6 +713,28 @@ function enrol_user_delete($user) {
 }
 
 /**
+ * Called when course is about to be deleted.
+ * @param stdClass $object
+ * @return void
+ */
+function enrol_course_delete($course) {
+    global $DB;
+
+    $instances = enrol_get_instances($course->id, false);
+    $plugins = enrol_get_plugins(true);
+    foreach ($instances as $instance) {
+        if (isset($plugins[$instance->enrol])) {
+            $plugins[$instance->enrol]->delete_instance($instance);
+        }
+        // low level delete in case plugin did not do it
+        $DB->delete_records('user_enrolments', array('enrolid'=>$instance->id));
+        $DB->delete_records('role_assignments', array('itemid'=>$instance->id, 'component'=>'enrol_'.$instance->enrol));
+        $DB->delete_records('user_enrolments', array('enrolid'=>$instance->id));
+        $DB->delete_records('enrol', array('id'=>$instance->id));
+    }
+}
+
+/**
  * Try to enrol user via default internal auth plugin.
  *
  * For now this is always using the manual enrol plugin...
@@ -693,7 +780,7 @@ abstract class enrol_plugin {
      * @return string
      */
     public function get_name() {
-        // second word in class is always enrol name
+        // second word in class is always enrol name, sorry, no fancy plugin names with _
         $words = explode('_', get_class($this));
         return $words[1];
     }
@@ -715,6 +802,35 @@ abstract class enrol_plugin {
     }
 
     /**
+     * Returns optional enrolment information icons.
+     *
+     * This is used in course list for quick overview of enrolment options.
+     *
+     * We are not using single instance parameter because sometimes
+     * we might want to prevent icon repetition when multiple instances
+     * of one type exist. One instance may also produce several icons.
+     *
+     * @param array $instances all enrol instances of this type in one course
+     * @return array of pix_icon
+     */
+    public function get_info_icons(array $instances) {
+        return array();
+    }
+
+    /**
+     * Returns optional enrolment instance description text.
+     *
+     * This is used in detailed course information.
+     *
+     *
+     * @param object $instance
+     * @return string short html text
+     */
+    public function get_description_text($instance) {
+        return null;
+    }
+
+    /**
      * Makes sure config is loaded and cached.
      * @return void
      */
@@ -722,7 +838,7 @@ abstract class enrol_plugin {
         if (!isset($this->config)) {
             $name = $this->get_name();
             if (!$config = get_config("enrol_$name")) {
-                $config = new object();
+                $config = new stdClass();
             }
             $this->config = $config;
         }
@@ -847,9 +963,10 @@ abstract class enrol_plugin {
      * @param int $roleid optional role id
      * @param int $timestart 0 means unknown
      * @param int $timeend 0 means forever
+     * @param int $status default to ENROL_USER_ACTIVE for new enrolments, no change by default in updates
      * @return void
      */
-    public function enrol_user(stdClass $instance, $userid, $roleid = null, $timestart = 0, $timeend = 0) {
+    public function enrol_user(stdClass $instance, $userid, $roleid = NULL, $timestart = 0, $timeend = 0, $status = NULL) {
         global $DB, $USER, $CFG; // CFG necessary!!!
 
         if ($instance->courseid == SITEID) {
@@ -874,7 +991,7 @@ abstract class enrol_plugin {
                 $DB->update_record('user_enrolments', $ue);
             }
         } else {
-            $ue = new object();
+            $ue = new stdClass();
             $ue->enrolid      = $instance->id;
             $ue->status       = ENROL_USER_ACTIVE;
             $ue->userid       = $userid;
@@ -1086,7 +1203,7 @@ abstract class enrol_plugin {
      * Returns list of unenrol links for all enrol instances in course.
      *
      * @param int $instance
-     * @return moodle_url or NULL if self unernolmnet not supported
+     * @return moodle_url or NULL if self unenrolment not supported
      */
     public function get_unenrolself_link($instance) {
         global $USER, $CFG, $DB;
@@ -1179,7 +1296,7 @@ abstract class enrol_plugin {
             throw new coding_exception('Invalid request to add enrol instance to frontpage.');
         }
 
-        $instance = new object();
+        $instance = new stdClass();
         $instance->enrol          = $this->get_name();
         $instance->status         = ENROL_INSTANCE_ENABLED;
         $instance->courseid       = $course->id;
@@ -1284,7 +1401,7 @@ abstract class enrol_plugin {
 
         $name = $this->get_name();
         $versionfile = "$CFG->dirroot/enrol/$name/version.php";
-        $plugin = new object();
+        $plugin = new stdClass();
         include($versionfile);
         if (empty($plugin->cron)) {
             return false;

@@ -19,11 +19,11 @@
  * A repository plugin to allow user uploading files
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage upload
+ * @copyright  2009 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 class repository_upload extends repository {
@@ -53,7 +53,7 @@ class repository_upload extends repository {
             }
         }
 
-        $record = new stdclass;
+        $record = new stdClass();
         $record->filearea = 'draft';
         $record->component = 'user';
         $record->filepath = optional_param('savepath', '/', PARAM_PATH);
@@ -94,17 +94,16 @@ class repository_upload extends repository {
             }
         }
 
-        $userquota = file_get_user_used_space();
-        if (filesize($_FILES[$elname]['tmp_name'])+$userquota>=(int)$CFG->userquota) {
-            throw new file_exception('userquotalimit');
-        }
-
         if (empty($record->itemid)) {
             $record->itemid = 0;
         }
 
         if ($file = $fs->get_file($context->id, $record->component, $record->filearea, $record->itemid, $record->filepath, $record->filename)) {
-            throw new moodle_exception('fileexists');
+            return array(
+                'url'=>moodle_url::make_draftfile_url($file->get_itemid(), $file->get_filepath(), $file->get_filename())->out(),
+                'id'=>$file->get_itemid(),
+                'file'=>$file->get_filename()
+            );
         }
 
         $record->contextid = $context->id;

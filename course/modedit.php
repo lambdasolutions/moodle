@@ -29,6 +29,7 @@ require_once($CFG->libdir.'/filelib.php');
 require_once($CFG->libdir.'/gradelib.php');
 require_once($CFG->libdir.'/completionlib.php');
 require_once($CFG->libdir.'/conditionlib.php');
+require_once($CFG->libdir.'/plagiarismlib.php');
 
 $add    = optional_param('add', '', PARAM_ALPHA);     // module name
 $update = optional_param('update', 0, PARAM_INT);
@@ -62,7 +63,7 @@ if (!empty($add)) {
 
     $cm = null;
 
-    $data = new object();
+    $data = new stdClass();
     $data->section          = $section;  // The section number itself - relative!!! (section column in course_sections)
     $data->visible          = $cw->visible;
     $data->course           = $course->id;
@@ -91,7 +92,7 @@ if (!empty($add)) {
     $fullmodulename = get_string('modulename', $module->name);
 
     if ($data->section && $course->format != 'site') {
-        $heading = new object();
+        $heading = new stdClass();
         $heading->what = $fullmodulename;
         $heading->to   = $sectionname;
         $pageheading = get_string('addinganewto', 'moodle', $heading);
@@ -176,7 +177,7 @@ if (!empty($add)) {
     $fullmodulename = get_string('modulename', $module->name);
 
     if ($data->section && $course->format != 'site') {
-        $heading = new object();
+        $heading = new stdClass();
         $heading->what = $fullmodulename;
         $heading->in   = $sectionname;
         $pageheading = get_string('updatingain', 'moodle', $heading);
@@ -340,7 +341,7 @@ if ($mform->is_cancelled()) {
         }
 
         // Trigger mod_updated event with information about this module.
-        $eventdata = new object();
+        $eventdata = new stdClass();
         $eventdata->modulename = $fromform->modulename;
         $eventdata->name       = $fromform->name;
         $eventdata->cmid       = $fromform->coursemodule;
@@ -366,7 +367,7 @@ if ($mform->is_cancelled()) {
         }
 
         // first add course_module record because we need the context
-        $newcm = new object();
+        $newcm = new stdClass();
         $newcm->course           = $course->id;
         $newcm->module           = $fromform->module;
         $newcm->instance         = 0; // not known yet, will be updated later (this is similar to restore code)
@@ -452,7 +453,7 @@ if ($mform->is_cancelled()) {
         }
 
         // Trigger mod_created event with information about this module.
-        $eventdata = new object();
+        $eventdata = new stdClass();
         $eventdata->modulename = $fromform->modulename;
         $eventdata->name       = $fromform->name;
         $eventdata->cmid       = $fromform->coursemodule;
@@ -521,7 +522,7 @@ if ($mform->is_cancelled()) {
         foreach($outcomes as $outcome) {
             $elname = 'outcome_'.$outcome->id;
 
-            if (array_key_exists($elname, $fromform) and $fromform->$elname) {
+            if (property_exists($fromform, $elname) and $fromform->$elname) {
                 // so we have a request for new outcome grade item?
                 if ($items) {
                     foreach($items as $item) {
@@ -560,6 +561,7 @@ if ($mform->is_cancelled()) {
 
     rebuild_course_cache($course->id);
     grade_regrade_final_grades($course->id);
+    plagiarism_save_form_elements($fromform); //save plagiarism settings
 
     if (isset($fromform->submitbutton)) {
         redirect("$CFG->wwwroot/mod/$module->name/view.php?id=$fromform->coursemodule");
@@ -580,7 +582,7 @@ if ($mform->is_cancelled()) {
     }
 
     $PAGE->set_heading($course->fullname);
-    $PAGE->set_title($streditinga);    
+    $PAGE->set_title($streditinga);
     $PAGE->set_cacheable(false);
     echo $OUTPUT->header();
 

@@ -231,7 +231,7 @@ function cron() {
             $msg .= "Logging is currently not active.";
         }
 
-        $eventdata = new object();
+        $eventdata = new stdClass();
         $eventdata->modulename        = 'moodle';
         $eventdata->component         = 'imsenterprise';
         $eventdata->name              = 'imsenterprise_enrolment';
@@ -311,7 +311,7 @@ function process_group_tag($tagcontents){
     $createnewcategories    = $this->get_config('createnewcategories');
 
     // Process tag contents
-    unset($group);
+    $group = new stdClass();
     if(preg_match('{<sourcedid>.*?<id>(.+?)</id>.*?</sourcedid>}is', $tagcontents, $matches)){
         $group->coursecode = trim($matches[1]);
     }
@@ -356,7 +356,7 @@ function process_group_tag($tagcontents){
                   $this->log_line("Course $coursecode not found in Moodle's course idnumbers.");
               } else {
                 // Create the (hidden) course(s) if not found
-                $course = new object();
+                $course = new stdClass();
                 $course->fullname = $group->description;
                 $course->shortname = $coursecode;
                 $course->idnumber = $coursecode;
@@ -372,14 +372,12 @@ function process_group_tag($tagcontents){
                         $course->category = $catid;
                     } elseif($createnewcategories) {
                         // Else if we're allowed to create new categories, let's create this one
+                        $newcat = new stdClass();
                         $newcat->name = $group->category;
-                       $newcat->visible = 0;
-                       if($catid = $DB->insert_record('course_categories', $newcat)){
-                           $course->category = $catid;
-                           $this->log_line("Created new (hidden) category, #$catid: $newcat->name");
-                       }else{
-                           $this->log_line('Failed to create new category: '.$newcat->name);
-                       }
+                        $newcat->visible = 0;
+                        $catid = $DB->insert_record('course_categories', $newcat);
+                        $course->category = $catid;
+                        $this->log_line("Created new (hidden) category, #$catid: $newcat->name");
                     }else{
                         // If not found and not allowed to create, stick with default
                         $this->log_line('Category '.$group->category.' not found in Moodle database, so using default category instead.');
@@ -394,24 +392,21 @@ function process_group_tag($tagcontents){
                 // Choose a sort order that puts us at the start of the list!
                 $course->sortorder = 0;
 
-                if ($courseid = $DB->insert_record('course', $course)) {
+                $courseid = $DB->insert_record('course', $course);
 
-                    // Setup the blocks
-                    $course = $DB->get_record('course', array('id' => $courseid));
-                    blocks_add_default_course_blocks($course);
+                // Setup the blocks
+                $course = $DB->get_record('course', array('id' => $courseid));
+                blocks_add_default_course_blocks($course);
 
-                    $section = new object();
-                    $section->course = $course->id;   // Create a default section.
-                    $section->section = 0;
-                    $section->summaryformat = FORMAT_HTML;
-                    $section->id = $DB->insert_record("course_sections", $section);
+                $section = new stdClass();
+                $section->course = $course->id;   // Create a default section.
+                $section->section = 0;
+                $section->summaryformat = FORMAT_HTML;
+                $section->id = $DB->insert_record("course_sections", $section);
 
-                    add_to_log(SITEID, "course", "new", "view.php?id=$course->id", "$course->fullname (ID $course->id)");
+                add_to_log(SITEID, "course", "new", "view.php?id=$course->id", "$course->fullname (ID $course->id)");
 
-                    $this->log_line("Created course $coursecode in Moodle (Moodle ID is $course->id)");
-                }else{
-                    $this->log_line('Failed to create course '.$coursecode.' in Moodle');
-                }
+                $this->log_line("Created course $coursecode in Moodle (Moodle ID is $course->id)");
               }
             }elseif($recstatus==3 && ($courseid = $DB->get_field('course', 'id', array('idnumber'=>$coursecode)))){
                 // If course does exist, but recstatus==3 (delete), then set the course as hidden
@@ -435,6 +430,7 @@ function process_person_tag($tagcontents){
     $imsdeleteusers         = $this->get_config('imsdeleteusers');
     $createnewusers         = $this->get_config('createnewusers');
 
+    $person = new stdClass();
     if(preg_match('{<sourcedid>.*?<id>(.+?)</id>.*?</sourcedid>}is', $tagcontents, $matches)){
         $person->idnumber = trim($matches[1]);
     }
@@ -512,7 +508,7 @@ function process_person_tag($tagcontents){
             $person->confirmed = 1;
             $person->timemodified = time();
             $person->mnethostid = $CFG->mnet_localhost_id;
-            if($id = $DB->insert_record('user', $person)){
+            $id = $DB->insert_record('user', $person);
     /*
     Photo processing is deactivated until we hear from Moodle dev forum about modification to gdlib.
 
@@ -531,10 +527,7 @@ function process_person_tag($tagcontents){
                                    }
                                  }
     */
-                    $this->log_line("Created user record for user '$person->username' (ID number $person->idnumber).");
-                }else{
-                    $this->log_line("Database error while trying to create user record for user '$person->username' (ID number $person->idnumber).");
-                }
+                $this->log_line("Created user record for user '$person->username' (ID number $person->idnumber).");
             }
         } elseif ($createnewusers) {
             $this->log_line("User record already exists for user '$person->username' (ID number $person->idnumber).");

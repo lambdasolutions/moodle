@@ -104,9 +104,7 @@ function print_mnet_log_selector_form($hostid, $course, $selecteduser=0, $select
                 $users[$courseuser->id] = fullname($courseuser, has_capability('moodle/site:viewfullnames', $context));
             }
         }
-        if ($guest = get_complete_user_data('username', 'guest')) {
-            $users[$guest->id] = fullname($guest);
-        }
+        $users[$CFG->siteguest] = get_string('guestuser');
     }
 
     // Get all the hosts that have log records
@@ -173,17 +171,13 @@ function print_mnet_log_selector_form($hostid, $course, $selecteduser=0, $select
 /// Casting $course->modinfo to string prevents one notice when the field is null
     if ($modinfo = unserialize((string)$course->modinfo)) {
         $section = 0;
-        if ($course->format == 'weeks') {  // Bodgy
-            $strsection = get_string("week");
-        } else {
-            $strsection = get_string("topic");
-        }
+        $sections = get_all_sections($course->id);
         foreach ($modinfo as $mod) {
             if ($mod->mod == "label") {
                 continue;
             }
             if ($mod->section > 0 and $section <> $mod->section) {
-                $activities["section/$mod->section"] = "-------------- $strsection $mod->section --------------";
+                $activities["section/$mod->section"] = '--- '.get_section_name($course, $sections[$mod->section]).' ---';
             }
             $section = $mod->section;
             $mod->name = strip_tags(format_string($mod->name, true));
@@ -263,7 +257,7 @@ function print_mnet_log_selector_form($hostid, $course, $selecteduser=0, $select
         $courses[$course->id] = $course->fullname . ((empty($course->category)) ? ' ('.get_string('site').') ' : '');
         echo html_writer::select($courses,"id",$course->id, false);
         if (has_capability('coursereport/log:view', $sitecontext)) {
-            $a = new object();
+            $a = new stdClass();
             $a->url = "$CFG->wwwroot/course/report/log/index.php?chooselog=0&group=$selectedgroup&user=$selecteduser"
                 ."&id=$course->id&date=$selecteddate&modid=$selectedactivity&showcourses=1&showusers=$showusers";
             print_string('logtoomanycourses','moodle',$a);
@@ -368,9 +362,7 @@ function print_log_selector_form($course, $selecteduser=0, $selecteddate='today'
                 $users[$courseuser->id] = fullname($courseuser, has_capability('moodle/site:viewfullnames', $context));
             }
         }
-        if ($guest = get_complete_user_data('username', 'guest')) {
-            $users[$guest->id] = fullname($guest);
-        }
+        $users[$CFG->siteguest] = get_string('guestuser');
     }
 
     if (has_capability('coursereport/log:view', $sitecontext) && $showcourses) {
@@ -392,17 +384,13 @@ function print_log_selector_form($course, $selecteduser=0, $selecteddate='today'
 /// Casting $course->modinfo to string prevents one notice when the field is null
     if ($modinfo = unserialize((string)$course->modinfo)) {
         $section = 0;
-        if ($course->format == 'weeks') {  // Bodgy
-            $strsection = get_string("week");
-        } else {
-            $strsection = get_string("topic");
-        }
+        $sections = get_all_sections($course->id);
         foreach ($modinfo as $mod) {
             if ($mod->mod == "label") {
                 continue;
             }
             if ($mod->section > 0 and $section <> $mod->section) {
-                $activities["section/$mod->section"] = "-------------- $strsection $mod->section --------------";
+                $activities["section/$mod->section"] = '--- '.get_section_name($course, $sections[$mod->section]).' ---';
             }
             $section = $mod->section;
             $mod->name = strip_tags(format_string($mod->name, true));
@@ -482,7 +470,7 @@ function print_log_selector_form($course, $selecteduser=0, $selecteddate='today'
         $courses[$course->id] = $course->fullname . (($course->id == SITEID) ? ' ('.get_string('site').') ' : '');
         echo html_writer::select($courses,"id",$course->id, false);
         if (has_capability('coursereport/log:view', $sitecontext)) {
-            $a = new object();
+            $a = new stdClass();
             $a->url = "$CFG->wwwroot/course/report/log/index.php?chooselog=0&group=$selectedgroup&user=$selecteduser"
                 ."&id=$course->id&date=$selecteddate&modid=$selectedactivity&showcourses=1&showusers=$showusers";
             print_string('logtoomanycourses','moodle',$a);
@@ -514,7 +502,7 @@ function print_log_selector_form($course, $selecteduser=0, $selecteddate='today'
             $users[0] = get_string('allparticipants');
         }
         echo html_writer::select($users, "user", $selecteduser, false);
-        $a = new object();
+        $a = new stdClass();
         $a->url = "$CFG->wwwroot/course/report/log/index.php?chooselog=0&group=$selectedgroup&user=$selecteduser"
             ."&id=$course->id&date=$selecteddate&modid=$selectedactivity&showusers=1&showcourses=$showcourses";
         print_string('logtoomanyusers','moodle',$a);

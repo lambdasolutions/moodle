@@ -49,13 +49,13 @@ class file_info_stored extends file_info {
      * Constructor
      *
      * @param file_browser $browser
-     * @param object $context
-     * @param stored_file $storedfile
+     * @param stdClass $context
+     * @param stored_file|virtual_root_file $storedfile
      * @param string $urlbase the serving script - usually the $CFG->wwwroot/.'pluginfile.php'
      * @param string $topvisiblename the human readable name of this area
-     * @param string $itemidused false if itemid  always 0 and not included in URL
-     * @param string $readaccess allow file reading
-     * @param string $writeaccess allow file write, delete
+     * @param int|bool $itemidused false if itemid  always 0 and not included in URL
+     * @param bool $readaccess allow file reading
+     * @param bool $writeaccess allow file write, delete
      * @param string $areaonly do not show links to parent context/area
      */
     public function __construct(file_browser $browser, $context, $storedfile, $urlbase, $topvisiblename, $itemidused, $readaccess, $writeaccess, $areaonly) {
@@ -78,7 +78,7 @@ class file_info_stored extends file_info {
      */
     public function get_params() {
         return array('contextid'=>$this->context->id,
-                     'component' =>$this->lf->get_component(),
+                     'component'=>$this->lf->get_component(),
                      'filearea' =>$this->lf->get_filearea(),
                      'itemid'   =>$this->lf->get_itemid(),
                      'filepath' =>$this->lf->get_filepath(),
@@ -127,9 +127,9 @@ class file_info_stored extends file_info {
         $contextid = $this->lf->get_contextid();
         $component = $this->lf->get_component();
         $filearea  = $this->lf->get_filearea();
+        $itemid    = $this->lf->get_itemid();
         $filepath  = $this->lf->get_filepath();
         $filename  = $this->lf->get_filename();
-        $itemid    = $this->lf->get_itemid();
 
         if ($this->itemidused) {
             $path = '/'.$contextid.'/'.$component.'/'.$filearea.'/'.$itemid.$filepath.$filename;
@@ -153,6 +153,21 @@ class file_info_stored extends file_info {
      */
     public function is_writable() {
         return $this->writeaccess;
+    }
+
+    /**
+     * Is this top of empty area?
+     *
+     * @return bool
+     */
+    public function is_empty_area() {
+        if ($this->lf->get_filepath() === '/' and $this->lf->get_filename() === '.') {
+            // test the emptiness only in the top most level, it does not make sense at lower levels
+            $fs = get_file_storage();
+            return $fs->is_area_empty($this->lf->get_contextid(), $this->lf->get_component(), $this->lf->get_filearea(), $this->lf->get_itemid());
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -328,7 +343,7 @@ class file_info_stored extends file_info {
 
         $now = time();
 
-        $newrecord = new object();
+        $newrecord = new stdClass();
         $newrecord->contextid = $this->lf->get_contextid();
         $newrecord->component = $this->lf->get_component();
         $newrecord->filearea  = $this->lf->get_filearea();
@@ -374,7 +389,7 @@ class file_info_stored extends file_info {
 
         $now = time();
 
-        $newrecord = new object();
+        $newrecord = new stdClass();
         $newrecord->contextid = $this->lf->get_contextid();
         $newrecord->component = $this->lf->get_component();
         $newrecord->filearea  = $this->lf->get_filearea();
@@ -402,7 +417,7 @@ class file_info_stored extends file_info {
      * Create new file from stored file - make sure
      * params are valid.
      * @param string $newfilename name of new file
-     * @param mixed dile id or stored_file of file
+     * @param mixed file id or stored_file of file
      * @param int id of author, default $USER->id
      * @return file_info new file
      */
@@ -420,7 +435,7 @@ class file_info_stored extends file_info {
 
         $now = time();
 
-        $newrecord = new object();
+        $newrecord = new stdClass();
         $newrecord->contextid = $this->lf->get_contextid();
         $newrecord->component = $this->lf->get_component();
         $newrecord->filearea  = $this->lf->get_filearea();
@@ -456,7 +471,7 @@ class file_info_stored extends file_info {
         if ($this->is_directory()) {
             $filepath = $this->lf->get_filepath();
             $fs = get_file_storage();
-            $storedfiles = $fs->get_area_files($this->context->id, $file->get_component(), $this->lf->get_filearea(), $this->lf->get_itemid(), "");
+            $storedfiles = $fs->get_area_files($this->context->id, $this->get_component(), $this->lf->get_filearea(), $this->lf->get_itemid(), "");
             foreach ($storedfiles as $file) {
                 if (strpos($file->get_filepath(), $filepath) === 0) {
                     $file->delete();

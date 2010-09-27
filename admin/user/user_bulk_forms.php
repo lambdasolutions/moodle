@@ -25,7 +25,8 @@ class user_bulk_action_form extends moodleform {
             $actions[5] = get_string('download', 'admin');
         }
         if (has_capability('moodle/role:assign', $syscontext)){
-            $actions[6] = get_string('enrolmultipleusers', 'admin');
+             //TODO: MDL-24064
+            //$actions[6] = get_string('enrolmultipleusers', 'admin');
         }
         if (has_capability('moodle/user:update', $syscontext)) {
             $actions[7] = get_string('forcepasswordchange');
@@ -54,7 +55,7 @@ class user_bulk_form extends moodleform {
             if ($total == $acount) {
                 $achoices[0] = get_string('allusers', 'bulkusers', $total);
             } else {
-                $a = new object();
+                $a = new stdClass();
                 $a->total  = $total;
                 $a->count = $acount;
                 $achoices[0] = get_string('allfilteredusers', 'bulkusers', $a);
@@ -70,7 +71,7 @@ class user_bulk_form extends moodleform {
         }
 
         if (is_array($susers)) {
-            $a = new object();
+            $a = new stdClass();
             $a->total  = $total;
             $a->count = $scount;
             $schoices[0] = get_string('allselectedusers', 'bulkusers', $a);

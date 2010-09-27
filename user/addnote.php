@@ -52,7 +52,7 @@ if (!empty($users) && confirm_sesskey()) {
         print_error('invalidformdata', '', $CFG->wwwroot.'/user/index.php?id='.$id);
     }
 
-    $note = new object();
+    $note = new stdClass();
     $note->courseid = $id;
     $note->format = FORMAT_PLAIN;
     foreach ($users as $k => $v) {
@@ -91,7 +91,7 @@ echo '</fieldset>';
 $table = new html_table();
 $table->head  = array (get_string('fullname'),
     get_string('content', 'notes'),
-    get_string('publishstate', 'notes') . $OUTPUT->old_help_icon('status', get_string('publishstate', 'notes'), 'notes'),
+    get_string('publishstate', 'notes') . $OUTPUT->help_icon('publishstate', 'notes'),
     );
 $table->align = array ('left', 'center', 'center');
 $state_names = note_get_state_names();

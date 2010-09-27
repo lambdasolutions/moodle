@@ -70,7 +70,7 @@ class MoodleQuickForm_filepicker extends HTML_QuickForm_input {
 
         $client_id = uniqid();
 
-        $args = new stdclass;
+        $args = new stdClass();
         // need these three to filter repositories list
         $args->accepted_types = $this->_options['accepted_types']?$this->_options['accepted_types']:'*';
         $args->return_types = FILE_INTERNAL;
@@ -96,6 +96,7 @@ class MoodleQuickForm_filepicker extends HTML_QuickForm_input {
             'maxfiles'=>1,
             'ctx_id'=>$PAGE->context->id,
             'course'=>$PAGE->course->id,
+            'sesskey'=>sesskey(),
             ));
 
         // non js file picker

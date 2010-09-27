@@ -131,7 +131,7 @@ function imscp_update_instance($data, $mform) {
 
     $data->timemodified = time();
     $data->id           = $data->instance;
-    $imscp->structure   = null; // better reparse structure after each update
+    $data->structure   = null; // better reparse structure after each update
 
     $DB->update_record('imscp', $data);
 
@@ -212,7 +212,7 @@ function imscp_user_outline($course, $user, $mod, $imscp) {
         $numviews = count($logs);
         $lastlog = array_pop($logs);
 
-        $result = new object();
+        $result = new stdClass();
         $result->info = get_string('numviews', '', $numviews);
         $result->time = $lastlog->time;
 

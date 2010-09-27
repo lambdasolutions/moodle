@@ -93,16 +93,25 @@ abstract class base_moodleform extends moodleform {
     /**
      * Definition applied after the data is organised.. why's it here? because I want
      * to add elements on the fly.
+     * @global moodle_page $PAGE
      */
     function definition_after_data() {
+        global $PAGE;
         $buttonarray=array();
+        $buttonarray[] = $this->_form->createElement('submit', 'submitbutton', get_string($this->uistage->get_ui()->get_name().'stage'.$this->uistage->get_stage().'action', 'backup'), array('class'=>'proceedbutton'));
         if (!$this->uistage->is_first_stage()) {
             $buttonarray[] = $this->_form->createElement('submit', 'previous', get_string('previousstage','backup'));
         }
-        $buttonarray[] = $this->_form->createElement('submit', 'submitbutton', get_string($this->uistage->get_ui()->get_name().'stage'.$this->uistage->get_stage().'action', 'backup'));
-        $buttonarray[] = $this->_form->createElement('cancel');
+        $buttonarray[] = $this->_form->createElement('cancel', 'cancel', get_string('cancel'), array('class'=>'confirmcancel'));
         $this->_form->addGroup($buttonarray, 'buttonar', '', array(' '), false);
         $this->_form->closeHeaderBefore('buttonar');
+
+        $config = new stdClass;
+        $config->title = get_string('confirmcancel', 'backup');
+        $config->question = get_string('confirmcancelquestion', 'backup');
+        $config->yesLabel = get_string('confirmcancelyes', 'backup');
+        $config->noLabel = get_string('confirmcancelno', 'backup');
+        $PAGE->requires->yui_module('moodle-backup-confirmcancel', 'M.core_backup.watch_cancel_buttons', array($config));
     }
     /**
      * Closes any open divs
@@ -127,17 +136,18 @@ abstract class base_moodleform extends moodleform {
      * @return bool
      */
     function add_setting(backup_setting $setting, base_task $task=null) {
+        global $OUTPUT;
 
         // If the setting cant be changed or isn't visible then add it as a fixed setting.
         if (!$setting->get_ui()->is_changeable() || $setting->get_visibility() != backup_setting::VISIBLE) {
-            return $this->add_fixed_setting($setting);
+            return $this->add_fixed_setting($setting, $task);
         }
 
         // First add the formatting for this setting
         $this->add_html_formatting($setting);
 
         // The call the add method with the get_element_properties array
-        call_user_method_array('addElement', $this->_form, $setting->get_ui()->get_element_properties($task));
+        call_user_func_array(array($this->_form, 'addElement'), $setting->get_ui()->get_element_properties($task, $OUTPUT));
         $this->_form->setDefault($setting->get_ui_name(), $setting->get_value());
         if ($setting->has_help()) {
             list($identifier, $component) = $setting->get_help();
@@ -214,7 +224,7 @@ abstract class base_moodleform extends moodleform {
      * Adds a fixed or static setting to the form
      * @param backup_setting $setting
      */
-    function add_fixed_setting(backup_setting $setting) {
+    function add_fixed_setting(backup_setting $setting, base_task $task) {
         global $OUTPUT;
         $settingui = $setting->get_ui();
         if ($setting->get_visibility() == backup_setting::VISIBLE) {
@@ -233,7 +243,12 @@ abstract class base_moodleform extends moodleform {
                     $icon = '';
                     break;
             }
-            $this->_form->addElement('static', 'static_'.$settingui->get_name(), $settingui->get_label(), $settingui->get_static_value().$icon);
+            $label = $settingui->get_label($task);
+            $labelicon = $settingui->get_icon();
+            if (!empty($labelicon)) {
+                $label .= '&nbsp;'.$OUTPUT->render($labelicon);
+            }
+            $this->_form->addElement('static', 'static_'.$settingui->get_name(), $label, $settingui->get_static_value().$icon);
             $this->_form->addElement('html', html_writer::end_tag('div'));
         }
         $this->_form->addElement('hidden', $settingui->get_name(), $settingui->get_value());
@@ -247,7 +262,7 @@ abstract class base_moodleform extends moodleform {
         $mform = $this->_form;
         // Apply all dependencies for backup
         foreach ($setting->get_my_dependency_properties() as $key=>$dependency) {
-            call_user_method_array('disabledIf', $this->_form, $dependency);
+            call_user_func_array(array($this->_form, 'disabledIf'), $dependency);
         }
     }
     /**
@@ -256,5 +271,50 @@ abstract class base_moodleform extends moodleform {
      */
     public function is_cancelled() {
         return (optional_param('cancel', false, PARAM_BOOL) || parent::is_cancelled());
+    }
+
+    /**
+     * Removes an element from the form if it exists
+     * @param string $elementname
+     * @return bool
+     */
+    public function remove_element($elementname) {
+        if ($this->_form->elementExists($elementname)) {
+            return $this->_form->removeElement($elementname);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Gets an element from the form if it exists
+     *
+     * @param string $elementname
+     * @return HTML_QuickForm_input|MoodleQuickForm_group
+     */
+    public function get_element($elementname) {
+        if ($this->_form->elementExists($elementname)) {
+            return $this->_form->getElement($elementname);
+        } else {
+            return false;
+        }
+    }
+
+    /**
+     * Displays the form
+     */
+    public function display() {
+        $this->require_definition_after_data();
+        parent::display();
+    }
+
+    /**
+     * Ensures the the definition after data is loaded
+     */
+    public function require_definition_after_data() {
+        if (!$this->_definition_finalized) {
+            $this->_definition_finalized = true;
+            $this->definition_after_data();
+        }
     }
 }

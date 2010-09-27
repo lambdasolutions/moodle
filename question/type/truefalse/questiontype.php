@@ -54,7 +54,7 @@ class question_truefalse_qtype extends default_questiontype {
             $DB->update_record("question_answers", $true);
         } else {
             unset($true);
-            $true = new stdclass;
+            $true = new stdClass();
             $true->answer   = get_string("true", "quiz");
             $true->question = $question->id;
             $true->fraction = $question->correctanswer;
@@ -78,7 +78,7 @@ class question_truefalse_qtype extends default_questiontype {
             $DB->update_record("question_answers", $false);
         } else {
             unset($false);
-            $false = new stdclass;
+            $false = new stdClass();
             $false->answer   = get_string("false", "quiz");
             $false->question = $question->id;
             $false->fraction = 1 - (int)$question->correctanswer;
@@ -292,35 +292,6 @@ class question_truefalse_qtype extends default_questiontype {
         return 0.5;
     }
 
-/// BACKUP FUNCTIONS ////////////////////////////
-
-    /*
-     * Backup the data in a truefalse question
-     *
-     * This is used in question/backuplib.php
-     */
-    function backup($bf,$preferences,$question,$level=6) {
-        global $DB;
-
-        $status = true;
-
-        $truefalses = $DB->get_records("question_truefalse",array("question" => $question),"id");
-        //If there are truefalses
-        if ($truefalses) {
-            //Iterate over each truefalse
-            foreach ($truefalses as $truefalse) {
-                $status = fwrite ($bf,start_tag("TRUEFALSE",$level,true));
-                //Print truefalse contents
-                fwrite ($bf,full_tag("TRUEANSWER",$level+1,false,$truefalse->trueanswer));
-                fwrite ($bf,full_tag("FALSEANSWER",$level+1,false,$truefalse->falseanswer));
-                $status = fwrite ($bf,end_tag("TRUEFALSE",$level,true));
-            }
-            //Now print question_answers
-            $status = question_backup_answers($bf,$preferences,$question);
-        }
-        return $status;
-    }
-
 /// RESTORE FUNCTIONS /////////////////
 
     /*
@@ -438,7 +409,7 @@ class question_truefalse_qtype extends default_questiontype {
             $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
             foreach ($files as $storedfile) {
                 if (!$storedfile->is_directory()) {
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);
                     $storedfile->delete();

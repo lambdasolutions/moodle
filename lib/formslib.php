@@ -1075,7 +1075,7 @@ EOS;
         global $PAGE;
         if (is_string($element)) {
             $element = $this->_form->getElement($element);
-}
+        }
         if (is_object($element)) {
             $element->_generateId();
             $elementid = $element->getAttribute('id');
@@ -1090,6 +1090,23 @@ EOS;
                 }
             }
         }
+    }
+
+    /**
+     * Returns a JS module definition for the mforms JS
+     * @return array
+     */
+    public static function get_js_module() {
+        global $CFG;
+        return array(
+            'name' => 'mform',
+            'fullpath' => '/lib/form/form.js',
+            'requires' => array('base', 'node'),
+            'strings' => array(
+                array('showadvanced', 'form'),
+                array('hideadvanced', 'form')
+            )
+        );
     }
 }
 
@@ -1437,7 +1454,8 @@ class MoodleQuickForm extends HTML_QuickForm_DHTMLRulesTableless {
      */
     function setHelpButton($elementname, $buttonargs, $suppresscheck=false, $function='helpbutton'){
         global $OUTPUT;
-        //TODO: obsolete this function completely
+
+        debugging('function moodle_form::setHelpButton() is deprecated');
         if ($function !== 'helpbutton') {
             //debugging('parameter $function in moodle_form::setHelpButton() is not supported any more');
         }
@@ -1738,8 +1756,12 @@ function qf_errorHandler(element, _qfMsg) {
             //unset($element);
             list($jsArr,$element)=$jsandelement;
             //end of fix
+            $escapedElementName = preg_replace_callback(
+                '/[_\[\]]/',
+                create_function('$matches', 'return sprintf("_%2x",ord($matches[0]));'),
+                $elementName);
             $js .= '
-function validate_' . $this->_formName . '_' . $elementName . '(element) {
+function validate_' . $this->_formName . '_' . $escapedElementName . '(element) {
   var value = \'\';
   var errFlag = new Array();
   var _qfGroups = {};
@@ -1753,7 +1775,7 @@ function validate_' . $this->_formName . '_' . $elementName . '(element) {
 }
 ';
             $validateJS .= '
-  ret = validate_' . $this->_formName . '_' . $elementName.'(frm.elements[\''.$elementName.'\']) && ret;
+  ret = validate_' . $this->_formName . '_' . $escapedElementName.'(frm.elements[\''.$elementName.'\']) && ret;
   if (!ret && !first_focus) {
     first_focus = true;
     frm.elements[\''.$elementName.'\'].focus();
@@ -1764,7 +1786,7 @@ function validate_' . $this->_formName . '_' . $elementName . '(element) {
             //unset($element);
             //$element =& $this->getElement($elementName);
             //end of fix
-            $valFunc = 'validate_' . $this->_formName . '_' . $elementName . '(this)';
+            $valFunc = 'validate_' . $this->_formName . '_' . $escapedElementName . '(this)';
             $onBlur = $element->getAttribute('onBlur');
             $onChange = $element->getAttribute('onChange');
             $element->updateAttributes(array('onBlur' => $onBlur . $valFunc,
@@ -1791,7 +1813,7 @@ function validate_' . $this->_formName . '(frm) {
         foreach ($this->_rules as $field => $rulesarr){
             foreach ($rulesarr as $key => $rule){
                 if ($rule['message']===null){
-                    $a=new object();
+                    $a=new stdClass();
                     $a->format=$rule['format'];
                     $str=get_string('err_'.$rule['type'], 'form', $a);
                     if (strpos($str, '[[')!==0){
@@ -1802,22 +1824,14 @@ function validate_' . $this->_formName . '(frm) {
         }
     }
 
-    /**
-     * @return string
-     */
-    function getLockOptionEndScript(){
-
-        $iname = $this->getAttribute('id').'items';
-        $js = '<script type="text/javascript">'."\n";
-        $js .= '//<![CDATA['."\n";
-        $js .= "var $iname = Array();\n";
-
+    function getLockOptionObject(){
+        $result = array();
         foreach ($this->_dependencies as $dependentOn => $conditions){
-            $js .= "{$iname}['$dependentOn'] = Array();\n";
+            $result[$dependentOn] = array();
             foreach ($conditions as $condition=>$values) {
-                $js .= "{$iname}['$dependentOn']['$condition'] = Array();\n";
+                $result[$dependentOn][$condition] = array();
                 foreach ($values as $value=>$dependents) {
-                    $js .= "{$iname}['$dependentOn']['$condition']['$value'] = Array();\n";
+                    $result[$dependentOn][$condition][$value] = array();
                     $i = 0;
                     foreach ($dependents as $dependent) {
                         $elements = $this->_getElNamesRecursive($dependent);
@@ -1829,17 +1843,13 @@ function validate_' . $this->_formName . '(frm) {
                             if ($element == $dependentOn) {
                                 continue;
                             }
-                            $js .= "{$iname}['$dependentOn']['$condition']['$value'][$i]='$element';\n";
-                            $i++;
+                            $result[$dependentOn][$condition][$value][] = $element;
                         }
                     }
                 }
             }
         }
-        $js .="lockoptionsallsetup('".$this->getAttribute('id')."');\n";
-        $js .='//]]>'."\n";
-        $js .='</script>'."\n";
-        return $js;
+        return array($this->getAttribute('id'), $result);
     }
 
     /**
@@ -2237,16 +2247,20 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
     }
 
     /**
+     * @global moodle_page $PAGE
      * @param object $form Passed by reference
      */
     function finishForm(&$form){
+        global $PAGE;
         if ($form->isFrozen()){
             $this->_hiddenHtml = '';
         }
         parent::finishForm($form);
-        if ((!$form->isFrozen()) && ('' != ($script = $form->getLockOptionEndScript()))) {
-            // add a lockoptions script
-            $this->_html = $this->_html . "\n" . $script;
+        if (!$form->isFrozen()) {
+            $args = $form->getLockOptionObject();
+            if (count($args[1]) > 0) {
+                $PAGE->requires->js_init_call('M.form.initFormDependencies', $args, false, moodleform::get_js_module());
+            }
         }
     }
    /**
@@ -2255,17 +2269,10 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
     * @param    object  $header   An HTML_QuickForm_header element being visited
     * @access   public
     * @return   void
+    * @global moodle_page $PAGE
     */
     function renderHeader(&$header) {
         global $PAGE;
-        static $advformcount;
-
-        // This ensures that if 2(+) advanced buttons are used
-        // that all show/hide buttons appear in the correct place
-        // Because of now using $PAGE->requires->js_function_call
-        if ($advformcount==null) {
-            $advformcount = 1;
-        }
 
         $name = $header->getName();
 
@@ -2281,30 +2288,17 @@ class MoodleQuickForm_Renderer extends HTML_QuickForm_Renderer_Tableless{
 
         if (isset($this->_advancedElements[$name])){
             $header_html =str_replace('{advancedimg}', $this->_advancedHTML, $header_html);
+            $elementName='mform_showadvanced';
+            if ($this->_showAdvanced==0){
+                $buttonlabel = get_string('showadvanced', 'form');
+            } else {
+                $buttonlabel = get_string('hideadvanced', 'form');
+            }
+            $button = '<input name="'.$elementName.'" class="showadvancedbtn" value="'.$buttonlabel.'" type="submit" />';
+            $PAGE->requires->js_init_call('M.form.initShowAdvanced', array(), false, moodleform::get_js_module());
+            $header_html = str_replace('{button}', $button, $header_html);
         } else {
             $header_html =str_replace('{advancedimg}', '', $header_html);
-        }
-        $elementName='mform_showadvanced';
-        if ($this->_showAdvanced==0){
-            $buttonlabel = get_string('showadvanced', 'form');
-        } else {
-            $buttonlabel = get_string('hideadvanced', 'form');
-        }
-
-        if (isset($this->_advancedElements[$name])){
-            $PAGE->requires->yui2_lib('event');
-            // this is tricky - the first submit button on form is "clicked" if user presses enter
-            // we do not want to "submit" using advanced button if javascript active
-            $button_nojs = '<input name="'.$elementName.'" id="'.$elementName.(string)$advformcount.'" class="showadvancedbtn" value="'.$buttonlabel.'" type="submit" />';
-
-            $buttonlabel = addslashes_js($buttonlabel);
-            $PAGE->requires->string_for_js('showadvanced', 'form');
-            $PAGE->requires->string_for_js('hideadvanced', 'form');
-            $PAGE->requires->js_function_call('showAdvancedInit', Array($elementName.(string)$advformcount, $elementName, $buttonlabel));
-
-            $advformcount++;
-            $header_html = str_replace('{button}', $button_nojs, $header_html);
-        } else {
             $header_html = str_replace('{button}', '', $header_html);
         }
 

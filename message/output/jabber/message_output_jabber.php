@@ -62,7 +62,7 @@ class message_output_jabber extends message_output {
         }
         $jabbermessage = fullname($userfrom).': '.$message->fullmessage;
 
-        $conection = new XMPPHP_XMPP(JABBER_SERVER, 5222, JABBER_USERNAME, JABBER_PASSWORD, 'moodle', JABBER_SERVER);
+        $conn = new XMPPHP_XMPP(JABBER_SERVER, 5222, JABBER_USERNAME, JABBER_PASSWORD, 'moodle', JABBER_SERVER);
 
         try {
             $conn->connect();
@@ -86,7 +86,7 @@ class message_output_jabber extends message_output {
     }
 
     /**
-     * Parses the form submited data and saves it into preferences array.
+     * Parses the form submitted data and saves it into preferences array.
      * @param object $mform preferences form class
      * @param array $preferences preferences array
      */
@@ -115,7 +115,7 @@ class message_output_jabber extends message_output {
         fclose($f);
 
 
-$savemessage = new object();
+$savemessage = new stdClass();
     $savemessage->useridfrom        = 3;
     $savemessage->useridto          = 2;
     $savemessage->subject           = 'IM';

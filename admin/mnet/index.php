@@ -84,14 +84,13 @@
 
     echo $OUTPUT->header();
 ?>
-<center>
 <form method="post" action="index.php">
     <table align="center" width="635" class="generalbox" border="0" cellpadding="5" cellspacing="0">
         <tr>
             <td  class="generalboxcontent">
             <table cellpadding="9" cellspacing="0" >
                 <tr valign="top">
-                    <td colspan="2" class="header" cellpadding="0"><?php print_string('aboutyourhost', 'mnet'); ?></td>
+                    <td colspan="2" class="header"><?php print_string('aboutyourhost', 'mnet'); ?></td>
                 </tr>
                 <tr valign="top">
                     <td align="right"><?php print_string('publickey', 'mnet'); ?>:</td>
@@ -112,10 +111,10 @@
             <td  class="generalboxcontent">
             <table cellpadding="9" cellspacing="0" >
                 <tr valign="top">
-                    <td colspan="2" class="header" cellpadding="0"><?php print_string('expireyourkey', 'mnet'); ?></td>
+                    <td colspan="2" class="header"><?php print_string('expireyourkey', 'mnet'); ?></td>
                 </tr>
                 <tr valign="top">
-                    <td colspan="2" cellpadding="0"><?php print_string('expireyourkeyexplain', 'mnet'); ?></td>
+                    <td colspan="2"><?php print_string('expireyourkeyexplain', 'mnet'); ?></td>
                 </tr>
                 <tr valign="top">
                     <td align="left" width="10" nowrap="nowrap"><?php print_string('expireyourkey', 'mnet'); ?></td>
@@ -129,7 +128,6 @@
         </tr>
     </table>
 </form>
-</center>
 
 <?php
 echo $OUTPUT->footer();

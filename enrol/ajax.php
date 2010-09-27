@@ -90,7 +90,11 @@ switch ($action) {
 
     case 'getassignable':
         $otheruserroles = optional_param('otherusers', false, PARAM_BOOL);
-        $outcome->response = $manager->get_assignable_roles($otheruserroles);
+        $outcome->response = array_reverse($manager->get_assignable_roles($otheruserroles), true);
+        break;
+    case 'getdefaultcohortrole': //TODO: use in ajax UI MDL-24280
+        $cohortenrol = enrol_get_plugin('cohort');
+        $outcome->response = $cohortenrol->get_config('roleid');
         break;
     case 'getcohorts':
         require_capability('moodle/course:enrolconfig', $context);
@@ -120,7 +124,7 @@ switch ($action) {
         break;
     case 'searchusers':
         $enrolid = required_param('enrolid', PARAM_INT);
-        $search  = optional_param('search', '', PARAM_CLEAN);
+        $search  = optional_param('search', '', PARAM_RAW);
         $page = optional_param('page', 0, PARAM_INT);
         $outcome->response = $manager->get_potential_users($enrolid, $search, false, $page);
         foreach ($outcome->response['users'] as &$user) {
@@ -131,7 +135,7 @@ switch ($action) {
         break;
 
     case 'searchotherusers':
-        $search  = optional_param('search', '', PARAM_CLEAN);
+        $search  = optional_param('search', '', PARAM_RAW);
         $page = optional_param('page', 0, PARAM_INT);
         $outcome->response = $manager->search_other_users($search, false, $page);
         foreach ($outcome->response['users'] as &$user) {

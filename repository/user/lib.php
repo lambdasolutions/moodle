@@ -19,10 +19,10 @@
  * repository_user class is used to browse user private files
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2010 Dongsheng Cai <dongsheng@moodle.com>
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage user
+ * @copyright  2010 Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 class repository_user extends repository {
@@ -62,6 +62,7 @@ class repository_user extends repository {
         }
         $filearea = 'private';
         $component = 'user';
+        $itemid  = 0;
         $context = get_context_instance(CONTEXT_USER, $USER->id);
 
         try {
@@ -71,7 +72,7 @@ class repository_user extends repository {
                 $pathnodes = array();
                 $level = $fileinfo;
                 $params = $fileinfo->get_params();
-                while ($level && $params['filearea'] == 'user_private') {
+                while ($level && $params['component'] == 'user' && $params['filearea'] == 'private') {
                     $encodedpath = base64_encode(serialize($level->get_params()));
                     $pathnodes[] = array('name'=>$level->get_visible_name(), 'path'=>$encodedpath);
                     $level = $level->get_parent();
@@ -90,18 +91,17 @@ class repository_user extends repository {
                             'date' => '',
                             'path' => $encodedpath,
                             'children'=>array(),
-                            'thumbnail' => $OUTPUT->pix_url('f/folder-32') . ''
+                            'thumbnail' => $OUTPUT->pix_url('f/folder-32')->out(false)
                         );
                         $list[] = $node;
                     } else {
                         $encodedpath = base64_encode(serialize($child->get_params()));
-                        $icon = 'f/'.str_replace('.gif', '', mimeinfo('icon', $child->get_visible_name())).'-32';
                         $node = array(
                             'title' => $child->get_visible_name(),
                             'size' => 0,
                             'date' => '',
                             'source'=> $encodedpath,
-                            'thumbnail' => $OUTPUT->pix_url($icon) . '',
+                            'thumbnail' => $OUTPUT->pix_url(file_extension_icon($child->get_visible_name(), 32))->out(false)
                         );
                         $list[] = $node;
                     }

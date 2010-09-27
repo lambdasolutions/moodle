@@ -249,7 +249,7 @@ class backup_ui_stage_schema extends backup_ui_stage {
                     // setting. We only want schema settings to be editable
                     foreach ($task->get_settings() as $setting) {
                         if ($setting->get_name() != 'filename') {
-                            $form->add_fixed_setting($setting);
+                            $form->add_fixed_setting($setting, $task);
                         }
                     }
                 }
@@ -327,17 +327,20 @@ class backup_ui_stage_confirmation extends backup_ui_stage {
             $content = '';
             $courseheading = false;
 
-            if ($setting = $this->ui->get_setting('filename')) {
-                $form->add_heading('filenamesetting', get_string('filename', 'backup'));
-                if ($setting->get_value() == 'backup.zip') {
-                    $format = $this->ui->get_format();
-                    $type = $this->ui->get_type();
-                    $id = $this->ui->get_controller_id();
-                    $users = $this->ui->get_setting_value('users');
-                    $anonymised = $this->ui->get_setting_value('anonymize');
-                    $setting->set_value(backup_plan_dbops::get_default_backup_filename($format, $type, $id, $users, $anonymised));
+            foreach ($this->ui->get_tasks() as $task) {
+                if ($setting = $task->get_setting('filename')) {
+                    $form->add_heading('filenamesetting', get_string('filename', 'backup'));
+                    if ($setting->get_value() == 'backup.mbz') {
+                        $format = $this->ui->get_format();
+                        $type = $this->ui->get_type();
+                        $id = $this->ui->get_controller_id();
+                        $users = $this->ui->get_setting_value('users');
+                        $anonymised = $this->ui->get_setting_value('anonymize');
+                        $setting->set_value(backup_plan_dbops::get_default_backup_filename($format, $type, $id, $users, $anonymised));
+                    }
+                    $form->add_setting($setting, $task);
+                    break;
                 }
-                $form->add_setting($setting);
             }
 
             foreach ($this->ui->get_tasks() as $task) {
@@ -346,14 +349,14 @@ class backup_ui_stage_confirmation extends backup_ui_stage {
                     $form->add_heading('rootsettings', get_string('rootsettings', 'backup'));
                 } else if (!$courseheading) {
                     // we havn't already add a course heading
-                    $form->add_heading('coursesettings', get_string('includeactivities', 'backup'));
+                    $form->add_heading('coursesettings', get_string('includeditems', 'backup'));
                     $courseheading = true;
                 }
                 // Iterate all settings, doesnt need to happen by reference
                 foreach ($task->get_settings() as $setting) {
                     // For this stage only the filename setting should be editable
                     if ($setting->get_name() != 'filename') {
-                        $form->add_fixed_setting($setting);
+                        $form->add_fixed_setting($setting, $task);
                     }
                 }
             }

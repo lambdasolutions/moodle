@@ -63,6 +63,14 @@ abstract class restore_task extends base_task {
         return $this->plan->is_samesite();
     }
 
+    public function is_missing_modules() {
+        return $this->plan->is_missing_modules();
+    }
+
+    public function is_excluding_activities() {
+        return $this->plan->is_excluding_activities();
+    }
+
     public function set_preloaded_information() {
         $this->plan->set_preloaded_information();
     }
@@ -73,6 +81,10 @@ abstract class restore_task extends base_task {
 
     public function get_tempdir() {
         return $this->plan->get_tempdir();
+    }
+
+    public function get_old_courseid() {
+        return $this->plan->get_info()->original_course_id;
     }
 
     public function get_old_contextid() {

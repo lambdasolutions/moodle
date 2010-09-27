@@ -13,9 +13,9 @@
 
     /// Print forum intro above posts  MDL-18483
         if (trim($forum->intro) != '') {
-            $options = new stdclass;
+            $options = new stdClass();
             $options->para = false;
-            $introcontent = format_text($forum->intro, FORMAT_MOODLE, $options);
+            $introcontent = format_module_intro('forum', $forum, $cm->id);
 
             if ($PAGE->user_is_editing() && has_capability('moodle/course:update', $context)) {
                 $streditsummary  = get_string('editsummary');

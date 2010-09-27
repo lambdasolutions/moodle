@@ -193,7 +193,7 @@ function forum_rss_feed_discussions_sql($forum, $cm, $newsince=0) {
 
 function forum_rss_feed_posts_sql($forum, $cm, $newsince=0) {
     $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
-    
+
     //get group enforcement SQL
     $groupmode    = groups_get_activity_groupmode($cm);
     $currentgroup = groups_get_activity_group($cm);
@@ -258,7 +258,7 @@ function forum_rss_get_group_sql($cm, $groupmode, $currentgroup, $modcontext=nul
 }
 
 
-    
+
 
 /**
  * This function return the XML rss contents about the forum
@@ -282,11 +282,11 @@ function forum_rss_feed_contents($forum, $sql) {
             $isdiscussion = false;
     }
 
-    $formatoptions = new object;
+    $formatoptions = new stdClass();
     $items = array();
     foreach ($recs as $rec) {
-            unset($item);
-            unset($user);
+            $item = new stdClass();
+            $user = new stdClass();
             $item->title = format_string($rec->discussionname);
             $user->firstname = $rec->userfirstname;
             $user->lastname = $rec->userlastname;
@@ -310,7 +310,7 @@ function forum_rss_feed_contents($forum, $sql) {
                     $item->attachments = array();
                 }
             }*/
-            
+
             $items[] = $item;
         }
     $recs->close();

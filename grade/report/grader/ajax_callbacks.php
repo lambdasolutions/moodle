@@ -83,7 +83,7 @@ switch ($action) {
 
                 if ($errorstr) {
                     $user = $DB->get_record('user', array('id' => $userid), 'id, firstname, lastname');
-                    $gradestr = new object();
+                    $gradestr = new stdClass();
                     $gradestr->username = fullname($user);
                     $gradestr->itemname = $grade_item->get_name();
                     $json_object->message = get_string($errorstr, 'grades', $gradestr);
@@ -117,7 +117,7 @@ switch ($action) {
                 } else {
                     $json_object->result = 'error';
                     $json_object->message = "TO BE LOCALISED: Failure to update final grade!";
-                    echo json_encode();
+                    echo json_encode($json_object);
                     die();
                 }
 

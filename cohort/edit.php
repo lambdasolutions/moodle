@@ -19,9 +19,9 @@
 /**
  * Cohort related management functions, this file needs to be included manually.
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage cohort
- * @copyright  2010 Petr Skoda  (info@skodak.org)
+ * @copyright  2010 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -46,7 +46,7 @@ if ($id) {
     if ($context->contextlevel != CONTEXT_COURSECAT and $context->contextlevel != CONTEXT_SYSTEM) {
         print_error('invalidcontext');
     }
-    $cohort = new object();
+    $cohort = new stdClass();
     $cohort->id          = 0;
     $cohort->contextid   = $context->id;
     $cohort->name        = '';

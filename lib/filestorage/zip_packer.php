@@ -42,7 +42,8 @@ class zip_packer extends file_packer {
 
     /**
      * Zip files and store the result in file storage
-     * @param array $files array with full zip paths (including directory information) as keys (archivepath=>ospathname or archivepath/subdir=>stored_file)
+     * @param array $files array with full zip paths (including directory information)
+     *              as keys (archivepath=>ospathname or archivepath/subdir=>stored_file or archivepath=>array('content_as_string'))
      * @param int $contextid
      * @param string $component
      * @param string $filearea
@@ -56,7 +57,7 @@ class zip_packer extends file_packer {
 
         $fs = get_file_storage();
 
-        check_dir_exists($CFG->dataroot.'/temp/zip', true, true);
+        check_dir_exists($CFG->dataroot.'/temp/zip');
         $tmpfile = tempnam($CFG->dataroot.'/temp/zip', 'zipstor');
 
         if ($result = $this->archive_to_pathname($files, $tmpfile)) {
@@ -66,7 +67,7 @@ class zip_packer extends file_packer {
                     return false;
                 }
             }
-            $file_record = new object();
+            $file_record = new stdClass();
             $file_record->contextid = $contextid;
             $file_record->component = $component;
             $file_record->filearea  = $filearea;
@@ -84,13 +85,11 @@ class zip_packer extends file_packer {
 
     /**
      * Zip files and store the result in os file
-     * @param array $files array with zip paths as keys (archivepath=>ospathname or archivepath=>stored_file)
+     * @param array $files array with zip paths as keys (archivepath=>ospathname or archivepath=>stored_file or archivepath=>array('content_as_string'))
      * @param string $archivefile path to target zip file
      * @return bool success
      */
     public function archive_to_pathname($files, $archivefile) {
-        global $CFG;
-
         if (!is_array($files)) {
             return false;
         }
@@ -109,6 +108,10 @@ class zip_packer extends file_packer {
 
             } else if (is_string($file)) {
                 $this->archive_pathname($ziparch, $archivepath, $file);
+
+            } else if (is_array($file)) {
+                $content = reset($file);
+                $ziparch->add_file_from_string($archivepath, $content);
 
             } else {
                 $this->archive_stored($ziparch, $archivepath, $file);
@@ -279,7 +282,7 @@ class zip_packer extends file_packer {
             return $archivefile->extract_to_pathname($this, $contextid, $component, $filearea, $itemid, $pathbase, $userid);
         }
 
-        check_dir_exists($CFG->dataroot.'/temp/zip', true, true);
+        check_dir_exists($CFG->dataroot.'/temp/zip');
 
         $pathbase = trim($pathbase, '/');
         $pathbase = ($pathbase === '') ? '/' : '/'.$pathbase.'/';
@@ -339,7 +342,7 @@ class zip_packer extends file_packer {
                         continue;
                     }
                 }
-                $file_record = new object();
+                $file_record = new stdClass();
                 $file_record->contextid = $contextid;
                 $file_record->component = $component;
                 $file_record->filearea  = $filearea;
@@ -388,7 +391,7 @@ class zip_packer extends file_packer {
                         continue;
                     }
                 }
-                $file_record = new object();
+                $file_record = new stdClass();
                 $file_record->contextid = $contextid;
                 $file_record->component = $component;
                 $file_record->filearea  = $filearea;

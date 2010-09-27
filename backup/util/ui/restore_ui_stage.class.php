@@ -169,6 +169,13 @@ class restore_ui_stage_confirm extends restore_ui_independent_stage {
         return ($fb->extract_to_pathname("$CFG->dataroot/temp/backup/".$this->filename, "$CFG->dataroot/temp/backup/$this->filepath/"));
     }
     public function display($renderer) {
+
+        // TODO: Remove this when backup formats are better supported
+        $format = backup_general_helper::detect_backup_format($this->filepath);
+        if ($format !== 'moodle2') {
+            return $renderer->invalid_format($format);
+        }
+
         $this->details = backup_general_helper::get_backup_information($this->filepath);
         return $renderer->backup_details($this->details, new moodle_url('/backup/restore.php', array('contextid'=>$this->contextid, 'filepath'=>$this->filepath, 'stage'=>restore_ui::STAGE_DESTINATION)));
     }
@@ -201,7 +208,7 @@ class restore_ui_stage_destination extends restore_ui_independent_stage {
             'filepath'=>$this->filepath,
             'contextid'=>$this->contextid,
             'stage'=>restore_ui::STAGE_DESTINATION));
-        $this->coursesearch = new restore_course_search(array('url'=>$url));
+        $this->coursesearch = new restore_course_search(array('url'=>$url), get_context_instance_by_id($contextid)->instanceid);
         $this->categorysearch = new restore_category_search(array('url'=>$url));
     }
     public function process() {
@@ -233,6 +240,12 @@ class restore_ui_stage_destination extends restore_ui_independent_stage {
      */
     public function display($renderer) {
         global $DB, $USER, $PAGE;
+
+        $format = backup_general_helper::detect_backup_format($this->filepath);
+        if ($format !== 'moodle2') {
+            return $renderer->invalid_format($format);
+        }
+
         $this->details = backup_general_helper::get_backup_information($this->filepath);
         $url = new moodle_url('/backup/restore.php', array('contextid'=>$this->contextid, 'filepath'=>$this->filepath, 'stage'=>restore_ui::STAGE_SETTINGS));
         
@@ -445,7 +458,7 @@ class restore_ui_stage_schema extends restore_ui_stage {
                     // setting. We only want schema settings to be editable
                     foreach ($task->get_settings() as $setting) {
                         if ($setting->get_name() != 'filename') {
-                            $form->add_fixed_setting($setting);
+                            $form->add_fixed_setting($setting, $task);
                         }
                     }
                 }
@@ -518,7 +531,7 @@ class restore_ui_stage_review extends restore_ui_stage {
                 }
                 // Iterate all settings, doesnt need to happen by reference
                 foreach ($task->get_settings() as $setting) {
-                    $form->add_fixed_setting($setting);
+                    $form->add_fixed_setting($setting, $task);
                 }
             }
             $this->stageform = $form;

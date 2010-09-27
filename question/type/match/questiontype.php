@@ -230,9 +230,7 @@ class question_match_qtype extends default_questiontype {
         $responses = implode(',', $responses);
 
         // Set the legacy answer field
-        if (!$DB->set_field('question_states', 'answer', $responses, array('id' => $state->id))) {
-            return false;
-        }
+        $DB->set_field('question_states', 'answer', $responses, array('id' => $state->id));
         return true;
     }
 
@@ -454,7 +452,7 @@ class question_match_qtype extends default_questiontype {
         //only one response
         $responsedetails =array();
         foreach ($responses as $tsubqid => $response){
-            $responsedetail = new object();
+            $responsedetail = new stdClass();
             $responsedetail->subqid = $tsubqid;
             $responsedetail->response = $response;
             foreach ($teacherresponses[$tsubqid] as $aid => $tresponse){
@@ -483,45 +481,6 @@ class question_match_qtype extends default_questiontype {
      */
     function get_random_guess_score($question) {
         return 1 / count($question->options->subquestions);
-    }
-
-/// BACKUP FUNCTIONS ////////////////////////////
-
-    /*
-     * Backup the data in the question
-     *
-     * This is used in question/backuplib.php
-     */
-    function backup($bf,$preferences,$question,$level=6) {
-        global $DB;
-        $status = true;
-
-        // Output the shuffleanswers setting.
-        $matchoptions = $DB->get_record('question_match', array('question' => $question));
-        if ($matchoptions) {
-            $status = fwrite ($bf,start_tag("MATCHOPTIONS",6,true));
-            fwrite ($bf,full_tag("SHUFFLEANSWERS",7,false,$matchoptions->shuffleanswers));
-            $status = fwrite ($bf,end_tag("MATCHOPTIONS",6,true));
-        }
-
-        $matchs = $DB->get_records('question_match_sub', array('question' =>  $question), 'id ASC');
-        //If there are matchs
-        if ($matchs) {
-            //Print match contents
-            $status = fwrite ($bf,start_tag("MATCHS",6,true));
-            //Iterate over each match
-            foreach ($matchs as $match) {
-                $status = fwrite ($bf,start_tag("MATCH",7,true));
-                //Print match contents
-                fwrite ($bf,full_tag("ID",8,false,$match->id));
-                fwrite ($bf,full_tag("CODE",8,false,$match->code));
-                fwrite ($bf,full_tag("QUESTIONTEXT",8,false,$match->questiontext));
-                fwrite ($bf,full_tag("ANSWERTEXT",8,false,$match->answertext));
-                $status = fwrite ($bf,end_tag("MATCH",7,true));
-            }
-            $status = fwrite ($bf,end_tag("MATCHS",6,true));
-        }
-        return $status;
     }
 
 /// RESTORE FUNCTIONS /////////////////
@@ -802,7 +761,7 @@ class question_match_qtype extends default_questiontype {
             $files = $fs->get_area_files($question->contextid, $component, $filearea, $sub->id);
             foreach ($files as $storedfile) {
                 if (!$storedfile->is_directory()) {
-                    $newfile = new object();
+                    $newfile = new stdClass();
                     $newfile->contextid = (int)$newcategory->contextid;
                     $fs->create_file_from_storedfile($newfile, $storedfile);
                     $storedfile->delete();
@@ -815,11 +774,11 @@ class question_match_qtype extends default_questiontype {
 
         $itemid = reset($args);
         if ($filearea == 'subquestion') {
-            // always display quetion images
             // itemid is sub question id
-            if ($itemid != $question->id) {
+            if (!array_key_exists($itemid, $question->options->subquestions)) {
                 return false;
             }
+
             return true;
         } else {
             return parent::check_file_access($question, $state, $options, $contextid, $component,

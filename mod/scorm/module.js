@@ -21,6 +21,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+mod_scorm_next = null;
+mod_scorm_prev = null;
+mod_scorm_activate_item = null;
+
 M.mod_scorm = {};
 
 M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launch_sco) {
@@ -79,7 +83,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
                 var api_url = M.cfg.wwwroot + '/mod/scorm/api.php?' + node.title;
                 document.getElementById('external-scormapi').src = api_url;
             }
-         
+
             var content = new YAHOO.util.Element('scorm_content');
             try {
                 // first try IE way - it can not set name attribute later
@@ -96,7 +100,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
                 }
                 else {
                     var obj = document.createElement('<iframe id="scorm_object" src="'+url_prefix + node.title+'">');
-                } 
+                }
                 // fudge IE7 to redraw the screen
                 if (YAHOO.env.ua.ie > 5 && YAHOO.env.ua.ie < 8) {
                     obj.attachEvent("onload", scorm_resize_parent);
@@ -134,6 +138,8 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             }
         };
 
+        mod_scorm_activate_item = scorm_activate_item;
+
         /**
          * Enables/disables navigation buttons as needed.
          * @return void
@@ -154,7 +160,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             if (ifr) {
                 ifr.detachEvent("onload", scorm_resize_parent);
             }
-        }
+        };
 
         var scorm_resize_layout = function(alsowidth) {
             if (window_name) {
@@ -282,6 +288,9 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             return null;
         };
 
+        mod_scorm_next = scorm_next;
+        mod_scorm_prev = scorm_prev;
+
 
         // layout
         YAHOO.widget.LayoutUnit.prototype.STR_COLLAPSE = M.str.moodle.hide;
@@ -350,7 +359,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
             scorm_nav_panel = new YAHOO.widget.Panel('scorm_navpanel', { visible:true, draggable:true, close:false, xy: [250, 450],
                                                                     autofillheight: "body"} );
             scorm_nav_panel.setHeader(M.str.scorm.navigation);
-    
+
             //TODO: make some better&accessible buttons
             scorm_nav_panel.setBody('<span id="scorm_nav"><button id="nav_skipprev">&lt;&lt;</button><button id="nav_prev">&lt;</button><button id="nav_up">^</button><button id="nav_next">&gt;</button><button id="nav_skipnext">&gt;&gt;</button></span>');
             scorm_nav_panel.render();
@@ -401,3 +410,26 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
         };
     });
 };
+
+
+function scorm_get_prev() {
+	scorm_tree_node = YAHOO.widget.TreeView.getTree('scorm_tree');
+    if (scorm_tree_node) {
+        var hnode = scorm_tree_node.getHighlightedNode();
+        var prev = mod_scorm_prev(hnode);
+        if (prev) {
+            mod_scorm_activate_item(prev);
+        }
+    }
+}
+
+function scorm_get_next() {
+	scorm_tree_node = YAHOO.widget.TreeView.getTree('scorm_tree');
+    if (scorm_tree_node) {
+        var hnode = scorm_tree_node.getHighlightedNode();
+        var next = mod_scorm_next(hnode);
+        if (next) {
+            mod_scorm_activate_item(next);
+        }
+    }
+}

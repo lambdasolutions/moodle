@@ -54,8 +54,15 @@ body {margin:auto 0px;width:auto;}
 .has_dock.side-post-only .page-middle #region-main-box #region-post-box #region-main-wrap #region-main {margin-left:200px;}
 
 /** No blocks whatsoever **/
+.content-only #page-content {min-width:0;}
 .content-only #page-content #region-main-box {left:0px;}
 .content-only #page-content #region-main-box #region-post-box {margin-left:0px;}
 .content-only #page-content #region-main-box #region-post-box #region-main-wrap #region-main {margin-left:0px;}
 .content-only #page-content #region-main-box #region-post-box #region-pre {left:0;width:0px;}
 .content-only #page-content #region-main-box #region-post-box #region-post {width:0;}
+
+/** Stabalise some IE6 behaviour **/
+.ie6 #region-pre .region-content,
+.ie6 #region-post .region-content {padding:0 !important;width:100%;float:none;}
+.ie6 #region-pre .region-content .block,
+.ie6 #region-post .region-content .block {width:auto;padding:0;margin:10px;}

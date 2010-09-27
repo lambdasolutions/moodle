@@ -82,6 +82,8 @@ if (!isloggedin() or isguestuser()) {
         $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
     }
 
+    $PAGE->set_cm($cm, $course, $forum);
+    $PAGE->set_context($modcontext);
     $PAGE->set_title($course->shortname);
     $PAGE->set_heading($course->fullname);
 
@@ -130,7 +132,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
 
     // Load up the $post variable.
 
-    $post = new object();
+    $post = new stdClass();
     $post->course        = $course->id;
     $post->forum         = $forum->id;
     $post->discussion    = 0;           // ie discussion # not defined yet
@@ -206,7 +208,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
 
     // Load up the $post variable.
 
-    $post = new object();
+    $post = new stdClass();
     $post->course      = $course->id;
     $post->forum       = $forum->id;
     $post->discussion  = $parent->discussion;
@@ -304,7 +306,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     if (!empty($confirm) && confirm_sesskey()) {    // User has confirmed the delete
 
         if ($post->totalscore) {
-            notice(get_string("couldnotdeleteratings", "forum"),
+            notice(get_string('couldnotdeleteratings', 'rating'),
                     forum_go_back_to("discuss.php?d=$post->discussion"));
 
         } else if ($replycount && !has_capability('mod/forum:deleteanypost', $modcontext)) {
@@ -409,7 +411,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
 
     if (!empty($name) && confirm_sesskey()) {    // User has confirmed the prune
 
-        $newdiscussion = new object();
+        $newdiscussion = new stdClass();
         $newdiscussion->course       = $discussion->course;
         $newdiscussion->forum        = $discussion->forum;
         $newdiscussion->name         = $name;
@@ -423,7 +425,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
 
         $newid = $DB->insert_record('forum_discussions', $newdiscussion);
 
-        $newpost = new object();
+        $newpost = new stdClass();
         $newpost->id      = $post->id;
         $newpost->parent  = 0;
         $newpost->subject = $name;
@@ -589,7 +591,7 @@ if ($fromform = $mform_post->get_data()) {
 
         //fix for bug #4314
         if (!$realpost = $DB->get_record('forum_posts', array('id' => $fromform->id))) {
-            $realpost = new object;
+            $realpost = new stdClass();
             $realpost->userid = -1;
         }
 
@@ -774,7 +776,7 @@ if (empty($post->edit)) {
 
 if (empty($discussion->name)) {
     if (empty($discussion)) {
-        $discussion = new object;
+        $discussion = new stdClass();
     }
     $discussion->name = $forum->name;
 }

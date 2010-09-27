@@ -481,11 +481,6 @@ class xmldb_field extends xmldb_object {
             $notnull = 'false';
         }
         $o.= ' NOTNULL="' . $notnull . '"';
-        if ($this->unsigned) {
-            $unsigned = 'true';
-        } else {
-            $unsigned = 'false';
-        }
         if ($this->type == XMLDB_TYPE_INTEGER ||
             $this->type == XMLDB_TYPE_NUMBER ||
             $this->type == XMLDB_TYPE_FLOAT) {
@@ -792,7 +787,7 @@ class xmldb_field extends xmldb_object {
     }
 }
 
-/// TODO: Delete for 2.1 (deeprecated in 2.0).
+/// TODO: Delete for 2.1 (deprecated in 2.0).
 /// Deprecated API starts here
 class XMLDBField extends xmldb_field {
 

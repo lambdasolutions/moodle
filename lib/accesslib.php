@@ -190,6 +190,7 @@ if (!defined('MAX_CONTEXT_CACHE_SIZE')) {
  * @global stdClass $ACCESSLIB_PRIVATE
  * @name $ACCESSLIB_PRIVATE
  */
+global $ACCESSLIB_PRIVATE;
 $ACCESSLIB_PRIVATE = new stdClass;
 $ACCESSLIB_PRIVATE->contexts = array(); // Cache of context objects by level and instance
 $ACCESSLIB_PRIVATE->contextsbyid = array(); // Cache of context objects by id
@@ -730,7 +731,7 @@ function is_siteadmin($user_or_id = NULL) {
  * @return unknown_type
  */
 function has_coursecontact_role($userid) {
-    global $DB;
+    global $DB, $CFG;
 
     if (empty($CFG->coursecontact)) {
         return false;
@@ -738,7 +739,7 @@ function has_coursecontact_role($userid) {
     $sql = "SELECT 1
               FROM {role_assignments}
              WHERE userid = :userid AND roleid IN ($CFG->coursecontact)";
-    return $DB->record_exists($sql, array('userid'=>$userid));
+    return $DB->record_exists_sql($sql, array('userid'=>$userid));
 }
 
 /**
@@ -1412,7 +1413,9 @@ function compact_rdefs(&$rdefs) {
  * @global object
  */
 function load_all_capabilities() {
-    global $USER, $CFG, $ACCESSLIB_PRIVATE;
+    global $CFG, $ACCESSLIB_PRIVATE;
+
+    //NOTE: we can not use $USER here because it may no be linked to $_SESSION['USER'] yet!
 
     // roles not installed yet - we are in the middle of installation
     if (during_initial_install()) {
@@ -1421,18 +1424,18 @@ function load_all_capabilities() {
 
     $base = '/'.SYSCONTEXTID;
 
-    if (isguestuser()) {
+    if (isguestuser($_SESSION['USER'])) {
         $guest = get_guest_role();
 
         // Load the rdefs
-        $USER->access = get_role_access($guest->id);
+        $_SESSION['USER']->access = get_role_access($guest->id);
         // Put the ghost enrolment in place...
-        $USER->access['ra'][$base] = array($guest->id);
+        $_SESSION['USER']->access['ra'][$base] = array($guest->id);
 
 
-    } else if (isloggedin()) {
+    } else if (!empty($_SESSION['USER']->id)) { // can not use isloggedin() yet
 
-        $accessdata = get_user_access_sitewide($USER->id);
+        $accessdata = get_user_access_sitewide($_SESSION['USER']->id);
 
         //
         // provide "default role" & set 'dr'
@@ -1461,19 +1464,19 @@ function load_all_capabilities() {
                 array_push($accessdata['ra'][$base], $CFG->defaultfrontpageroleid);
             }
         }
-        $USER->access = $accessdata;
+        $_SESSION['USER']->access = $accessdata;
 
     } else if (!empty($CFG->notloggedinroleid)) {
-        $USER->access = get_role_access($CFG->notloggedinroleid);
-        $USER->access['ra'][$base] = array($CFG->notloggedinroleid);
+        $_SESSION['USER']->access = get_role_access($CFG->notloggedinroleid);
+        $_SESSION['USER']->access['ra'][$base] = array($CFG->notloggedinroleid);
     }
 
     // Timestamp to read dirty context timestamps later
-    $USER->access['time'] = time();
+    $_SESSION['USER']->access['time'] = time();
     $ACCESSLIB_PRIVATE->dirtycontexts = array();
 
     // Clear to force a refresh
-    unset($USER->mycourses);
+    unset($_SESSION['USER']->mycourses);
 }
 
 /**
@@ -1683,10 +1686,10 @@ function create_context($contextlevel, $instanceid, $strictness=IGNORE_MISSING) 
     global $CFG, $DB;
 
     if ($contextlevel == CONTEXT_SYSTEM) {
-        return create_system_context();
+        return get_system_context();
     }
 
-    $context = new object();
+    $context = new stdClass();
     $context->contextlevel = $contextlevel;
     $context->instanceid = $instanceid;
 
@@ -1840,7 +1843,7 @@ function get_system_context($cache=true) {
     global $DB, $ACCESSLIB_PRIVATE;
     if ($cache and defined('SYSCONTEXTID')) {
         if (is_null($ACCESSLIB_PRIVATE->systemcontext)) {
-            $ACCESSLIB_PRIVATE->systemcontext = new object();
+            $ACCESSLIB_PRIVATE->systemcontext = new stdClass();
             $ACCESSLIB_PRIVATE->systemcontext->id           = SYSCONTEXTID;
             $ACCESSLIB_PRIVATE->systemcontext->contextlevel = CONTEXT_SYSTEM;
             $ACCESSLIB_PRIVATE->systemcontext->instanceid   = 0;
@@ -1857,7 +1860,7 @@ function get_system_context($cache=true) {
     }
 
     if (!$context) {
-        $context = new object();
+        $context = new stdClass();
         $context->contextlevel = CONTEXT_SYSTEM;
         $context->instanceid   = 0;
         $context->depth        = 1;
@@ -1892,34 +1895,50 @@ function get_system_context($cache=true) {
  *
  * @param int $level
  * @param int $instanceid
+ * @param bool $deleterecord false means keep record for now
  * @return bool returns true or throws an exception
  */
-function delete_context($contextlevel, $instanceid) {
+function delete_context($contextlevel, $instanceid, $deleterecord = true) {
     global $DB, $ACCESSLIB_PRIVATE, $CFG;
 
     // do not use get_context_instance(), because the related object might not exist,
     // or the context does not exist yet and it would be created now
     if ($context = $DB->get_record('context', array('contextlevel'=>$contextlevel, 'instanceid'=>$instanceid))) {
-        $DB->delete_records('role_assignments', array('contextid'=>$context->id));
-        $DB->delete_records('role_capabilities', array('contextid'=>$context->id));
-        $DB->delete_records('context', array('id'=>$context->id));
-        $DB->delete_records('role_names', array('contextid'=>$context->id));
+        // delete these first because they might fetch the context and try to recreate it!
+        blocks_delete_all_for_context($context->id);
+        filter_delete_all_for_context($context->id);
+
+        require_once($CFG->dirroot . '/comment/lib.php');
+        comment::delete_comments(array('contextid'=>$context->id));
+
+        require_once($CFG->dirroot.'/rating/lib.php');
+        $delopt = new stdclass();
+        $delopt->contextid = $context->id;
+        $rm = new rating_manager();
+        $rm->delete_ratings($delopt);
 
         // delete all files attached to this context
         $fs = get_file_storage();
         $fs->delete_area_files($context->id);
 
+        // now delete stuff from role related tables, role_unassign_all
+        // and unenrol should be called earlier to do proper cleanup
+        $DB->delete_records('role_assignments', array('contextid'=>$context->id));
+        $DB->delete_records('role_capabilities', array('contextid'=>$context->id));
+        $DB->delete_records('role_names', array('contextid'=>$context->id));
+
+        // and finally it is time to delete the context record if requested
+        if ($deleterecord) {
+            $DB->delete_records('context', array('id'=>$context->id));
+            // purge static context cache if entry present
+            unset($ACCESSLIB_PRIVATE->contexts[$contextlevel][$instanceid]);
+            unset($ACCESSLIB_PRIVATE->contextsbyid[$context->id]);
+        }
+
         // do not mark dirty contexts if parents unknown
         if (!is_null($context->path) and $context->depth > 0) {
             mark_context_dirty($context->path);
         }
-
-        // purge static context cache if entry present
-        unset($ACCESSLIB_PRIVATE->contexts[$contextlevel][$instanceid]);
-        unset($ACCESSLIB_PRIVATE->contextsbyid[$context->id]);
-
-        blocks_delete_all_for_context($context->id);
-        filter_delete_all_for_context($context->id);
     }
 
     return true;
@@ -2331,7 +2350,7 @@ function create_role($name, $shortname, $description, $archetype='') {
     $context = get_context_instance(CONTEXT_SYSTEM);
 
     // Insert the role record.
-    $role = new object();
+    $role = new stdClass();
     $role->name        = $name;
     $role->shortname   = $shortname;
     $role->description = $description;
@@ -2405,7 +2424,7 @@ function assign_capability($capability, $permission, $roleid, $contextid, $overw
         return true;
     }
 
-    $cap = new object;
+    $cap = new stdClass();
     $cap->contextid = $contextid;
     $cap->roleid = $roleid;
     $cap->capability = $capability;
@@ -2448,7 +2467,7 @@ function unassign_capability($capability, $roleid, $contextid=NULL) {
  * Get the roles that have a given capability assigned to it
  * Get the roles that have a given capability assigned to it. This function
  * does not resolve the actual permission of the capability. It just checks
- * for assignment only.
+ * for assignment only. Use get_roles_with_cap_in_context() if resolution is required.
  *
  * @global object
  * @global object
@@ -2562,7 +2581,7 @@ function role_assign($roleid, $userid, $contextid, $component = '', $itemid = 0,
     }
 
     // Create a new entry
-    $ra = new object();
+    $ra = new stdClass();
     $ra->roleid       = $roleid;
     $ra->contextid    = $context->id;
     $ra->userid       = $userid;
@@ -2759,6 +2778,8 @@ function isguestuser($user = NULL) {
  * @return bool
  */
 function is_guest($context, $user = NULL) {
+    global $USER;
+
     // first find the course context
     $coursecontext = get_course_context($context);
 
@@ -2915,7 +2936,7 @@ function is_enrolled($context, $user = NULL, $withcapability = '', $onlyactive =
  * @return array list($sql, $params)
  */
 function get_enrolled_sql($context, $withcapability = '', $groupid = 0, $onlyactive = false) {
-    global $DB;
+    global $DB, $CFG;
 
     // use unique prefix just in case somebody makes some SQL magic with the result
     static $i = 0;
@@ -2971,14 +2992,12 @@ function get_enrolled_sql($context, $withcapability = '', $groupid = 0, $onlyact
         // make lists of roles that are needed and prohibited
         $needed     = array(); // one of these is enough
         $prohibited = array(); // must not have any of these
-        if ($withcapability) {
-            foreach ($access as $roleid => $perm) {
-                if ($perm == CAP_PROHIBIT) {
-                    unset($needed[$roleid]);
-                    $prohibited[$roleid] = true;
-                } else if ($perm == CAP_ALLOW and empty($prohibited[$roleid])) {
-                    $needed[$roleid] = true;
-                }
+        foreach ($access as $roleid => $perm) {
+            if ($perm == CAP_PROHIBIT) {
+                unset($needed[$roleid]);
+                $prohibited[$roleid] = true;
+            } else if ($perm == CAP_ALLOW and empty($prohibited[$roleid])) {
+                $needed[$roleid] = true;
             }
         }
 
@@ -2990,7 +3009,7 @@ function get_enrolled_sql($context, $withcapability = '', $groupid = 0, $onlyact
         if ($isfrontpage) {
             if (!empty($prohibited[$defaultuserroleid]) or !empty($prohibited[$defaultfrontpageroleid])) {
                 $nobody = true;
-            } else if (!empty($neded[$defaultuserroleid]) or !empty($neded[$defaultfrontpageroleid])) {
+            } else if (!empty($needed[$defaultuserroleid]) or !empty($needed[$defaultfrontpageroleid])) {
                 // everybody not having prohibit has the capability
                 $needed = array();
             } else if (empty($needed)) {
@@ -2999,7 +3018,7 @@ function get_enrolled_sql($context, $withcapability = '', $groupid = 0, $onlyact
         } else {
             if (!empty($prohibited[$defaultuserroleid])) {
                 $nobody = true;
-            } else if (!empty($neded[$defaultuserroleid])) {
+            } else if (!empty($needed[$defaultuserroleid])) {
                 // everybody not having prohibit has the capability
                 $needed = array();
             } else if (empty($needed)) {
@@ -3023,18 +3042,24 @@ function get_enrolled_sql($context, $withcapability = '', $groupid = 0, $onlyact
                 $ctxids = implode(',', $contextids);
                 $roleids = implode(',', array_keys($prohibited));
                 $joins[] = "LEFT JOIN {role_assignments} {$prefix}ra4 ON ({$prefix}ra4.userid = {$prefix}u.id AND {$prefix}ra4.roleid IN ($roleids) AND {$prefix}ra4.contextid IN ($ctxids))";
-                $wheres[] = "{$prefix}ra4 IS NULL";
+                $wheres[] = "{$prefix}ra4.id IS NULL";
             }
 
             if ($groupid) {
-                $joins[] = "JOIN {groups_members} {$prefix}gm ON ({$prefix}gm.userid = {$prefix}u.id AND {$prefix}gm.id = :{$prefix}gmid)";
+                $joins[] = "JOIN {groups_members} {$prefix}gm ON ({$prefix}gm.userid = {$prefix}u.id AND {$prefix}gm.groupid = :{$prefix}gmid)";
                 $params["{$prefix}gmid"] = $groupid;
             }
         }
 
+    } else {
+        if ($groupid) {
+            $joins[] = "JOIN {groups_members} {$prefix}gm ON ({$prefix}gm.userid = {$prefix}u.id AND {$prefix}gm.groupid = :{$prefix}gmid)";
+            $params["{$prefix}gmid"] = $groupid;
+        }
     }
 
-    $wheres[] = "{$prefix}u.deleted = 0 AND {$prefix}u.username <> 'guest'";
+    $wheres[] = "{$prefix}u.deleted = 0 AND {$prefix}u.id <> :{$prefix}guestid";
+    $params["{$prefix}guestid"] = $CFG->siteguest;
 
     if ($isfrontpage) {
         // all users are "enrolled" on the frontpage
@@ -3225,7 +3250,7 @@ function reset_role_capabilities($roleid) {
  * @return boolean true if success, exception in case of any problems
  */
 function update_capabilities($component='moodle') {
-    global $DB, $OUTPUT;
+    global $DB, $OUTPUT, $ACCESSLIB_PRIVATE;
 
     $storedcaps = array();
 
@@ -3240,13 +3265,13 @@ function update_capabilities($component='moodle') {
                     $filecaps[$cachedcap->name]['riskbitmask'] = 0; // no risk if not specified
                 }
                 if ($cachedcap->captype != $filecaps[$cachedcap->name]['captype']) {
-                    $updatecap = new object();
+                    $updatecap = new stdClass();
                     $updatecap->id = $cachedcap->id;
                     $updatecap->captype = $filecaps[$cachedcap->name]['captype'];
                     $DB->update_record('capabilities', $updatecap);
                 }
                 if ($cachedcap->riskbitmask != $filecaps[$cachedcap->name]['riskbitmask']) {
-                    $updatecap = new object();
+                    $updatecap = new stdClass();
                     $updatecap->id = $cachedcap->id;
                     $updatecap->riskbitmask = $filecaps[$cachedcap->name]['riskbitmask'];
                     $DB->update_record('capabilities', $updatecap);
@@ -3256,7 +3281,7 @@ function update_capabilities($component='moodle') {
                     $filecaps[$cachedcap->name]['contextlevel'] = 0; // no context level defined
                 }
                 if ($cachedcap->contextlevel != $filecaps[$cachedcap->name]['contextlevel']) {
-                    $updatecap = new object();
+                    $updatecap = new stdClass();
                     $updatecap->id = $cachedcap->id;
                     $updatecap->contextlevel = $filecaps[$cachedcap->name]['contextlevel'];
                     $DB->update_record('capabilities', $updatecap);
@@ -3279,7 +3304,7 @@ function update_capabilities($component='moodle') {
     }
     // Add new capabilities to the stored definition.
     foreach ($newcaps as $capname => $capdef) {
-        $capability = new object();
+        $capability = new stdClass();
         $capability->name = $capname;
         $capability->captype = $capdef['captype'];
         $capability->contextlevel = $capdef['contextlevel'];
@@ -4290,7 +4315,7 @@ function get_user_roles($context, $userid=0, $checkparentcontexts=true, $order='
 function allow_override($sroleid, $troleid) {
     global $DB;
 
-    $record = new object();
+    $record = new stdClass();
     $record->roleid        = $sroleid;
     $record->allowoverride = $troleid;
     $DB->insert_record('role_allow_override', $record);
@@ -4307,7 +4332,7 @@ function allow_override($sroleid, $troleid) {
 function allow_assign($fromroleid, $targetroleid) {
     global $DB;
 
-    $record = new object();
+    $record = new stdClass();
     $record->roleid      = $fromroleid;
     $record->allowassign = $targetroleid;
     $DB->insert_record('role_allow_assign', $record);
@@ -4324,7 +4349,7 @@ function allow_assign($fromroleid, $targetroleid) {
 function allow_switch($fromroleid, $targetroleid) {
     global $DB;
 
-    $record = new object();
+    $record = new stdClass();
     $record->roleid      = $fromroleid;
     $record->allowswitch = $targetroleid;
     $DB->insert_record('role_allow_switch', $record);
@@ -4832,8 +4857,9 @@ function get_users_by_capability($context, $capability, $fields='', $sort='', $l
         }
     }
 
-    /// We never return deleted users or guest acount.
-    $wherecond[] = "u.deleted = 0 AND u.username <> 'guest'";
+    /// We never return deleted users or guest account.
+    $wherecond[] = "u.deleted = 0 AND u.id <> :guestid";
+    $params['guestid'] = $CFG->siteguest;
 
     /// Groups
     if ($groups) {
@@ -5017,7 +5043,7 @@ function sort_by_roleassignment_authority($users, $context, $roles=array(), $sor
  *
  * @global object
  * @param int $roleid (can also be an array of ints!)
- * @param object $context
+ * @param stdClass $context
  * @param bool $parent if true, get list of users assigned in higher context too
  * @param string $fields fields from user (u.) , role assignment (ra) or role (r.)
  * @param string $sort sort from user (u.) , role assignment (ra) or role (r.)
@@ -5026,7 +5052,7 @@ function sort_by_roleassignment_authority($users, $context, $roles=array(), $sor
  * @param mixed $limitfrom defaults to ''
  * @param mixed $limitnum defaults to ''
  * @param string $extrawheretest defaults to ''
- * @param string $whereparams defaults to ''
+ * @param string|array $whereparams defaults to ''
  * @return array
  */
 function get_role_users($roleid, $context, $parent=false, $fields='',
@@ -5280,13 +5306,28 @@ function role_switch($roleid, $context) {
     return true;
 }
 
+/**
+ * Checks if the user has switched roles within the given course.
+ *
+ * Note: You can only switch roles within the course, hence it takes a courseid
+ * rather than a context. On that note Petr volunteered to implement this across
+ * all other contexts, all requests for this should be forwarded to him ;)
+ *
+ * @param int $courseid The id of the course to check
+ * @return bool True if the user has switched roles within the course.
+ */
+function is_role_switched($courseid) {
+    global $USER;
+    $context = get_context_instance(CONTEXT_COURSE, $courseid, MUST_EXIST);
+    return (!empty($USER->access['rsw'][$context->path]));
+}
 
 /**
  * Get any role that has an override on exact context
  *
- * @global object
- * @param object $context
- * @return array
+ * @global moodle_database
+ * @param stdClass $context The context to check
+ * @return array An array of roles
  */
 function get_roles_with_override_on_context($context) {
     global $DB;
@@ -5692,9 +5733,8 @@ function build_context_path($force=false) {
  * DB efficient as possible. This op can have a
  * massive impact in the DB.
  *
- * @global object
- * @param obj $current context obj
- * @param obj $newparent new parent obj
+ * @param stdClass $current context obj
+ * @param stdClass $newparent new parent obj
  *
  */
 function context_moved($context, $newparent) {
@@ -5756,7 +5796,7 @@ function context_instance_preload(stdClass $rec) {
     }
 
     // note: in PHP5 the objects are passed by reference, no need to return $rec
-    $context = new object();
+    $context = new stdClass();
     $context->id           = $rec->ctxid;       unset($rec->ctxid);
     $context->path         = $rec->ctxpath;     unset($rec->ctxpath);
     $context->depth        = $rec->ctxdepth;    unset($rec->ctxdepth);
@@ -5829,12 +5869,14 @@ function is_contextpath_dirty($pathcontexts, $dirty) {
  * @return array $role->sortorder =-> $role->id with the keys in ascending order.
  */
 function fix_role_sortorder($allroles) {
+    global $DB;
+
     $rolesort = array();
     $i = 0;
     foreach ($allroles as $role) {
         $rolesort[$i] = $role->id;
         if ($role->sortorder != $i) {
-            $r = new object();
+            $r = new stdClass();
             $r->id = $role->id;
             $r->sortorder = $i;
             $DB->update_record('role', $r);
@@ -5889,7 +5931,8 @@ function role_cap_duplicate($sourcerole, $targetrole) {
 /**
  * Returns two lists, this can be used to find out if user has capability.
  * Having any needed role and no forbidden role in this context means
- * user has this capability in this context,
+ * user has this capability in this context.
+ * Use get_role_names_with_cap_in_context() if you need role names to display in the UI
  *
  * @param object $context
  * @param string $capability
@@ -5944,6 +5987,68 @@ function get_roles_with_cap_in_context($context, $capability) {
     }
 
     return array($needed, $forbidden);
+}
+
+/**
+ * Returns an array of role IDs that have ALL of the the supplied capabilities
+ * Uses get_roles_with_cap_in_context(). Returns $allowed minus $forbidden
+ *
+ * @param object $context
+ * @param array $capabilities An array of capabilities
+ * @return array of roles with all of the required capabilities
+ */
+function get_roles_with_caps_in_context($context, $capabilities) {
+    $neededarr = array();
+    $forbiddenarr = array();
+    foreach($capabilities as $caprequired) {
+        list($neededarr[], $forbiddenarr[]) = get_roles_with_cap_in_context($context, $caprequired);
+    }
+
+    $rolesthatcanrate = array();
+    if (!empty($neededarr)) {
+        foreach ($neededarr as $needed) {
+            if (empty($rolesthatcanrate)) {
+                $rolesthatcanrate = $needed;
+            } else {
+                //only want roles that have all caps
+                $rolesthatcanrate = array_intersect_key($rolesthatcanrate,$needed);
+            }
+        }
+    }
+    if (!empty($forbiddenarr) && !empty($rolesthatcanrate)) {
+        foreach ($forbiddenarr as $forbidden) {
+           //remove any roles that are forbidden any of the caps
+           $rolesthatcanrate = array_diff($rolesthatcanrate, $forbidden);
+        }
+    }
+    return $rolesthatcanrate;
+}
+
+/**
+ * Returns an array of role names that have ALL of the the supplied capabilities
+ * Uses get_roles_with_caps_in_context(). Returns $allowed minus $forbidden
+ *
+ * @param object $context
+ * @param array $capabilities An array of capabilities
+ * @return array of roles with all of the required capabilities
+ */
+function get_role_names_with_caps_in_context($context, $capabilities) {
+    global $DB;
+
+    $rolesthatcanrate = get_roles_with_caps_in_context($context, $capabilities);
+
+    $allroles = array();
+    $roles = $DB->get_records('role', null, 'sortorder DESC');
+    foreach ($roles as $roleid=>$role) {
+        $allroles[$roleid] = $role->name;
+    }
+
+    $rolenames = array();
+    foreach ($rolesthatcanrate as $r) {
+        $rolenames[$r] = $allroles[$r];
+    }
+    $rolenames = role_fix_names($rolenames, $context);
+    return $rolenames;
 }
 
 /**

@@ -85,7 +85,8 @@ class comment {
     private static $comment_itemid = null;
     private static $comment_context = null;
     private static $comment_area = null;
-	private static $comment_page = null;
+    private static $comment_page = null;
+    private static $comment_component = null;
     /**
      * Construct function of comment class, initialise
      * class members
@@ -119,6 +120,10 @@ class comment {
             print_error('invalidcontext');
         }
 
+        if (!empty($options->component)) {
+            $this->set_component($options->component);
+        }
+
         // setup course
         // course will be used to generate user profile link
         if (!empty($options->course)) {
@@ -127,10 +132,6 @@ class comment {
             $this->courseid = $options->courseid;
         } else {
             $this->courseid = SITEID;
-        }
-
-        if (!empty($options->pluginname)) {
-            $this->pluginname = $options->pluginname;
         }
 
         // setup coursemodule
@@ -165,8 +166,12 @@ class comment {
         } else {
             $this->linktext = get_string('comments');
         }
-        // setting post and view permissions
-        $this->check_permissions();
+
+        if (!empty($options->ignore_permission)) {
+            $this->ignore_permission = true;
+        } else {
+            $this->ignore_permission = false;
+        }
 
         if (!empty($options->showcount)) {
             $count = $this->count();
@@ -179,15 +184,16 @@ class comment {
             $this->count = '';
         }
 
-        $this->setup_plugin();
-
         // setup options for callback functions
-        $this->args = new stdclass;
+        $this->args = new stdClass();
         $this->args->context     = $this->context;
         $this->args->courseid    = $this->courseid;
         $this->args->cm          = $this->cm;
         $this->args->commentarea = $this->commentarea;
         $this->args->itemid      = $this->itemid;
+
+        // setting post and view permissions
+        $this->check_permissions();
 
         // load template
         $this->template = <<<EOD
@@ -213,7 +219,7 @@ EOD;
         self::$nonjs = optional_param('nonjscomment', '', PARAM_ALPHA);
         self::$comment_itemid  = optional_param('comment_itemid',  '', PARAM_INT);
         self::$comment_context = optional_param('comment_context', '', PARAM_INT);
-		self::$comment_page    = optional_param('comment_page',    '', PARAM_INT);
+        self::$comment_page    = optional_param('comment_page',    '', PARAM_INT);
         self::$comment_area    = optional_param('comment_area',    '', PARAM_ALPHAEXT);
 
         $PAGE->requires->string_for_js('addcomment', 'moodle');
@@ -221,40 +227,18 @@ EOD;
         $PAGE->requires->string_for_js('comments', 'moodle');
     }
 
-    /**
-     * Setup plugin type and plugin name
-     */
-    private function setup_plugin() {
-        global $DB;
-        // blog needs to set env as "blog"
-        if ($this->env == 'blog') {
-            $this->plugintype = 'moodle';
-            $this->pluginname = 'blog';
-        }
-        // tag page needs to set env as "tag"
-        if ($this->env == 'tag') {
-            $this->plugintype = 'moodle';
-            $this->pluginname = 'tag';
-        }
-        if ($this->context->contextlevel == CONTEXT_BLOCK) {
-            if ($block = $DB->get_record('block_instances', array('id'=>$this->context->instanceid))) {
-                $this->plugintype = 'block';
-                $this->pluginname = $block->blockname;
-            }
-        }
+    public function set_component($component) {
+        $this->component = $component;
+        list($this->plugintype, $this->pluginname) = normalize_component($component);
+        return null;
+    }
 
-        if ($this->context->contextlevel == CONTEXT_MODULE && $this->env != 'block_comments') {
-            $this->plugintype = 'mod';
-            // to improve performance, pluginname should be assigned before initilise comment object
-            // if it is empty, we will try to guess, it will rarely be used.
-            if (empty($this->pluginname)) {
-                if (empty($this->course)) {
-                    $this->course = $DB->get_record('course', array('id'=>$this->courseid), '*', MUST_EXIST);
-                }
-                $this->modinfo = get_fast_modinfo($this->course);
-                $this->pluginname = $this->modinfo->cms[$this->cm->id]->modname;
-            }
-        }
+    public function set_view_permission($value) {
+        $this->viewcap = $value;
+    }
+
+    public function set_post_permission($value) {
+        $this->postcap = $value;
     }
 
     /**
@@ -268,9 +252,14 @@ EOD;
         $this->postcap = has_capability('moodle/comment:post', $this->context);
         $this->viewcap = has_capability('moodle/comment:view', $this->context);
         if (!empty($this->plugintype)) {
-            $permissions = plugin_callback($this->plugintype, $this->pluginname, FEATURE_COMMENT, 'permissions', $this->args, array('post'=>true, 'view'=>true));
-            $this->postcap = $this->postcap && $permissions['post'];
-            $this->viewcap = $this->viewcap && $permissions['view'];
+            $permissions = plugin_callback($this->plugintype, $this->pluginname, FEATURE_COMMENT, 'permissions', array($this->args), array('post'=>true, 'view'=>true));
+            if ($this->ignore_permission) {
+                $this->postcap = $permissions['post'];
+                $this->viewcap = $permissions['view'];
+            } else {
+                $this->postcap = $this->postcap && $permissions['post'];
+                $this->viewcap = $this->viewcap && $permissions['view'];
+            }
         }
     }
 
@@ -293,7 +282,7 @@ EOD;
         $murl->remove_params('comment_page');
         $this->link = $murl->out();
 
-        $options = new stdclass;
+        $options = new stdClass();
         $options->client_id = $this->cid;
         $options->commentarea = $this->commentarea;
         $options->itemid = $this->itemid;
@@ -301,9 +290,10 @@ EOD;
         $options->courseid = $this->courseid;
         $options->contextid = $this->contextid;
         $options->env = $this->env;
+        $options->component = $this->component;
         if ($this->env == 'block_comments') {
-            $options->autostart = true;
             $options->notoggle = true;
+            $options->autostart = true;
         }
 
         $PAGE->requires->js_init_call('M.core_comment.init', array($options), true);
@@ -408,7 +398,7 @@ EOD;
         $this->page = $page;
         $params = array();
         $start = $page * $CFG->commentsperpage;
-        $ufields = user_picture::fields('u', array('username'));
+        $ufields = user_picture::fields('u');
         $sql = "SELECT $ufields, c.id AS cid, c.content AS ccontent, c.format AS cformat, c.timecreated AS ctimecreated
                   FROM {comments} c
                   JOIN {user} u ON u.id = c.userid
@@ -422,14 +412,13 @@ EOD;
         $candelete = has_capability('moodle/comment:delete', $this->context);
         $rs = $DB->get_recordset_sql($sql, $params, $start, $CFG->commentsperpage);
         foreach ($rs as $u) {
-            $c = new object();
+            $c = new stdClass();
             $c->id          = $u->cid;
             $c->content     = $u->ccontent;
             $c->format      = $u->cformat;
             $c->timecreated = $u->ctimecreated;
             $url = new moodle_url('/user/view.php', array('id'=>$u->id, 'course'=>$this->courseid));
-            $c->username = $u->username;
-            $c->profileurl = $url;
+            $c->profileurl = $url->out();
             $c->fullname = fullname($u);
             $c->time = userdate($c->timecreated, get_string('strftimerecent', 'langconfig'));
             $c->content = format_text($c->content, $c->format);
@@ -497,7 +486,7 @@ EOD;
             throw new comment_exception('nopermissiontocomment');
         }
         $now = time();
-        $newcmt = new stdclass;
+        $newcmt = new stdClass();
         $newcmt->contextid    = $this->contextid;
         $newcmt->commentarea  = $this->commentarea;
         $newcmt->itemid       = $this->itemid;
@@ -518,7 +507,6 @@ EOD;
         if (!empty($cmt_id)) {
             $newcmt->id = $cmt_id;
             $newcmt->time = userdate($now, get_string('strftimerecent', 'langconfig'));
-            $newcmt->username = $USER->username;
             $newcmt->fullname = fullname($USER);
             $url = new moodle_url('/user/view.php', array('id'=>$USER->id, 'course'=>$this->courseid));
             $newcmt->profileurl = $url->out();
@@ -532,11 +520,11 @@ EOD;
 
     /**
      * delete by context, commentarea and itemid
-    * @param object $param {
-    *            contextid => int the context in which the comments exist [required]
-    *            commentarea => string the comment area [optional]
-    *            itemid => int comment itemid [optional]
-    * }
+     * @param object $param {
+     *            contextid => int the context in which the comments exist [required]
+     *            commentarea => string the comment area [optional]
+     *            itemid => int comment itemid [optional]
+     * }
      * @return boolean
      */
     public function delete_comments($param) {
@@ -547,6 +535,22 @@ EOD;
         }
         $DB->delete_records('comments', $param);
         return true;
+    }
+
+    /**
+     * Delete page_comments in whole course, used by course reset
+     * @param object $context course context
+     */
+    public function reset_course_page_comments($context) {
+        global $DB;
+        $contexts = array();
+        $contexts[] = $context->id;
+        $children = get_child_contexts($context);
+        foreach ($children as $c) {
+            $contexts[] = $c->id;
+        }
+        list($ids, $params) = $DB->get_in_or_equal($contexts);
+        $DB->delete_records_select('comments', "commentarea='page_comments' AND contextid $ids", $params);
     }
 
     /**
@@ -610,6 +614,7 @@ EOD;
 <input type="hidden" name="contextid" value="$this->contextid" />
 <input type="hidden" name="action" value="add" />
 <input type="hidden" name="area" value="$this->commentarea" />
+<input type="hidden" name="component" value="$this->component" />
 <input type="hidden" name="itemid" value="$this->itemid" />
 <input type="hidden" name="courseid" value="{$this->courseid}" />
 <input type="hidden" name="sesskey" value="{$sesskey}" />

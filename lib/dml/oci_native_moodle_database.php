@@ -48,7 +48,7 @@ class oci_native_moodle_database extends moodle_database {
     private $unique_session_id; // To store unique_session_id. Needed for temp tables unique naming
 
     private $dblocks_supported = null; // To cache locks support along the connection life
-
+    private $bitwise_supported = null; // To cache bitwise operations support along the connection life
 
     /**
      * Detects if all needed PHP stuff installed.
@@ -74,7 +74,7 @@ class oci_native_moodle_database extends moodle_database {
     /**
      * Returns more specific database driver type
      * Note: can be used before connect()
-     * @return string db type mysql, oci, postgres7
+     * @return string db type mysqli, pgsql, oci, mssql, sqlsrv
      */
     protected function get_dbtype() {
         return 'oci';
@@ -95,7 +95,7 @@ class oci_native_moodle_database extends moodle_database {
      * @return string
      */
     public function get_name() {
-        return get_string('nativeoci', 'install'); // TODO: localise
+        return get_string('nativeoci', 'install');
     }
 
     /**
@@ -113,7 +113,20 @@ class oci_native_moodle_database extends moodle_database {
      * @return string
      */
     public function get_configuration_hints() {
-        return get_string('databasesettingssub_oci', 'install'); // TODO: l
+        return get_string('databasesettingssub_oci', 'install');
+    }
+
+    /**
+     * Diagnose database and tables, this function is used
+     * to verify database and driver settings, db engine types, etc.
+     *
+     * @return string null means everything ok, string means problem found.
+     */
+    public function diagnose() {
+        if (!$this->bitwise_supported() or !$this->session_lock_supported()) {
+            return 'Oracle PL/SQL Moodle support packages are not installed! Database administrator has to execute /lib/dml/oci_native_moodle_package.sql script.';
+        }
+        return null;
     }
 
     /**
@@ -154,7 +167,8 @@ class oci_native_moodle_database extends moodle_database {
         $this->store_settings($dbhost, $dbuser, $dbpass, $dbname, $prefix, $dboptions);
         unset($this->dboptions['dbsocket']);
 
-        $pass = addcslashes($this->dbpass, "'\\");
+        // NOTE: use of ', ", / and \ is very problematic, even native oracle tools seem to have
+        //       problems with these, so just forget them and do not report problems into tracker...
 
         if (empty($this->dbhost)) {
             // old style full address (TNS)
@@ -301,7 +315,7 @@ class oci_native_moodle_database extends moodle_database {
 
     /**
      * Returns supported query parameter types
-     * @return bitmask
+     * @return int bitmask
      */
     protected function allowed_param_types() {
         return SQL_PARAMS_NAMED;
@@ -309,6 +323,7 @@ class oci_native_moodle_database extends moodle_database {
 
     /**
      * Returns last error reported by database engine.
+     * @return string error message
      */
     public function get_last_error() {
         $error = false;
@@ -447,7 +462,7 @@ class oci_native_moodle_database extends moodle_database {
         foreach ($records as $rawcolumn) {
             $rawcolumn = (object)$rawcolumn;
 
-            $info = new object();
+            $info = new stdClass();
             $info->name = strtolower($rawcolumn->CNAME);
             $matches = null;
 
@@ -979,7 +994,7 @@ class oci_native_moodle_database extends moodle_database {
      * @param array $params array of sql parameters
      * @param int $limitfrom return a subset of records, starting at this point (optional, required if $limitnum is set).
      * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
-     * @return mixed an moodle_recordset object
+     * @return moodle_recordset instance
      * @throws dml_exception if error
      */
     public function get_recordset_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {
@@ -1012,7 +1027,7 @@ class oci_native_moodle_database extends moodle_database {
      * @param array $params array of sql parameters
      * @param int $limitfrom return a subset of records, starting at this point (optional, required if $limitnum is set).
      * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
-     * @return mixed an array of objects, or empty array if no records were found
+     * @return array of objects, or empty array if no records were found
      * @throws dml_exception if error
      */
     public function get_records_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {
@@ -1082,7 +1097,7 @@ class oci_native_moodle_database extends moodle_database {
      * @param bool $returnit return it of inserted record
      * @param bool $bulk true means repeated inserts expected
      * @param bool $customsequence true if 'id' included in $params, disables $returnid
-     * @return true or new id
+     * @return bool|int true or new id
      * @throws dml_exception if error
      */
     public function insert_record_raw($table, $params, $returnid=true, $bulk=false, $customsequence=false) {
@@ -1125,7 +1140,7 @@ class oci_native_moodle_database extends moodle_database {
         $stmt = $this->parse_query($sql);
         $descriptors = $this->bind_params($stmt, $params, $table);
         if ($returning) {
-            oci_bind_by_name($stmt, ":oracle_id", $id, -1, SQLT_INT);
+            oci_bind_by_name($stmt, ":oracle_id", $id, 10, SQLT_INT);
         }
         $result = oci_execute($stmt, $this->commit_status);
         $this->free_descriptors($descriptors);
@@ -1152,7 +1167,7 @@ class oci_native_moodle_database extends moodle_database {
      * @param string $table The database table to be inserted into
      * @param object $data A data object with values for one or more fields in the record
      * @param bool $returnid Should the id of the newly created record entry be returned? If this option is not requested then true/false is returned.
-     * @return true or new id
+     * @return bool|int true or new id
      * @throws dml_exception if error
      */
     public function insert_record($table, $dataobject, $returnid=true, $bulk=false) {
@@ -1365,6 +1380,27 @@ class oci_native_moodle_database extends moodle_database {
         return ' FROM dual';
     }
 
+// Bitwise operations
+   protected function bitwise_supported() {
+        if (isset($this->bitwise_supported)) { // Use cached value if available
+            return $this->bitwise_supported;
+        }
+        $sql = "SELECT 1
+                FROM user_objects
+                WHERE object_type = 'PACKAGE BODY'
+                  AND object_name = 'MOODLE_BITS'
+                  AND status = 'VALID'";
+        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $stmt = $this->parse_query($sql);
+        $result = oci_execute($stmt, $this->commit_status);
+        $this->query_end($result, $stmt);
+        $records = null;
+        oci_fetch_all($stmt, $records, 0, -1, OCI_FETCHSTATEMENT_BY_ROW);
+        oci_free_statement($stmt);
+        $this->bitwise_supported = isset($records[0]) && reset($records[0]) ? true : false;
+        return $this->bitwise_supported;
+    }
+
     public function sql_bitand($int1, $int2) {
         return 'bitand((' . $int1 . '), (' . $int2 . '))';
     }
@@ -1374,10 +1410,20 @@ class oci_native_moodle_database extends moodle_database {
     }
 
     public function sql_bitor($int1, $int2) {
+        // Use the MOODLE_BITS package if available
+        if ($this->bitwise_supported()) {
+            return 'MOODLE_BITS.BITOR(' . $int1 . ', ' . $int2 . ')';
+        }
+        // fallback to PHP bool operations, can break if using placeholders
         return '((' . $int1 . ') + (' . $int2 . ') - ' . $this->sql_bitand($int1, $int2) . ')';
     }
 
     public function sql_bitxor($int1, $int2) {
+        // Use the MOODLE_BITS package if available
+        if ($this->bitwise_supported()) {
+            return 'MOODLE_BITS.BITXOR(' . $int1 . ', ' . $int2 . ')';
+        }
+        // fallback to PHP bool operations, can break if using placeholders
         return '(' . $this->sql_bitor($int1, $int2) . ' - ' . $this->sql_bitand($int1, $int2) . ')';
     }
 
@@ -1401,12 +1447,31 @@ class oci_native_moodle_database extends moodle_database {
         }
     }
 
-    // TODO: Change this function and uses to support 2 parameters: fieldname and value
-    // that way we can use REGEXP_LIKE(x, y, 'i') to provide case-insensitive like searches
-    // to lower() comparison or whatever
-    public function sql_ilike() {
-        // TODO: add some ilike workaround
-        return 'LIKE';
+    /**
+     * Returns 'LIKE' part of a query.
+     *
+     * @param string $fieldname usually name of the table column
+     * @param string $param usually bound query parameter (?, :named)
+     * @param bool $casesensitive use case sensitive search
+     * @param bool $accensensitive use accent sensitive search (not all databases support accent insensitive)
+     * @param bool $notlike true means "NOT LIKE"
+     * @param string $escapechar escape char for '%' and '_'
+     * @return string SQL code fragment
+     */
+    public function sql_like($fieldname, $param, $casesensitive = true, $accentsensitive = true, $notlike = false, $escapechar = '\\') {
+        if (strpos($param, '%') !== false) {
+            debugging('Potential SQL injection detected, sql_ilike() expects bound parameters (? or :named)');
+        }
+
+        $LIKE = $notlike ? 'NOT LIKE' : 'LIKE';
+
+        // no accent sensitiveness here for now, sorry
+
+        if ($casesensitive) {
+            return "$fieldname $LIKE $param ESCAPE '$escapechar'";
+        } else {
+            return "LOWER($fieldname) $LIKE LOWER($param) ESCAPE '$escapechar'";
+        }
     }
 
     // NOTE: Oracle concat implementation isn't ANSI compliant when using NULLs (the result of
@@ -1474,7 +1539,7 @@ class oci_native_moodle_database extends moodle_database {
         oci_fetch_all($stmt, $records, 0, -1, OCI_FETCHSTATEMENT_BY_ROW);
         oci_free_statement($stmt);
         $this->dblocks_supported = isset($records[0]) && reset($records[0]) ? true : false;
-        return $this->dblocks_supported;;
+        return $this->dblocks_supported;
     }
 
     public function get_session_lock($rowid) {

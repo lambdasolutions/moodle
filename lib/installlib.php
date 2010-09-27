@@ -79,6 +79,57 @@ function install_ini_get_bool($ini_get_arg) {
 }
 
 /**
+ * Creates dataroot if not exists yet,
+ * makes sure it is writable, add lang directory
+ * and add .htaccess just in case it works.
+ *
+ * @param string $dataroot full path to dataroot
+ * @param int $dirpermissions
+ * @return bool success
+ */
+function install_init_dataroot($dataroot, $dirpermissions) {
+    if (file_exists($dataroot) and !is_dir($dataroot)) {
+        // file with the same name exists
+        return false;
+    }
+
+    umask(0000);
+    if (!file_exists($dataroot)) {
+        if (!mkdir($dataroot, $dirpermissions, true)) {
+            // most probably this does not work, but anyway
+            return false;
+        }
+    }
+    @chmod($dataroot, $dirpermissions);
+
+    if (!is_writable($dataroot)) {
+        return false; // we can not continue
+    }
+
+    // now create the lang folder - we need it and it makes sure we can really write in dataroot
+    if (!is_dir("$dataroot/lang")) {
+        if (!mkdir("$dataroot/lang", $dirpermissions, true)) {
+            return false;
+        }
+    }
+    if (!is_writable("$dataroot/lang")) {
+        return false; // we can not continue
+    }
+
+    // finally just in case some broken .htaccess that prevents access just in case it is allowed
+    if (!file_exists("$dataroot/.htaccess")) {
+        if ($handle = fopen("$dataroot/.htaccess", 'w')) {
+            fwrite($handle, "deny from all\r\nAllowOverride None\r\nNote: this file is broken intentionally, we do not want anybody to undo it in subdirectory!\r\n");
+            fclose($handle);
+        } else {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * Print help button
  * @param string $url
  * @param string $titel
@@ -138,6 +189,7 @@ function install_generate_configphp($database, $cfg) {
     $configphp = '<?php  // Moodle configuration file' . PHP_EOL . PHP_EOL;
 
     $configphp .= 'unset($CFG);' . PHP_EOL;
+    $configphp .= 'global $CFG;' . PHP_EOL;
     $configphp .= '$CFG = new stdClass();' . PHP_EOL . PHP_EOL; // prevent PHP5 strict warnings
 
     $dbconfig = $database->export_dbconfig();
@@ -203,7 +255,7 @@ function install_print_help_page($help) {
             print_string($help, 'install', phpversion());
             break;
         case 'memorylimithelp':
-            print_string($help, 'install', get_memory_limit());
+            print_string($help, 'install', @ini_get('memory_limit'));
             break;
         default:
             print_string($help, 'install');
@@ -462,6 +514,8 @@ function install_cli_database(array $options, $interactive) {
 
     $CFG->version = '';
     $CFG->release = '';
+    $version = null;
+    $release = null;
 
     // read $version and $release
     require($CFG->dirroot.'/version.php');
@@ -482,8 +536,6 @@ function install_cli_database(array $options, $interactive) {
             list($info, $report) = $error;
             echo "!! $info !!\n$report\n\n";
         }
-        //remove config.php, we do not want half finished upgrades!
-        unlink($configfile);
         exit(1);
     }
 

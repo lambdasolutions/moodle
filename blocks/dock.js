@@ -10,7 +10,8 @@ M.core_dock = {
     Y : null,               // The YUI instance to use with dock related code
     initialised : false,    // True once thedock has been initialised
     delayedevent : null,    // Will be an object if there is a delayed event in effect
-    preventevent : null     // Will be an eventtype if there is an eventyoe to prevent
+    preventevent : null,    // Will be an eventtype if there is an eventyoe to prevent
+    holdingarea : null
 };
 /**
  * Namespace containing the nodes that relate to the dock
@@ -44,6 +45,7 @@ M.core_dock.css = {
     dockspacer:'dockspacer',        // CSS class applied to the dockspacer
     controls:'controls',            // CSS class applied to the controls box
     body:'has_dock',                // CSS class added to the body when there is a dock
+    buttonscontainer: 'buttons_container',
     dockeditem:'dockeditem',        // CSS class added to each item in the dock
     dockeditemcontainer:'dockeditem_container',
     dockedtitle:'dockedtitle',      // CSS class added to the item's title in each dock
@@ -95,24 +97,28 @@ M.core_dock.init = function(Y) {
     if (!dock) {
         // Start the construction of the dock
         dock = Y.Node.create('<div id="dock" class="'+css.dock+' '+css.dock+'_'+this.cfg.position+'_'+this.cfg.orientation+'"></div>')
-                    .append(Y.Node.create('<div class="'+css.dockeditemcontainer+'"></div>'));
+                    .append(Y.Node.create('<div class="'+css.buttonscontainer+'"></div>')
+                        .append(Y.Node.create('<div class="'+css.dockeditemcontainer+'"></div>')));
         this.nodes.body.append(dock);
     } else {
         dock.addClass(css.dock+'_'+this.cfg.position+'_'+this.cfg.orientation);
     }
+    this.holdingarea = Y.Node.create('<div></div>').setStyles({display:'none'});
+    this.nodes.body.append(this.holdingarea);
     if (Y.UA.ie > 0 && Y.UA.ie < 7) {
         // Adjust for IE 6 (can't handle fixed pos)
         dock.setStyle('height', dock.get('winHeight')+'px');
     }
     // Store the dock
     this.nodes.dock = dock;
-    this.nodes.container = dock.one('.'+css.dockeditemcontainer);
+    this.nodes.buttons = dock.one('.'+css.buttonscontainer);
+    this.nodes.container = this.nodes.buttons.one('.'+css.dockeditemcontainer);
 
     if (Y.all('.block.dock_on_load').size() == 0) {
         // Nothing on the dock... hide it using CSS
         dock.addClass('nothingdocked');
     } else {
-        this.nodes.body.addClass(this.css.body);
+        this.nodes.body.addClass(this.css.body).addClass(this.css.body+'_'+this.cfg.position+'_'+this.cfg.orientation);
     }
 
     this.fire('dock:beforedraw');
@@ -122,7 +128,7 @@ M.core_dock.init = function(Y) {
     var removeall = Y.Node.create('<img alt="'+M.str.block.undockall+'" title="'+M.str.block.undockall+'" />');
     removeall.setAttribute('src',this.cfg.removeallicon);
     removeall.on('removeall|click', this.remove_all, this);
-    dock.appendChild(Y.Node.create('<div class="'+css.controls+'"></div>').append(removeall));
+    this.nodes.buttons.appendChild(Y.Node.create('<div class="'+css.controls+'"></div>').append(removeall));
 
     // Create a manager for the height of the tabs. Once set this can be forgotten about
     new (function(Y){
@@ -255,13 +261,12 @@ M.core_dock.getPanel = function() {
             };
             // Add a method to set the top of the panel position
             dockpanel.setTop = function(newtop) {
-                this.setY(newtop);
-                return;
-                if (Y.UA.ie > 0) {
+                if (Y.UA.ie > 0 && Y.UA.ie < 7) {
                     this.setY(newtop);
-                    return true;
+                } else {
+                    this.setStyle('top', newtop.toString()+'px');
                 }
-                this.setStyle('top', newtop+'px');
+                return;
             };
             // Put the dockpanel in the body
             parent.append(dockpanel);
@@ -281,14 +286,22 @@ M.core_dock.getPanel = function() {
  */
 M.core_dock.handleEvent = function(e, options) {
     var item = this.getActiveItem();
-    var target = (e.target.test(options.cssselector))?e.target:e.target.ancestor(options.cssselector);
     if (options.cssselector == 'body') {
         if (!this.nodes.dock.contains(e.target)) {
             if (item) {
                 item.hide();
             }
         }
-    } else if (target) {
+    } else {
+        var target;
+        if (e.target.test(options.cssselector)) {
+            target = e.target;
+        } else {
+            target = e.target.ancestor(options.cssselector);
+        }
+        if (!target) {
+            return true;
+        }
         if (this.preventevent !== null && e.type === this.preventevent) {
             return true;
         }
@@ -359,8 +372,14 @@ M.core_dock.delayEvent = function(event, options, target) {
  */
 M.core_dock.fixTitleOrientation = function(item, title, text) {
     var Y = this.Y;
-
+    
     var title = Y.one(title);
+
+    if(M.core_dock.cfg.orientation != 'vertical') {
+        // If the dock isn't vertical don't adjust it!
+        title.setContent(text);
+        return title
+    }
 
     if (Y.UA.ie > 0 && Y.UA.ie < 8) {
         // IE 6/7 can't rotate text so force ver
@@ -442,14 +461,20 @@ M.core_dock.resizeBlockSpace = function(node) {
         blockregions[region.get('id')] = {hasblocks: hasblocks, bodyclass: region.get('id').replace(/^region\-/, 'side-')+'-only'};
     });
     var bodynode = M.core_dock.nodes.body;
+    var showregions = false;
+    if (bodynode.hasClass('blocks-moving')) {
+        // open up blocks during blocks positioning
+        showregions = true;
+    }
+
     var noblocksbodyclass = 'content-only';
     var i = null;
-    if (populatedblockregions==0) {
+    if (populatedblockregions==0 && showregions==false) {
         bodynode.addClass(noblocksbodyclass);
         for (i in blockregions) {
             bodynode.removeClass(blockregions[i].bodyclass);
         }
-    } else if (populatedblockregions==1) {
+    } else if (populatedblockregions==1 && showregions==false) {
         bodynode.removeClass(noblocksbodyclass);
         for (i in blockregions) {
             if (!blockregions[i].hasblocks) {
@@ -549,12 +574,14 @@ M.core_dock.hideActive = function() {
 M.core_dock.checkDockVisibility = function() {
     if (!this.count) {
         this.nodes.dock.addClass('nothingdocked');
-        this.nodes.body.removeClass(this.css.body);
+        this.nodes.body.removeClass(this.css.body)
+                       .removeClass(this.css.body+'_'+this.cfg.position+'_'+this.cfg.orientation);
         this.fire('dock:hidden');
     } else {
         this.fire('dock:beforeshow');
         this.nodes.dock.removeClass('nothingdocked');
-        this.nodes.body.addClass(this.css.body);
+        this.nodes.body.addClass(this.css.body)
+                       .addClass(this.css.body+'_'+this.cfg.position+'_'+this.cfg.orientation);
         this.fire('dock:shown');
     }
 };
@@ -592,26 +619,41 @@ M.core_dock.resize = function() {
     if (!panel.visible || !item) {
         return;
     }
-    var buffer = this.cfg.buffer;
-    var screenheight = parseInt(this.nodes.body.get('winHeight'))-(buffer*2);
-    var docky = this.nodes.dock.getY();
-    var titletop = item.nodes.docktitle.getY()-docky-buffer;
-    var containery = this.nodes.container.getY();
-    var containerheight = containery-docky+this.nodes.container.get('offsetHeight');
-    panel.contentBody.setStyle('height', 'auto');
-    panel.removeClass('oversized_content');
-    var panelheight = panel.get('offsetHeight');
 
-    if (panelheight > screenheight) {
-        panel.setStyle('top', (buffer-containerheight)+'px');
-        panel.contentBody.setStyle('height', (screenheight-panel.contentHeader.get('offsetHeight'))+'px');
-        panel.addClass('oversized_content');
-    } else if (panelheight > (screenheight-(titletop-buffer))) {
-        var difference = panelheight - (screenheight-titletop);
-        panel.setStyle('top', (titletop-containerheight-difference+buffer)+'px');
-    } else {
-        panel.setStyle('top', (titletop-containerheight+buffer)+'px');
+    if (this.cfg.orientation=='vertical') {
+        var buffer = this.cfg.buffer;
+        var screenheight = parseInt(this.nodes.body.get('winHeight'))-(buffer*2);
+        var docky = this.nodes.dock.getY();
+        var titletop = item.nodes.docktitle.getY()-docky-buffer;
+        var containery = this.nodes.container.getY();
+        var containerheight = containery-docky+this.nodes.buttons.get('offsetHeight');
+        panel.contentBody.setStyle('height', 'auto');
+        panel.removeClass('oversized_content');
+        var panelheight = panel.get('offsetHeight');
+
+        if (this.Y.UA.ie > 0 && this.Y.UA.ie < 7) {
+            panel.setTop(item.nodes.docktitle.getY());
+        } else if (panelheight > screenheight) {
+            panel.setTop(buffer-containerheight);
+            panel.contentBody.setStyle('height', (screenheight-panel.contentHeader.get('offsetHeight'))+'px');
+            panel.addClass('oversized_content');
+        } else if (panelheight > (screenheight-(titletop-buffer))) {
+            var difference = panelheight - (screenheight-titletop);
+            panel.setTop(titletop-containerheight-difference+buffer);
+        } else {
+            panel.setTop(titletop-containerheight+buffer);
+        }
     }
+
+    if (this.cfg.position=='right') {
+        panel.setStyle('left', -panel.get('offsetWidth')+'px');
+
+    } else if (this.cfg.position=='top') {
+        var dockx = this.nodes.dock.getX();
+        var titleleft = item.nodes.docktitle.getX()-dockx;
+        panel.setStyle('left', titleleft+'px');
+    }
+
     this.fire('dock:resizepanelcomplete');
     return;
 };
@@ -718,6 +760,7 @@ M.core_dock.genericblock.prototype = {
         this.cachedcontentnode = node;
 
         node.replace(Y.Node.getDOMNode(Y.Node.create('<div id="content_placeholder_'+this.id+'" class="block_dock_placeholder"></div>')));
+        M.core_dock.holdingarea.append(node);
         node = null;
 
         var blocktitle = Y.Node.getDOMNode(this.cachedcontentnode.one('.title h2')).cloneNode(true);
@@ -891,7 +934,7 @@ M.core_dock.item.prototype = {
         panel.setHeader(this.titlestring, this.commands);
         panel.setBody(Y.Node.create('<div class="'+this.blockclass+' block_docked"></div>').append(this.contents));
         panel.show();
-        
+
         this.active = true;
         // Add active item class first up
         this.nodes.docktitle.addClass(css.activeitem);

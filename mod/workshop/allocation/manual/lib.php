@@ -198,9 +198,11 @@ class workshop_manual_allocator implements workshop_allocator {
         if ($hlauthorid > 0 and $hlreviewerid > 0) {
             // display just those two users
             $participants = array_intersect_key($participants, array($hlauthorid => null, $hlreviewerid => null));
+            $button = $OUTPUT->single_button($PAGE->url, get_string('showallparticipants', 'workshopallocation_manual'), 'get');
         } else {
             // slice the list of participants according to the current page
             $participants = array_slice($participants, $page * $perpage, $perpage, true);
+            $button = '';
         }
 
         // this will hold the information needed to display user names and pictures
@@ -277,7 +279,7 @@ class workshop_manual_allocator implements workshop_allocator {
         $allocations = array();
 
         foreach ($participants as $participant) {
-            $allocations[$participant->id] = new stdclass;
+            $allocations[$participant->id] = new stdClass();
             $allocations[$participant->id]->userid = $participant->id;
             $allocations[$participant->id]->submissionid = null;
             $allocations[$participant->id]->reviewedby = array();
@@ -319,7 +321,20 @@ class workshop_manual_allocator implements workshop_allocator {
         $wsoutput = $PAGE->get_renderer('mod_workshop');
         $uioutput = $PAGE->get_renderer('workshopallocation_manual');
 
-        return $pagingbarout . $wsoutput->status_message($msg) . $uioutput->display_allocations($data) . $pagingbarout;
+        return $pagingbarout . $wsoutput->status_message($msg) . $uioutput->display_allocations($data) . $button . $pagingbarout;
+    }
+
+    /**
+     * Delete all data related to a given workshop module instance
+     *
+     * This plugin does not store any data.
+     *
+     * @see workshop_delete_instance()
+     * @param int $workshopid id of the workshop module instance being deleted
+     * @return void
+     */
+    public static function delete_instance($workshopid) {
+        return;
     }
 
     /**

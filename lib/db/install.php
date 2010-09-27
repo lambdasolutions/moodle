@@ -32,29 +32,25 @@ function xmldb_main_install() {
     /// make sure system context exists
     $syscontext = get_system_context(false);
     if ($syscontext->id != 1) {
-        throw new moodle_exception('generalexceptionmessage', 'error', '', 'Unexpected system context id created!');
+        throw new moodle_exception('generalexceptionmessage', 'error', '', 'Unexpected new system context id!');
     }
 
 
     /// create site course
-    $newsite = new object();
-    $newsite->fullname = "";
-    $newsite->shortname = "";
-    $newsite->summary = NULL;
-    $newsite->newsitems = 3;
-    $newsite->numsections = 0;
-    $newsite->category = 0;
-    $newsite->format = 'site';  // Only for this course
-    $newsite->teacher = get_string("defaultcourseteacher");
-    $newsite->teachers = get_string("defaultcourseteachers");
-    $newsite->student = get_string("defaultcoursestudent");
-    $newsite->students = get_string("defaultcoursestudents");
+    $newsite = new stdClass();
+    $newsite->fullname     = '';
+    $newsite->shortname    = '';
+    $newsite->summary      = NULL;
+    $newsite->newsitems    = 3;
+    $newsite->numsections  = 0;
+    $newsite->category     = 0;
+    $newsite->format       = 'site';  // Only for this course
     $newsite->timemodified = time();
 
-    $DB->insert_record('course', $newsite);
+    $newsite->id = $DB->insert_record('course', $newsite);
     $SITE = get_site();
-    if ($SITE->id != 1) {
-        throw new moodle_exception('generalexceptionmessage', 'error', '', 'Unexpected site course id created!');
+    if ($newsite->id != 1 or $SITE->id != 1) {
+        throw new moodle_exception('generalexceptionmessage', 'error', '', 'Unexpected new site course id!');
     }
 
 
@@ -74,7 +70,6 @@ function xmldb_main_install() {
         'siteidentifier'        => random_string(32).get_host_from_url($CFG->wwwroot),
         'backup_version'        => 2008111700,
         'backup_release'        => '2.0 dev',
-        'blocks_version'        => 2007081300, // might be removed soon
         'mnet_dispatcher_mode'  => 'off',
         'sessiontimeout'        => 7200, // must be present during roles installation
         'stringfilters'         => '', // These two are managed in a strange way by the filters
@@ -87,7 +82,7 @@ function xmldb_main_install() {
 
 
     /// bootstrap mnet
-    $mnethost = new object();
+    $mnethost = new stdClass();
     $mnethost->wwwroot    = $CFG->wwwroot;
     $mnethost->name       = '';
     $mnethost->name       = '';
@@ -111,15 +106,15 @@ function xmldb_main_install() {
     set_config('mnet_localhost_id', $mnetid);
 
     // Initial insert of mnet applications info
-    $mnet_app = new object();
+    $mnet_app = new stdClass();
     $mnet_app->name              = 'moodle';
     $mnet_app->display_name      = 'Moodle';
     $mnet_app->xmlrpc_server_url = '/mnet/xmlrpc/server.php';
     $mnet_app->sso_land_url      = '/auth/mnet/land.php';
-    $mnet_app->sso_jump_url      = '/auth/mnet/land.php';
+    $mnet_app->sso_jump_url      = '/auth/mnet/jump.php';
     $moodleapplicationid = $DB->insert_record('mnet_application', $mnet_app);
 
-    $mnet_app = new object();
+    $mnet_app = new stdClass();
     $mnet_app->name              = 'mahara';
     $mnet_app->display_name      = 'Mahara';
     $mnet_app->xmlrpc_server_url = '/api/xmlrpc/server.php';
@@ -128,7 +123,7 @@ function xmldb_main_install() {
     $DB->insert_record('mnet_application', $mnet_app);
 
     // Set up the probably-to-be-removed-soon 'All hosts' record
-    $mnetallhosts                     = new object();
+    $mnetallhosts                     = new stdClass();
     $mnetallhosts->wwwroot            = '';
     $mnetallhosts->ip_address         = '';
     $mnetallhosts->public_key         = '';
@@ -142,7 +137,7 @@ function xmldb_main_install() {
     set_config('mnet_all_hosts_id', $mnetallhosts->id);
 
     /// Create guest record - do not assign any role, guest user get's the default guest role automatically on the fly
-    $guest = new object();
+    $guest = new stdClass();
     $guest->auth        = 'manual';
     $guest->username    = 'guest';
     $guest->password    = hash_internal_user_password('guest');
@@ -155,10 +150,15 @@ function xmldb_main_install() {
     $guest->lang        = $CFG->lang;
     $guest->timemodified= time();
     $guest->id = $DB->insert_record('user', $guest);
+    if ($guest->id != 1) {
+        throw new moodle_exception('generalexceptionmessage', 'error', '', 'Unexpected new guest user id!');
+    }
+    // Store guest id
+    set_config('siteguest', $guest->id);
 
 
     /// Now create admin user
-    $admin = new object();
+    $admin = new stdClass();
     $admin->auth         = 'manual';
     $admin->firstname    = get_string('admin');
     $admin->lastname     = get_string('user');
@@ -172,6 +172,9 @@ function xmldb_main_install() {
     $admin->timemodified = time();
     $admin->lastip       = CLI_SCRIPT ? '0.0.0.0' : getremoteaddr(); // installation hijacking prevention
     $admin->id = $DB->insert_record('user', $admin);
+    if ($admin->id != 2) {
+        throw new moodle_exception('generalexceptionmessage', 'error', '', 'Unexpected new admin user id!');
+    }
     /// Store list of admins
     set_config('siteadmins', $admin->id);
 
@@ -261,7 +264,7 @@ function xmldb_main_install() {
     license_manager::install_licenses();
 
     /// Add two lines of data into this new table
-    $mypage = new object();
+    $mypage = new stdClass();
     $mypage->userid = NULL;
     $mypage->name = '__default';
     $mypage->private = 0;

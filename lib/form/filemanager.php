@@ -135,7 +135,7 @@ class MoodleQuickForm_filemanager extends HTML_QuickForm_element {
         $client_id = uniqid();
 
         // filemanager options
-        $options = new stdclass;
+        $options = new stdClass();
         $options->mainfile  = $this->_options['mainfile'];
         $options->maxbytes  = $this->_options['maxbytes'];
         $options->maxfiles  = $this->getMaxfiles();
@@ -207,7 +207,7 @@ class form_filemanaer_x {
         }
 
         // building file picker options
-        $params = new stdclass;
+        $params = new stdClass();
         $params->accepted_types = $options->accepted_types;
         $params->return_types = $options->return_types;
         $params->context = $options->context;
@@ -258,6 +258,16 @@ function form_filemanager_render($options) {
 
     $client_id = $options->client_id;
     $itemid    = $options->itemid;
+    list($context, $course, $cm) = get_context_info_array($options->context->id);
+    if (is_object($course)) {
+        $course_maxbytes = $course->maxbytes;
+    } else {
+        $course_maxbytes = $CFG->maxbytes;
+    }
+
+    if ($options->maxbytes == -1 || empty($options->maxbytes)) {
+        $options->maxbytes = $CFG->maxbytes;
+    }
 
     if (empty($options->filecount)) {
         $extra = ' style="display:none"';
@@ -265,6 +275,7 @@ function form_filemanager_render($options) {
         $extra = '';
     }
 
+    $maxsize = get_string('maxfilesize', 'moodle', display_size(get_max_upload_file_size($CFG->maxbytes, $course_maxbytes, $options->maxbytes)));
     $html .= <<<FMHTML
 <div class="filemanager-loading mdl-align" id='filemanager-loading-{$client_id}'>
 $icon_progress
@@ -275,6 +286,7 @@ $icon_progress
         <button id="btnadd-{$client_id}" onclick="return false">{$icon_add_file} $straddfile</button>
         <button id="btncrt-{$client_id}" onclick="return false">{$icon_add_folder} $strmakedir</button>
         <button id="btndwn-{$client_id}" onclick="return false" {$extra}>{$icon_download} $strdownload</button>
+        <span> $maxsize </span>
     </div>
     <div class="filemanager-container" id="filemanager-{$client_id}">
         <ul id="draftfiles-{$client_id}" class="fm-filelist">
@@ -318,6 +330,7 @@ FMHTML;
         'maxfiles'=>$options->maxfiles,
         'ctx_id'=>$PAGE->context->id,
         'course'=>$PAGE->course->id,
+        'sesskey'=>sesskey(),
         ));
 
     $html .= '<noscript>';

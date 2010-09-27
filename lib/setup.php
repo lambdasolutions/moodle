@@ -40,7 +40,17 @@
  * @global object $CFG
  * @name $CFG
  */
-global $CFG;
+global $CFG; // this should be done much earlier in config.php before creating new $CFG instance
+
+if (!isset($CFG)) {
+    if (defined('PHPUNIT_SCRIPT') and PHPUNIT_SCRIPT) {
+        echo('There is a missing "global $CFG;" at the beginning of the config.php file.'."\n");
+        exit(1);
+    } else {
+        // this should never happen, maybe somebody is accessing this file directly...
+        exit(1);
+    }
+}
 
 // We can detect real dirroot path reliably since PHP 4.0.2,
 // it can not be anything else, there is no point in having this in config.php
@@ -48,22 +58,33 @@ $CFG->dirroot = dirname(dirname(__FILE__));
 
 // Normalise dataroot - we do not want any symbolic links, trailing / or any other weirdness there
 if (!isset($CFG->dataroot)) {
-    header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
-    echo('Fatal error: $CFG->dataroot is not specified in config.php! Exiting.');
+    if (isset($_SERVER['REMOTE_ADDR'])) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
+    }
+    echo('Fatal error: $CFG->dataroot is not specified in config.php! Exiting.'."\n");
     exit(1);
 }
 $CFG->dataroot = realpath($CFG->dataroot);
 if ($CFG->dataroot === false) {
-    header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
-    echo('Fatal error: $CFG->dataroot is not configured properly, directory does not exist or is not accessible! Exiting.');
+    if (isset($_SERVER['REMOTE_ADDR'])) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
+    }
+    echo('Fatal error: $CFG->dataroot is not configured properly, directory does not exist or is not accessible! Exiting.'."\n");
+    exit(1);
+} else if (!is_writable($CFG->dataroot)) {
+    if (isset($_SERVER['REMOTE_ADDR'])) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
+    }
+    echo('Fatal error: $CFG->dataroot is not writable, admin has to fix directory permissions! Exiting.'."\n");
     exit(1);
 }
 
 // wwwroot is mandatory
 if (!isset($CFG->wwwroot) or $CFG->wwwroot === 'http://example.com/moodle') {
-    // trigger_error() is not correct here, no need to log this
-    header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
-    echo('Fatal error: $CFG->wwwroot is not configured! Exiting.');
+    if (isset($_SERVER['REMOTE_ADDR'])) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 503 Service Unavailable');
+    }
+    echo('Fatal error: $CFG->wwwroot is not configured! Exiting.'."\n");
     exit(1);
 }
 
@@ -98,15 +119,35 @@ if (function_exists('date_default_timezone_set') and function_exists('date_defau
     @date_default_timezone_set(@date_default_timezone_get());
 }
 
+// PHPUnit scripts are a special case, for now we treat them as normal CLI scripts,
+// please note you must install PHPUnit library separately via PEAR
+if (!defined('PHPUNIT_SCRIPT')) {
+    define('PHPUNIT_SCRIPT', false);
+}
+if (PHPUNIT_SCRIPT) {
+    define('CLI_SCRIPT', true);
+}
+
 // Detect CLI scripts - CLI scripts are executed from command line, do not have session and we do not want HTML in output
-// In your new CLI scripts just add: if (isset($_SERVER['REMOTE_ADDR'])) {die;} before requiring config.php.
+// In your new CLI scripts just add "define('CLI_SCRIPT', true);" before requiring config.php.
+// Please note that one script can not be accessed from both CLI and web interface.
 if (!defined('CLI_SCRIPT')) {
-    // CLI_SCRIPT is defined in 'fake' CLI script /admin/cron.php, do not abuse this elsewhere!
-    if (isset($_SERVER['REMOTE_ADDR'])) {
-        define('CLI_SCRIPT', false);
-    } else {
-        /** @ignore */
-        define('CLI_SCRIPT', true);
+    define('CLI_SCRIPT', false);
+}
+if (defined('WEB_CRON_EMULATED_CLI')) {
+    if (!isset($_SERVER['REMOTE_ADDR'])) {
+        echo('Web cron can not be executed as CLI script any more, please use admin/cli/cron.php instead'."\n");
+        exit(1);
+    }
+} else if (isset($_SERVER['REMOTE_ADDR'])) {
+    if (CLI_SCRIPT) {
+        echo('Command line scripts can not be executed from the web interface');
+        exit(1);
+    }
+} else {
+    if (!CLI_SCRIPT) {
+        echo('Command line scripts must define CLI_SCRIPT before requiring config.php'."\n");
+        exit(1);
     }
 }
 
@@ -127,7 +168,7 @@ umask(0000);
 
 // exact version of currently used yui2 and 3 library
 $CFG->yui2version = '2.8.1';
-$CFG->yui3version = '3.1.1';
+$CFG->yui3version = '3.2.0';
 
 
 // special support for highly optimised scripts that do not need libraries and DB connection
@@ -291,6 +332,7 @@ $OUTPUT = new bootstrap_renderer();
 
 // set handler for uncaught exceptions - equivalent to print_error() call
 set_exception_handler('default_exception_handler');
+set_error_handler('default_error_handler', E_ALL | E_STRICT);
 
 // If there are any errors in the standard libraries we want to know!
 error_reporting(E_ALL);
@@ -416,7 +458,7 @@ try {
          */
         define('SITEID', 1);
         // And the 'default' course
-        $COURSE = new object();  // no site created yet
+        $COURSE = new stdClass();  // no site created yet
         $COURSE->id = 1;
     } else {
         throw $e;
@@ -515,11 +557,6 @@ if (stristr(PHP_OS, 'win') && !stristr(PHP_OS, 'darwin')) {
 }
 $CFG->os = PHP_OS;
 
-// Setup cache dir for Smarty and others
-if (!file_exists($CFG->dataroot .'/cache')) {
-    make_upload_directory('cache');
-}
-
 // Configure ampersands in URLs
 @ini_set('arg_separator.output', '&amp;');
 
@@ -583,6 +620,24 @@ if (isset($_SERVER['PHP_SELF'])) {
 
 // initialise ME's
 initialise_fullme();
+
+
+// init session prevention flag - this is defined on pages that do not want session
+if (CLI_SCRIPT) {
+    // no sessions in CLI scripts possible
+    define('NO_MOODLE_COOKIES', true);
+
+} else if (!defined('NO_MOODLE_COOKIES')) {
+    if (empty($CFG->version) or $CFG->version < 2009011900) {
+        // no session before sessions table gets created
+        define('NO_MOODLE_COOKIES', true);
+    } else if (CLI_SCRIPT) {
+        // CLI scripts can not have session
+        define('NO_MOODLE_COOKIES', true);
+    } else {
+        define('NO_MOODLE_COOKIES', false);
+    }
+}
 
 // start session and prepare global $SESSION, $USER
 session_get_instance();

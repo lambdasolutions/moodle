@@ -374,6 +374,7 @@
                     $countsql .= 'COUNT(DISTINCT('.$DB->sql_concat('u.id', '\'#\'','st.attempt').')) AS nbattempts, ';
                     $countsql .= 'COUNT(DISTINCT(u.id)) AS nbusers ';
                     $countsql .= $from.$where;
+                    $params = array();
 
                     if (!$download) {
                         $sort = $table->get_sql_sort();
@@ -390,17 +391,19 @@
 
                     if (!$download) {
                         // Add extra limits due to initials bar
-                        if($table->get_sql_where()) {
-                            $where .= ' AND '.$table->get_sql_where();
+                        list($twhere, $tparams) = $table->get_sql_where();
+                        if ($twhere) {
+                            $where .= ' AND '.$twhere; //initial bar
+                            $params = array_merge($params, $tparams);
                         }
 
                         if (!empty($countsql)) {
                             $count = $DB->get_record_sql($countsql);
                             $totalinitials = $count->nbresults;
-                            if ($table->get_sql_where()) {
-                                $countsql .= ' AND '.$table->get_sql_where();
+                            if ($twhere) {
+                                $countsql .= ' AND '.$twhere;
                             }
-                            $count = $DB->get_record_sql($countsql);
+                            $count = $DB->get_record_sql($countsql, $params);
                             $total  = $count->nbresults;
                         }
 
@@ -419,12 +422,12 @@
 
                     // Fetch the attempts
                     if (!$download) {
-                        $attempts = $DB->get_records_sql($select.$from.$where.$sort, array(),
+                        $attempts = $DB->get_records_sql($select.$from.$where.$sort, $params,
                                                 $table->get_page_start(), $table->get_page_size());
                         echo '<div id="scormtablecontainer">';
                         if ($candelete) {
                             // Start form
-                            $strreallydel  = addslashes(get_string('deleteattemptcheck','scorm'));
+                            $strreallydel  = addslashes_js(get_string('deleteattemptcheck','scorm'));
                             echo '<form id="attemptsform" method="post" action="' . $reporturlwithdisplayoptions->out(true) .
                                     '" onsubmit="return confirm(\''.$strreallydel.'\');">';
                             echo '<input type="hidden" name="action" value="delete"/>';
@@ -436,7 +439,7 @@
                         }
                         $table->initialbars($totalinitials>20); // Build table rows
                     } else {
-                        $attempts = $DB->get_records_sql($select.$from.$where.$sort);
+                        $attempts = $DB->get_records_sql($select.$from.$where.$sort, $params);
                     }
 
                     if ($attempts) {
@@ -639,7 +642,7 @@
                                 $row[] = '<img src="'.$OUTPUT->pix_url($trackdata->status, 'scorm').'" alt="'.$strstatus.'" title="'.
                                          $strstatus.'" />&nbsp;'.format_string($sco->title);
                                 $row[] = get_string($trackdata->status,'scorm');
-                                $row[] = scorm_format_date_time($trackdata->total_time);
+                                $row[] = scorm_format_duration($trackdata->total_time);
                                 $row[] = $score;
                                 $row[] = $detailslink;
                             } else {
@@ -679,7 +682,7 @@
             }
             $strstatus = get_string($trackdata->status,'scorm');
             echo '<img src="'.$OUTPUT->pix_url($trackdata->status, 'scorm').'" alt="'.$strstatus.'" title="'.
-            $strstatus.'" />&nbsp;'.scorm_format_date_time($trackdata->total_time).'<br />'.$scoreview.'<br />';
+            $strstatus.'" />&nbsp;'.scorm_format_duration($trackdata->total_time).'<br />'.$scoreview.'<br />';
             echo '</div>'."\n";
             echo '<hr /><h2>'.get_string('details','scorm').'</h2>';
 
@@ -717,7 +720,7 @@
                             $row[] = $strstatus;
                         break;
                         case 'time':
-                            $row[] = s(scorm_format_date_time($trackdata->$element));
+                            $row[] = s(scorm_format_duration($trackdata->$element));
                         break;
                         default:
                             s($trackdata->$element);
@@ -834,7 +837,7 @@
                         if (strpos($element, '_time') === false) {
                             $row[] = s($value);
                         } else {
-                            $row[] = s(scorm_format_date_time($value));
+                            $row[] = s(scorm_format_duration($value));
                         }
                         $table->data[] = $row;
                     }

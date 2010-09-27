@@ -35,12 +35,15 @@
 .path-mod-choice .responseaction {text-align: center;}
 .path-mod-choice .results .option {white-space: normal;}
 .path-mod-choice .response {overflow: auto;}
+.path-mod-choice .results .option,
+.path-mod-choice .results .numberofuser,
+.path-mod-choice .results .percentage {font-weight: bold; font-size: 108%;}
 
 #page-mod-choice-report .downloadreport ul li {list-style:none;padding: 0 20px; display: inline;float: left; }
 .path-mod-choice .clearfloat {float:none; clear:both;}
 
-/** 
- * Overide for RTL layout
+/**
+ * Override for RTL layout
  */
 .path-mod-choice.dir-rtl .horizontal .choices .option {padding-right:0px; padding-left: 20px; float:right;}
 .path-mod-choice.dir-rtl .results.anonymous .graph.horizontal {text-align: right;}

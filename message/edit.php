@@ -32,7 +32,7 @@ $url = new moodle_url('/message/edit.php');
 if ($userid !== $USER->id) {
     $url->param('id', $userid);
 }
-if ($course !== SITEID) {
+if ($course != SITEID) {
     $url->param('course', $course);
 }
 $PAGE->set_url($url);
@@ -83,15 +83,14 @@ if ($user->id == $USER->id) {
     if (isguestuser($user->id)) {
         print_error('guestnoeditmessageother', 'message');
     }
-    // no editing of primary admin!
-    $mainadmin = get_admin();
-    if ($user->id == $mainadmin->id) {
-        print_error('adminprimarynoedit');
+    // no editing of admins by non admins!
+    if (is_siteadmin($user) and !is_siteadmin($USER)) {
+        print_error('useradmineditadmin');
     }
     $PAGE->navigation->extend_for_user($user);
 }
 
-/// Save new preferences if data was submited
+/// Save new preferences if data was submitted
 
 if (($form = data_submitted()) && confirm_sesskey()) {
     $preferences = array();
@@ -141,7 +140,7 @@ if (($form = data_submitted()) && confirm_sesskey()) {
 }
 
 /// Load preferences
-$preferences = new object();
+$preferences = new stdClass();
 
 /// Get providers preferences
 $providers = message_get_my_providers();
@@ -206,14 +205,7 @@ echo '</tr>';
 foreach ( $providers as $providerid => $provider){
     $providername = get_string('messageprovider:'.$provider->name, $provider->component);
 
-/// TODO XXX: This is only a quick hack ... helpfile locations should be provided as part of the provider definition
-    if ($provider->component == 'moodle') {
-        $helpbtn = $OUTPUT->old_help_icon('moodle_'.$provider->name, $providername, 'message');
-    } else {
-        $helpbtn = $OUTPUT->old_help_icon('message_'.$provider->name, $providername, basename($provider->component));
-    }
-
-    echo '<tr><th align="right">'.$providername.$helpbtn.'</th><td colspan="'.$number_procs.'"></td></tr>'."\n";
+    echo '<tr><th align="right">'.$providername.'</th><td colspan="'.$number_procs.'"></td></tr>'."\n";
     foreach (array('loggedin', 'loggedoff') as $state){
         $state_res = get_string($state, 'message');
         echo '<tr><td align="right">'.$state_res.'</td>'."\n";

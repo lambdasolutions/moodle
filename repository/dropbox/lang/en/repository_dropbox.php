@@ -26,9 +26,9 @@
 $string['configplugin'] = 'Dropbox configuration';
 $string['notitle'] = 'notitle';
 $string['remember'] = 'Remember me';
-$string['pluginname_help'] = '';
 $string['pluginname'] = 'Dropbox';
 $string['apikey'] = 'Dropbox API Key';
+$string['sandbox'] = 'Dropbox sandbox';
 $string['secret'] = 'Dropbox Secret';
 $string['instruction'] = 'You can get your API Key and secret from <a href="http://www.dropbox.com/developers/apps">Dropbox developers</a>';
 $string['dropbox:view'] = 'View a Dropbox folder';

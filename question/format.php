@@ -231,7 +231,7 @@ class qformat_default {
         global $USER, $DB, $OUTPUT;
 
        // reset the timer in case file upload was slow
-       @set_time_limit();
+       @set_time_limit(0);
 
        // STAGE 1: Parse the file
        echo $OUTPUT->notification( get_string('parsingquestions','quiz') );
@@ -300,7 +300,7 @@ class qformat_default {
         foreach ($questions as $question) {   // Process and store each question
 
             // reset the php timeout
-            @set_time_limit();
+            @set_time_limit(0);
 
             // check for category modifiers
             if ($question->qtype=='category') {
@@ -411,7 +411,7 @@ class qformat_default {
             } else {
                 require_capability('moodle/question:managecategory', $context);
                 // create the new category
-                $category = new object;
+                $category = new stdClass();
                 $category->contextid = $context->id;
                 $category->name = $catname;
                 $category->info = '';
@@ -556,6 +556,9 @@ class qformat_default {
      */
     function importimagefile( $path, $base64 ) {
         global $CFG;
+
+        //TODO: MDL-16094
+        throw new coding_exception('importimagefile() was not converted to new file api yet, sorry - see MDL-16094');
 
         // all this to get the destination directory
         // and filename!
@@ -702,7 +705,7 @@ class qformat_default {
                     $categoryname = $this->get_category_path($trackcategory, $this->contexttofile);
 
                     // create 'dummy' question for category export
-                    $dummyquestion = new object;
+                    $dummyquestion = new stdClass();
                     $dummyquestion->qtype = 'category';
                     $dummyquestion->category = $categoryname;
                     $dummyquestion->name = 'Switch category to ' . $categoryname;
@@ -805,8 +808,7 @@ class qformat_default {
      * back into an array of category names.
      *
      * Each category name is cleaned by a call to clean_param(, PARAM_MULTILANG),
-     * which matches the cleaning in question/category_form.php. Not that this
-     * addslashes the names, ready for insertion into the database.
+     * which matches the cleaning in question/category_form.php.
      *
      * @param string $path
      * @return array of category names.

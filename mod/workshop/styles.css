@@ -7,6 +7,11 @@
     font-size: 120%;
 }
 
+.path-mod-workshop div.singlebutton {
+    text-align: center;
+    margin: 0.75em auto;
+}
+
 /**
  * Submission - one line summary display
  */
@@ -141,11 +146,9 @@
     position: relative;
 }
 
-.path-mod-workshop .status-message-closer {
-    font-weight: bold;
-    position: absolute;
-    top: 5px;
-    right: 15px;
+.path-mod-workshop .status-message .singlebutton {
+    text-align: left;
+    margin: 0px;
 }
 
 .path-mod-workshop .status-message.ok {
@@ -298,9 +301,12 @@
 /**
  * Assessment
  */
-.path-mod-workshop .assessment-summary.graded,
-.path-mod-workshop .example-summary.graded {
+.path-mod-workshop .assessment-summary.graded {
     background-color: #e7f1c3;
+}
+
+.path-mod-workshop .example-summary.notgraded {
+    background-color: #ffd3d9;
 }
 
 .path-mod-workshop .assessmentform .description {
@@ -324,7 +330,7 @@
 
 .path-mod-workshop .grading-report del {
     color: red;
-    font-size: 90%
+    font-size: 90%;
     text-decoration: line-through;
 }
 

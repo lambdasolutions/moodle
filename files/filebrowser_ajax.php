@@ -31,11 +31,12 @@ require_once($CFG->libdir.'/filelib.php');
 
 $action = optional_param('action', 'list', PARAM_ALPHA);
 
+$PAGE->set_context(get_system_context());
 require_login();
 
 echo $OUTPUT->header(); // send headers
 
-$err = new stdclass;
+$err = new stdClass();
 if (isguestuser()) {
     $err->error = get_string('noguest');
     die(json_encode($err));
@@ -69,8 +70,10 @@ switch ($action) {
             if ($child->is_directory()) {
                 $fileitem['isdir'] = true;
                 $fileitem['url'] = $url->out(false);
+                $fileitem['icon'] = $OUTPUT->pix_icon('f/folder', get_string('icon'));
             } else {
                 $fileitem['url'] = $child->get_url();
+                $fileitem['icon'] = $OUTPUT->pix_icon('f/'.mimeinfo('icon', $child->get_visible_name()), get_string('icon'));
             }
             $tree[] = $fileitem;
         }

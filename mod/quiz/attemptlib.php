@@ -340,7 +340,7 @@ class quiz {
      * @return string the URL of the review of that attempt.
      */
     public function review_url($attemptid) {
-        return new moodle_url('/quiz/review.php', array('attempt' => $attemptid));
+        return new moodle_url('/mod/quiz/review.php', array('attempt' => $attemptid));
     }
 
     // Bits of content =====================================================================
@@ -926,7 +926,7 @@ class quiz_attempt extends quiz {
 
     /// Work out a nice title.
         $student = $DB->get_record('user', array('id' => $this->get_userid()));
-        $a = new object();
+        $a = new stdClass();
         $a->fullname = fullname($student, true);
         $a->attempt = $this->get_attempt_number();
 

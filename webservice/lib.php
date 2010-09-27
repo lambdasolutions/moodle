@@ -40,7 +40,7 @@ class webservice {
      */
     public function add_ws_authorised_user($user) {
         global $DB;
-        $serviceuser->timecreated = mktime();
+        $user->timecreated = mktime();
         $DB->insert_record('external_services_users', $user);
     }
 
@@ -71,17 +71,17 @@ class webservice {
      * @return array $users
      */
     public function get_ws_authorised_users($serviceid) {
-        global $DB;
-        $params = array($serviceid);
+        global $DB, $CFG;
+        $params = array($CFG->siteguest, $serviceid);
         $sql = " SELECT u.id as id, esu.id as serviceuserid, u.email as email, u.firstname as firstname,
-                u.lastname as lastname,
-                  esu.iprestriction as iprestriction, esu.validuntil as validuntil,
-                  esu.timecreated as timecreated
-                  FROM {user} u, {external_services_users} esu
-                  WHERE username <> 'guest' AND deleted = 0 AND confirmed = 1
+                        u.lastname as lastname,
+                        esu.iprestriction as iprestriction, esu.validuntil as validuntil,
+                        esu.timecreated as timecreated
+                   FROM {user} u, {external_services_users} esu
+                  WHERE u.id <> ? AND u.deleted = 0 AND u.confirmed = 1
                         AND esu.userid = u.id
                         AND esu.externalserviceid = ?";
-        if (!empty($userid)) {
+        if (!empty($userid)) { //TODO: what is this?
             $sql .= ' AND u.id = ?';
             $params[] = $userid;
         }
@@ -97,14 +97,14 @@ class webservice {
      * @return object
      */
     public function get_ws_authorised_user($serviceid, $userid) {
-        global $DB;
-        $params = array($serviceid, $userid);
+        global $DB, $CFG;
+        $params = array($CFG->siteguest, $serviceid, $userid);
         $sql = " SELECT u.id as id, esu.id as serviceuserid, u.email as email, u.firstname as firstname,
-                u.lastname as lastname,
-                  esu.iprestriction as iprestriction, esu.validuntil as validuntil,
-                  esu.timecreated as timecreated
-                  FROM {user} u, {external_services_users} esu
-                  WHERE username <> 'guest' AND deleted = 0 AND confirmed = 1
+                        u.lastname as lastname,
+                        esu.iprestriction as iprestriction, esu.validuntil as validuntil,
+                        esu.timecreated as timecreated
+                   FROM {user} u, {external_services_users} esu
+                  WHERE u.id <> ? AND u.deleted = 0 AND u.confirmed = 1
                         AND esu.userid = u.id
                         AND esu.externalserviceid = ?
                         AND u.id = ?";
@@ -118,7 +118,7 @@ class webservice {
      */
     public function generate_user_ws_tokens($userid) {
         global $CFG, $DB;
-        
+
         /// generate a token for non admin if web service are enable and the user has the capability to create a token
         if (!is_siteadmin() && has_capability('moodle/webservice:createtoken', get_context_instance(CONTEXT_SYSTEM), $userid) && !empty($CFG->enablewebservices)) {
         /// for every service than the user is authorised on, create a token (if it doesn't already exist)
@@ -149,7 +149,7 @@ class webservice {
             foreach ($serviceidlist as $serviceid) {
                 if (!in_array($serviceid, $tokenizedservice)) {
                     //create the token for this service
-                    $newtoken = new object();
+                    $newtoken = new stdClass();
                     $newtoken->token = md5(uniqid(rand(),1));
                     //check that the user has capability on this service
                     $newtoken->tokentype = EXTERNAL_TOKEN_PERMANENT;
@@ -220,6 +220,18 @@ class webservice {
     public function delete_user_ws_token($tokenid) {
         global $DB;
         $DB->delete_records('external_tokens', array('id'=>$tokenid));
+    }
+
+    /**
+     * Delete a service - it also delete the functions and users references to this service
+     * @param int $serviceid
+     */
+    public function delete_service($serviceid) {
+        global $DB;
+        $DB->delete_records('external_services_users', array('externalserviceid' => $serviceid));
+        $DB->delete_records('external_services_functions', array('externalserviceid' => $serviceid));
+        $DB->delete_records('external_tokens', array('externalserviceid' => $serviceid));
+        $DB->delete_records('external_services', array('id' => $serviceid));
     }
 
     /**
@@ -364,6 +376,19 @@ class webservice {
     }
 
     /**
+     * Get a external service for a given id
+     * @param service id $serviceid
+     * @param integer $strictness IGNORE_MISSING, MUST_EXIST...
+     * @return object external service
+     */
+    public function get_external_service_by_id($serviceid, $strictness=IGNORE_MISSING) {
+        global $DB;
+        $service = $DB->get_record('external_services',
+                        array('id' => $serviceid), '*', $strictness);
+        return $service;
+    }
+
+    /**
      * Get a external function for a given id
      * @param function id $functionid
      * @param integer $strictness IGNORE_MISSING, MUST_EXIST...
@@ -383,10 +408,32 @@ class webservice {
      */
     public function add_external_function_to_service($functionname, $serviceid) {
         global $DB;
-        $addedfunction = new object();
+        $addedfunction = new stdClass();
         $addedfunction->externalserviceid = $serviceid;
         $addedfunction->functionname = $functionname;
         $DB->insert_record('external_services_functions', $addedfunction);
+    }
+
+    /**
+     * Add a service
+     * @param object $service
+     * @return serviceid integer
+     */
+    public function add_external_service($service) {
+        global $DB;
+        $service->timecreated = mktime();
+        $serviceid = $DB->insert_record('external_services', $service);
+        return $serviceid;
+    }
+
+     /**
+     * Update a service
+     * @param object $service
+     */
+    public function update_external_service($service) {
+        global $DB;
+        $service->timemodified = mktime();
+        $DB->update_record('external_services', $service);
     }
 
     /**
@@ -504,13 +551,13 @@ abstract class webservice_server implements webservice_server_interface {
 
     /**
      * Contructor
-     * @param integer $authmethod authentication method one of WEBSERVICE_AUTHMETHOD_* 
+     * @param integer $authmethod authentication method one of WEBSERVICE_AUTHMETHOD_*
      */
     public function __construct($authmethod) {
         $this->authmethod = $authmethod;
-    }    
-    
-    
+    }
+
+
     /**
      * Authenticate user using username+password or token.
      * This function sets up $USER global.
@@ -561,7 +608,7 @@ abstract class webservice_server implements webservice_server_interface {
         } else {
             $user = $this->authenticate_by_token(EXTERNAL_TOKEN_EMBEDDED);
         }
-        
+
         // now fake user login, the session is completely empty too
         session_set_user($user);
         $this->userid = $user->id;
@@ -572,7 +619,7 @@ abstract class webservice_server implements webservice_server_interface {
 
         external_api::set_context_restriction($this->restricted_context);
     }
-    
+
     protected function authenticate_by_token($tokentype){
         global $DB;
         if (!$token = $DB->get_record('external_tokens', array('token'=>$this->token, 'tokentype'=>$tokentype))) {
@@ -580,12 +627,12 @@ abstract class webservice_server implements webservice_server_interface {
             add_to_log(1, 'webservice', get_string('tokenauthlog', 'webservice'), '' , get_string('failedtolog', 'webservice').": ".$this->token. " - ".getremoteaddr() , 0);
             throw new webservice_access_exception(get_string('invalidtoken', 'webservice'));
         }
-    
+
         if ($token->validuntil and $token->validuntil < time()) {
             $DB->delete_records('external_tokens', array('token'=>$this->token, 'tokentype'=>$tokentype));
             throw new webservice_access_exception(get_string('invalidtimedtoken', 'webservice'));
         }
-        
+
         if ($token->sid){//assumes that if sid is set then there must be a valid associated session no matter the token type
             $session = session_get_instance();
             if (!$session->session_exists($token->sid)){
@@ -606,9 +653,9 @@ abstract class webservice_server implements webservice_server_interface {
 
         // log token access
         $DB->set_field('external_tokens', 'lastaccess', time(), array('id'=>$token->id));
-        
+
         return $user;
-        
+
     }
 }
 
@@ -894,13 +941,13 @@ class '.$classname.' {
 ';
         return $code;
     }
-    
+
     /**
      * You can override this function in your child class to add extra code into the dynamically
      * created service class. For example it is used in the amf server to cast types of parameters and to
      * cast the return value to the types as specified in the return value description.
-     * @param unknown_type $function
-     * @param unknown_type $params
+     * @param stdClass $function
+     * @param array $params
      * @return string body of the method for $function ie. everything within the {} of the method declaration.
      */
     protected function service_class_method_body($function, $params){
@@ -910,7 +957,7 @@ class '.$classname.' {
             $paramstocast = explode(',', $params);
             foreach ($paramstocast as $paramtocast) {
                 //clean the parameter from any white space
-                $paramtocast = trim($paramtocast);                
+                $paramtocast = trim($paramtocast);
                 $castingcode .= $paramtocast .
                 '=webservice_zend_server::cast_objects_to_array('.$paramtocast.');';
             }
@@ -1105,7 +1152,7 @@ abstract class webservice_base_server extends webservice_server {
 
         // find all needed function info and make sure user may actually execute the function
         $this->load_function_info();
-        
+
         //log the web service request
         add_to_log(1, 'webservice', $this->functionname, '' , getremoteaddr() , 0, $this->userid);
 

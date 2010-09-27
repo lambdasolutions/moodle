@@ -260,14 +260,11 @@ class auth_plugin_db extends auth_plugin_base {
                             echo "\t"; print_string('auth_dbdeleteusererror', 'auth_db', $user->username); echo "\n";
                         }
                     } else if ($this->config->removeuser == AUTH_REMOVEUSER_SUSPEND) {
-                        $updateuser = new object();
+                        $updateuser = new stdClass();
                         $updateuser->id   = $user->id;
                         $updateuser->auth = 'nologin';
-                        if ($DB->update_record('user', $updateuser)) {
-                            echo "\t"; print_string('auth_dbsuspenduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
-                        } else {
-                            echo "\t"; print_string('auth_dbsuspendusererror', 'auth_db', $user->username); echo "\n";
-                        }
+                        $DB->update_record('user', $updateuser);
+                        echo "\t"; print_string('auth_dbsuspenduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
                     }
                 }
             }
@@ -365,15 +362,14 @@ class auth_plugin_db extends auth_plugin_base {
                     $DB->set_field('user', 'deleted', 0, array('username'=>$user->username));
                     echo "\t"; print_string('auth_dbreviveduser', 'auth_db', array('name'=>$user->username, 'id'=>$user->id)); echo "\n";
 
-                } elseif ($id = $DB->insert_record ('user',$user)) { // it is truly a new user
+                } else {
+                    $id = $DB->insert_record ('user',$user); // it is truly a new user
                     echo "\t"; print_string('auth_dbinsertuser','auth_db',array('name'=>$user->username, 'id'=>$id)); echo "\n";
                     // if relevant, tag for password generation
                     if ($this->config->passtype === 'internal') {
                         set_user_preference('auth_forcepasswordchange', 1, $id);
                         set_user_preference('create_password',          1, $id);
                     }
-                } else {
-                    echo "\t"; print_string('auth_dbinsertusererror', 'auth_db', $user->username); echo "\n";
                 }
             }
             $transaction->allow_commit();
@@ -439,7 +435,7 @@ class auth_plugin_db extends auth_plugin_base {
      */
     function get_userinfo_asobj($username) {
         $user_array = truncate_userinfo($this->get_userinfo($username));
-        $user = new object();
+        $user = new stdClass();
         foreach($user_array as $key=>$value) {
             $user->{$key} = $value;
         }
@@ -597,15 +593,15 @@ class auth_plugin_db extends auth_plugin_base {
      * Returns the URL for changing the user's pw, or empty if the default can
      * be used.
      *
-     * @return string
+     * @return moodle_url
      */
     function change_password_url() {
         if ($this->config->passtype == 'internal') {
             // standard form
-            return '';
+            return null;
         } else {
             // use custom url
-            return $this->config->changepasswordurl;
+            return new moodle_url($this->config->changepasswordurl);
         }
     }
 

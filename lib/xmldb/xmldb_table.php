@@ -48,6 +48,11 @@ class xmldb_table extends xmldb_object {
      */
     function addField(&$field, $after=NULL) {
 
+    /// Detect duplicates first
+        if ($this->getField($field->getName())) {
+            throw new coding_exception('Duplicate field '.$field->getName().' specified in table '.$this->getName());
+        }
+
     /// Calculate the previous and next fields
         $prevfield = NULL;
         $nextfield = NULL;
@@ -95,6 +100,11 @@ class xmldb_table extends xmldb_object {
      */
     function addKey(&$key, $after=NULL) {
 
+    /// Detect duplicates first
+        if ($this->getKey($key->getName())) {
+            throw new coding_exception('Duplicate key '.$key->getName().' specified in table '.$this->getName());
+        }
+
     /// Calculate the previous and next keys
         $prevkey = NULL;
         $nextkey = NULL;
@@ -139,6 +149,11 @@ class xmldb_table extends xmldb_object {
      * If it's not specified, then the index is added at the end
      */
     function addIndex(&$index, $after=NULL) {
+
+    /// Detect duplicates first
+        if ($this->getIndex($index->getName())) {
+            throw new coding_exception('Duplicate index '.$index->getName().' specified in table '.$this->getName());
+        }
 
     /// Calculate the previous and next indexes
         $previndex = NULL;
@@ -344,8 +359,6 @@ class xmldb_table extends xmldb_object {
         $field =& $this->getField($fieldname);
         if ($field) {
             $i = $this->findFieldInArray($fieldname);
-            $prevfield = NULL;
-            $nextfield = NULL;
         /// Look for prev and next field
             $prevfield =& $this->getField($field->getPrevious());
             $nextfield =& $this->getField($field->getNext());
@@ -375,8 +388,6 @@ class xmldb_table extends xmldb_object {
         $key =& $this->getKey($keyname);
         if ($key) {
             $i = $this->findKeyInArray($keyname);
-            $prevkey = NULL;
-            $nextkey = NULL;
         /// Look for prev and next key
             $prevkey =& $this->getKey($key->getPrevious());
             $nextkey =& $this->getKey($key->getNext());
@@ -406,8 +417,6 @@ class xmldb_table extends xmldb_object {
         $index =& $this->getIndex($indexname);
         if ($index) {
             $i = $this->findIndexInArray($indexname);
-            $previndex = NULL;
-            $nextindex = NULL;
         /// Look for prev and next index
             $previndex =& $this->getIndex($index->getPrevious());
             $nextindex =& $this->getIndex($index->getNext());

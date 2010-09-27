@@ -63,11 +63,11 @@ function workshopform_rubric_upgrade_legacy_criterion() {
             if (!isset($newdimensionids[$old->workshopid])) {
                 if (!$DB->record_exists('workshopform_rubric', array('workshopid' => $newworkshopids[$old->workshopid], 'sort' => 1))) {
                     $newdimension = new stdclass();
-                    $newdimenison->workshopid = $newworkshopids[$old->workshopid];
-                    $newdimenison->sort = 1;
-                    $newdimenison->description = trim(get_string('dimensionnumber', 'workshopform_rubric', ''));
-                    $newdimenison->descriptionformat = FORMAT_HTML;
-                    $newdimensionids[$old->workshopid] = $DB->insert_record('workshopform_rubric', $newdimenison);
+                    $newdimension->workshopid = $newworkshopids[$old->workshopid];
+                    $newdimension->sort = 1;
+                    $newdimension->description = trim(get_string('dimensionnumber', 'workshopform_rubric', ''));
+                    $newdimension->descriptionformat = FORMAT_HTML;
+                    $newdimensionids[$old->workshopid] = $DB->insert_record('workshopform_rubric', $newdimension);
                 } else {
                     $newdimensionids[$old->workshopid] = $DB->get_field('workshopform_rubric', 'id',
                                                                 array('workshopid' => $newworkshopids[$old->workshopid], 'sort' => 1));
@@ -152,11 +152,11 @@ function workshopform_rubric_upgrade_legacy_rubric() {
             if (!isset($newdimensionids[$old->workshopid]) or !isset($newdimensionids[$old->workshopid][$old->esort])) {
                 if (!$DB->record_exists('workshopform_rubric', array('workshopid' => $newworkshopids[$old->workshopid], 'sort' => $old->esort))) {
                     $newdimension = new stdclass();
-                    $newdimenison->workshopid = $newworkshopids[$old->workshopid];
-                    $newdimenison->sort = $old->esort;
-                    $newdimenison->description = $old->edesc;
-                    $newdimenison->descriptionformat = FORMAT_HTML;
-                    $newdimensionids[$old->workshopid][$old->esort] = $DB->insert_record('workshopform_rubric', $newdimenison);
+                    $newdimension->workshopid = $newworkshopids[$old->workshopid];
+                    $newdimension->sort = $old->esort;
+                    $newdimension->description = $old->edesc;
+                    $newdimension->descriptionformat = FORMAT_HTML;
+                    $newdimensionids[$old->workshopid][$old->esort] = $DB->insert_record('workshopform_rubric', $newdimension);
                 } else {
                     $newdimensionids[$old->workshopid][$old->esort] = $DB->get_field('workshopform_rubric', 'id',
                                                                     array('workshopid' => $newworkshopids[$old->workshopid], 'sort' => $old->esort));
@@ -229,7 +229,7 @@ function workshopform_rubric_upgrade_legacy_rubric() {
  *
  * This is used during Criterion 1.9 -> Rubric 2.0 conversion
  *
- * @param stdclass $old legacy record from workshop_elements_old
+ * @param stdClass $old legacy record from workshop_elements_old
  * @param int $newdimensionid id of the new workshopform_rubric dimension record to be linked to
  * @return stdclass to be saved in workshopform_rubric_levels
  */
@@ -247,7 +247,7 @@ function workshopform_rubric_upgrade_criterion_level(stdclass $old, $newdimensio
  *
  * This is used during Rubric 1.9 -> Rubric 2.0 conversion
  *
- * @param stdclass $old legacy record from joined workshop_elements_old + workshop_rubrics_old
+ * @param stdClass $old legacy record from joined workshop_elements_old + workshop_rubrics_old
  * @param int $newdimensionid id of the new workshopform_rubric dimension record to be linked to
  * @return stdclass to be saved in workshopform_rubric_levels
  */

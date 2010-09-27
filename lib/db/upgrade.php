@@ -1788,7 +1788,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
             if (!isset($blocks[$stickyblock->blockid]) || empty($blocks[$stickyblock->blockid]->name)) {
                 continue;
             }
-            $newblock = new object();
+            $newblock = new stdClass();
             $newblock->blockname = $blocks[$stickyblock->blockid]->name;
             $newblock->contextid = $syscontext->id;
             $newblock->showinsubcontexts = 1;
@@ -1974,18 +1974,6 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         }
         unset($caps);
         upgrade_main_savepoint(true, 2009061704);
-    }
-
-    if ($oldversion < 2009061705) {
-        // change component string in events_handlers records to new "_" format
-        if ($handlers = $DB->get_records('events_handlers')) {
-            foreach ($handlers as $handler) {
-                $handler->handlermodule = str_replace('/', '_', $handler->handlermodule);
-                $DB->update_record('events_handlers', $handler);
-            }
-        }
-        unset($handlers);
-        upgrade_main_savepoint(true, 2009061705);
     }
 
     if ($oldversion < 2009063000) {
@@ -2651,7 +2639,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         }
         $active_licenses = array();
 
-        $license = new stdclass;
+        $license = new stdClass();
 
         // add unknown license
         $license->shortname = 'unknown';
@@ -3046,7 +3034,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         $existingrolecontextlevels->close();
 
         // Put the data into the database.
-        $rcl = new object();
+        $rcl = new stdClass();
         foreach ($rolecontextlevels as $roleid => $contextlevels) {
             $rcl->roleid = $roleid;
             foreach ($contextlevels as $level) {
@@ -3605,7 +3593,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         }
 
     /// Add two lines of data into this new table.  These are the default pages.
-        $mypage = new object();
+        $mypage = new stdClass();
         $mypage->userid = NULL;
         $mypage->name = '__default';
         $mypage->private = 0;
@@ -5075,6 +5063,211 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         // Main savepoint reached
         upgrade_main_savepoint(true, 2010080901);
     }
+
+    if ($oldversion < 2010082502) {
+        // migrate file pool xx/xx/xx directory structure to xx/xx in older 2.0dev installs
+        upgrade_simplify_overkill_pool_structure();
+        upgrade_main_savepoint(true, 2010082502);
+    }
+
+    if ($oldversion < 2010091303) {
+        // drop all test tables from old xmldb test suite
+        $table = new xmldb_table('testtable');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $table = new xmldb_table('anothertest');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        $table = new xmldb_table('newnameforthetable');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+        upgrade_main_savepoint(true, 2010091303);
+    }
+
+    if ($oldversion < 2010091500) {
+
+        // Changing precision of field token on table registration_hubs to (255)
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('token', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'id');
+
+        // Launch change of precision for field token
+        $dbman->change_field_precision($table, $field);
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091500);
+    }
+
+    if ($oldversion < 2010091501) {
+        // This index used to exist in Moodle 1.9 and was never dropped in the upgrade above.
+        // Drop it now, or it breaks the following alter column.
+
+        // Define index pagetypepattern (not unique) to be dropped form block_instances
+        $table = new xmldb_table('block_instances');
+        $index = new xmldb_index('pagetypepattern', XMLDB_INDEX_NOTUNIQUE, array('pagetypepattern'));
+
+        // Conditionally launch drop index pagetypepattern
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091501);
+    }
+
+    if ($oldversion < 2010091502) {
+        // Need to drop the index before we can alter the column precision in the next step.
+
+        // Define index parentcontextid-showinsubcontexts-pagetypepattern-subpagepattern (not unique) to be dropped form block_instances
+        $table = new xmldb_table('block_instances');
+        $index = new xmldb_index('parentcontextid-showinsubcontexts-pagetypepattern-subpagepattern', XMLDB_INDEX_NOTUNIQUE, array('parentcontextid', 'showinsubcontexts', 'pagetypepattern', 'subpagepattern'));
+
+        // Conditionally launch drop index parentcontextid-showinsubcontexts-pagetypepattern-subpagepattern
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091502);
+    }
+
+    if ($oldversion < 2010091503) {
+
+        // Changing precision of field pagetypepattern on table block_instances to (64)
+        $table = new xmldb_table('block_instances');
+        $field = new xmldb_field('pagetypepattern', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null, 'showinsubcontexts');
+
+        // Launch change of precision for field pagetypepattern
+        $dbman->change_field_precision($table, $field);
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091503);
+    }
+
+    if ($oldversion < 2010091504) {
+        // Now add the index back.
+
+        // Define index parentcontextid-showinsubcontexts-pagetypepattern-subpagepattern (not unique) to be added to block_instances
+        $table = new xmldb_table('block_instances');
+        $index = new xmldb_index('parentcontextid-showinsubcontexts-pagetypepattern-subpagepattern', XMLDB_INDEX_NOTUNIQUE, array('parentcontextid', 'showinsubcontexts', 'pagetypepattern', 'subpagepattern'));
+
+        // Conditionally launch add index parentcontextid-showinsubcontexts-pagetypepattern-subpagepattern
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091504);
+    }
+
+    if ($oldversion < 2010091505) {
+        // drop all events queued from 1.9, unfortunately we can not process them because the serialisation of data changed
+        // also the events format was changed....
+        $DB->delete_records('events_queue_handlers', array());
+        $DB->delete_records('events_queue', array());
+
+        //reset all status fields too
+        $DB->set_field('events_handlers', 'status', 0, array());
+
+        upgrade_main_savepoint(true, 2010091505);
+    }
+
+    if ($oldversion < 2010091506) {
+        // change component string in events_handlers records to new "_" format
+        if ($handlers = $DB->get_records('events_handlers')) {
+            foreach ($handlers as $handler) {
+                $handler->handlermodule = str_replace('/', '_', $handler->handlermodule);
+                $DB->update_record('events_handlers', $handler);
+            }
+        }
+        unset($handlers);
+        upgrade_main_savepoint(true, 2010091506);
+    }
+
+    if ($oldversion < 2010091507) {
+
+        // Define index eventname-handlermodule (unique) to be dropped form events_handlers
+        $table = new xmldb_table('events_handlers');
+        $index = new xmldb_index('eventname-handlermodule', XMLDB_INDEX_UNIQUE, array('eventname', 'handlermodule'));
+
+        // Conditionally launch drop index eventname-handlermodule
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091507);
+    }
+
+    if ($oldversion < 2010091508) {
+
+        // Rename field handlermodule on table events_handlers to component
+        $table = new xmldb_table('events_handlers');
+        $field = new xmldb_field('handlermodule', XMLDB_TYPE_CHAR, '166', null, XMLDB_NOTNULL, null, null, 'eventname');
+
+        // Launch rename field handlermodule
+        $dbman->rename_field($table, $field, 'component');
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091508);
+    }
+
+    if ($oldversion < 2010091509) {
+
+        // Define index eventname-component (unique) to be added to events_handlers
+        $table = new xmldb_table('events_handlers');
+        $index = new xmldb_index('eventname-component', XMLDB_INDEX_UNIQUE, array('eventname', 'component'));
+
+        // Conditionally launch add index eventname-component
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091509);
+    }
+
+    if ($oldversion < 2010091510) {
+
+        // Define field internal to be added to events_handlers
+        $table = new xmldb_table('events_handlers');
+        $field = new xmldb_field('internal', XMLDB_TYPE_INTEGER, '2', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '1', 'status');
+
+        // Conditionally launch add field internal
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010091510);
+    }
+
+    if ($oldversion < 2010091700) {
+        // Fix MNet sso_jump_url for Moodle application
+        $DB->set_field('mnet_application', 'sso_jump_url', '/auth/mnet/jump.php',
+                       array('name' => 'moodle', 'sso_jump_url' => '/auth/mnet/land.php'));
+        upgrade_main_savepoint(true, 2010091700);
+    }
+
+    if ($oldversion < 2010092000) {
+        // drop multiple field again because it was still in install.xml in 2.0dev
+
+        // Define field multiple to be dropped from block
+        $table = new xmldb_table('block');
+        $field = new xmldb_field('multiple');
+
+        // Conditionally launch drop field multiple
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010092000);
+    }
+
+
     return true;
 }
 

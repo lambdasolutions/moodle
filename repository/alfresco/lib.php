@@ -19,12 +19,12 @@
  * repository_alfresco class
  * This is a class used to browse files from alfresco
  *
- * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @since      2.0
+ * @package    repository
+ * @subpackage alfresco
+ * @copyright  2009 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 class repository_alfresco extends repository {
@@ -75,11 +75,13 @@ class repository_alfresco extends repository {
 
     public function print_login() {
         if ($this->options['ajax']) {
+            $user_field = new stdClass();
             $user_field->label = get_string('username', 'repository_alfresco').': ';
             $user_field->id    = 'alfresco_username';
             $user_field->type  = 'text';
             $user_field->name  = 'al_username';
 
+            $passwd_field = new stdClass();
             $passwd_field->label = get_string('password', 'repository_alfresco').': ';
             $passwd_field->id    = 'alfresco_password';
             $passwd_field->type  = 'password';
@@ -173,7 +175,7 @@ class repository_alfresco extends repository {
                         'children'=>array());
                 } elseif ($child->child->type == $file_filter) {
                     $ret['list'][] = array('title'=>$child->child->cm_name,
-                        'thumbnail' => $OUTPUT->pix_url(file_extension_icon($child->child->cm_name, 32)),
+                        'thumbnail' => $OUTPUT->pix_url(file_extension_icon($child->child->cm_name, 32))->out(false),
                         'source'=>$child->child->id);
                 }
             }
@@ -192,7 +194,6 @@ class repository_alfresco extends repository {
      * @return array
      */
     public function get_file($uuid, $file = '') {
-        global $CFG;
         $node = $this->user_session->getNode($this->store, $uuid);
         $url = $this->get_url($node);
         $path = $this->prepare_file($file);
@@ -226,7 +227,6 @@ class repository_alfresco extends repository {
      * @return array
      */
     public function search($search_text) {
-        global $CFG;
         $space = optional_param('space', 'workspace://SpacesStore', PARAM_RAW);
         $currentStore = $this->user_session->getStoreFromString($space);
         $nodes = $this->user_session->query($currentStore, $search_text);
@@ -260,7 +260,7 @@ class repository_alfresco extends repository {
         $mform->addElement('text', 'alfresco_url', get_string('alfresco_url', 'repository_alfresco'), array('size' => '40'));
         $mform->addElement('static', 'alfreco_url_intro', '', get_string('alfrescourltext', 'repository_alfresco'));
         $mform->addRule('alfresco_url', get_string('required'), 'required', null, 'client');
-        return false;
+        return true;
     }
 
     /**
@@ -277,7 +277,7 @@ class repository_alfresco extends repository {
         }
     }
     public function supported_returntypes() {
-        return FILE_INTERNAL | FILE_EXTERNAL;
+        return FILE_INTERNAL;
     }
 }
 

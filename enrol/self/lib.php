@@ -32,6 +32,38 @@
 class enrol_self_plugin extends enrol_plugin {
 
     /**
+     * Returns optional enrolment information icons.
+     *
+     * This is used in course list for quick overview of enrolment options.
+     *
+     * We are not using single instance parameter because sometimes
+     * we might want to prevent icon repetition when multiple instances
+     * of one type exist. One instance may also produce several icons.
+     *
+     * @param array $instances all enrol instances of this type in one course
+     * @return array of pix_icon
+     */
+    public function get_info_icons(array $instances) {
+        $key = false;
+        $nokey = false;
+        foreach ($instances as $instance) {
+            if ($instance->password or $instance->customint1) {
+                $key = true;
+            } else {
+                $nokey = true;
+            }
+        }
+        $icons = array();
+        if ($nokey) {
+            $icons[] = new pix_icon('withoutkey', get_string('pluginname', 'enrol_self'), 'enrol_self');
+        }
+        if ($key) {
+            $icons[] = new pix_icon('withkey', get_string('pluginname', 'enrol_self'), 'enrol_self');
+        }
+        return $icons;
+    }
+
+    /**
      * Returns localised name of enrol instance
      *
      * @param object $instance (null is accepted too)
@@ -147,14 +179,23 @@ class enrol_self_plugin extends enrol_plugin {
             return null;
         }
 
-        if ($instance->enrolstartdate != 0 and $instance->enrolstartdate < time) {
+        if ($instance->enrolstartdate != 0 and $instance->enrolstartdate < time()) {
             //TODO: inform that we can not enrol yet
             return null;
         }
 
-        if ($instance->enrolenddate != 0 and $instance->enrolenddate > time) {
+        if ($instance->enrolenddate != 0 and $instance->enrolenddate > time()) {
             //TODO: inform that enrolment is not possible any more
             return null;
+        }
+
+        if ($instance->customint3 > 0) {
+            // max enrol limit specified
+            $count = $DB->count_records('user_enrolments', array('enrolid'=>$instance->id));
+            if ($count >= $instance->customint3) {
+                // bad luck, no more self enrolments here
+                return $OUTPUT->notification(get_string('maxenrolledreached', 'enrol_self'));
+            }
         }
 
         require_once("$CFG->dirroot/enrol/self/locallib.php");
@@ -190,7 +231,7 @@ class enrol_self_plugin extends enrol_plugin {
                     }
                 }
                 // send welcome
-                if ($this->get_config('sendcoursewelcomemessage')) {
+                if ($instance->customint4) {
                     $this->email_welcome_message($instance, $USER);
                 }
             }
@@ -209,10 +250,10 @@ class enrol_self_plugin extends enrol_plugin {
      * @return int id of new instance
      */
     public function add_default_instance($course) {
-        global $DB;
-
         $fields = array('customint1'  => $this->get_config('groupkey'),
                         'customint2'  => $this->get_config('longtimenosee'),
+                        'customint3'  => $this->get_config('maxenrolled'),
+                        'customint4'  => $this->get_config('sendcoursewelcomemessage'),
                         'enrolperiod' => $this->get_config('enrolperiod', 0),
                         'status'      => $this->get_config('status'),
                         'roleid'      => $this->get_config('roleid', 0));
@@ -236,20 +277,22 @@ class enrol_self_plugin extends enrol_plugin {
 
         $course = $DB->get_record('course', array('id'=>$instance->courseid), '*', MUST_EXIST);
 
-        if (!empty($instance->customtext1)) {
-            //note: there is no gui for this yet, do we really need it?
-            $message = formaat_string($instance->customtext1);
+        $a = new stdClass();
+        $a->coursename = format_string($course->fullname);
+        $a->profileurl = "$CFG->wwwroot/user/view.php?id=$user->id&course=$course->id";
+
+        if (trim($instance->customtext1) !== '') {
+            $message = $instance->customtext1;
+            $message = str_replace('{$a->coursename}', $a->coursename, $message);
+            $message = str_replace('{$a->profileurl}', $a->profileurl, $message);
         } else {
-            $a = new object();
-            $a->coursename = format_string($course->fullname);
-            $a->profileurl = "$CFG->wwwroot/user/view.php?id=$user->id&course=$course->id";
-            $message = get_string("welcometocoursetext", 'enrol_self', $a);
+            $message = get_string('welcometocoursetext', 'enrol_self', $a);
         }
 
         $subject = get_string('welcometocourse', 'enrol_self', format_string($course->fullname));
 
         $context = get_context_instance(CONTEXT_COURSE, $course->id);
-        $rusers = null;
+        $rusers = array();
         if (!empty($CFG->coursecontact)) {
             $croles = explode(',', $CFG->coursecontact);
             $rusers = get_role_users($croles, $context, true, '', 'r.sortorder ASC, u.lastname ASC');
@@ -315,4 +358,16 @@ class enrol_self_plugin extends enrol_plugin {
     }
 }
 
+/**
+ * Indicates API features that the enrol plugin supports.
+ *
+ * @param string $feature
+ * @return mixed True if yes (some features may use other values)
+ */
+function enrol_self_supports($feature) {
+    switch($feature) {
+        case ENROL_RESTORE_TYPE: return ENROL_RESTORE_EXACT;
 
+        default: return null;
+    }
+}

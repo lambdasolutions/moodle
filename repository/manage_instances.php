@@ -20,10 +20,10 @@
  * This file is used to manage repositories
  *
  * @since 2.0
- * @package moodlecore
+ * @package    core
  * @subpackage repository
- * @copyright 2009 Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @copyright  2009 Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(dirname(dirname(__FILE__)) . '/config.php');
@@ -61,7 +61,7 @@ if ($contextid !== 0) {
     $url->param('contextid', $contextid);
     $baseurl->param('contextid', $contextid);
 }
-if ($usercourseid !== SITEID) {
+if ($usercourseid != SITEID) {
     $url->param('usercourseid', $usercourseid);
 }
 

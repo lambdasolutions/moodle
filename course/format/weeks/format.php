@@ -96,7 +96,7 @@
 
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
         $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
-        $summaryformatoptions = new object();
+        $summaryformatoptions = new stdClass();
         $summaryformatoptions->noclean = true;
         echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
 
@@ -155,7 +155,7 @@
 
         if (!empty($displaysection) and $displaysection != $section) {  // Check this week is visible
             if ($showsection) {
-                $sectionmenu[$section] = s("$strweek $section |     $weekday - $endweekday");
+                $sectionmenu[$section] = get_section_name($course, $thissection);
             }
             $section++;
             $weekdate = $nextweekdate;
@@ -227,7 +227,7 @@
                 echo '<div class="summary">';
                 $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
                 $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
-                $summaryformatoptions = new object();
+                $summaryformatoptions = new stdClass();
                 $summaryformatoptions->noclean = true;
                 echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
 

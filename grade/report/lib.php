@@ -302,7 +302,7 @@ abstract class grade_report {
             $this->group_selector = groups_print_course_menu($this->course, $this->pbarurl, true);
 
             if ($this->groupmode == SEPARATEGROUPS and !$this->currentgroup and !has_capability('moodle/site:accessallgroups', $this->context)) {
-                $this->currentgroup = -2; // means can not accesss any groups at all
+                $this->currentgroup = -2; // means can not access any groups at all
             }
 
             if ($this->currentgroup) {
@@ -339,8 +339,17 @@ abstract class grade_report {
         global $CFG, $DB;
         static $hiding_affected = null;//array of items in this course affected by hiding
 
+        //if we're dealing with multiple users we need to know when we've moved on to a new user
+        static $previous_userid = null;
+
         if( $this->showtotalsifcontainhidden==GRADE_REPORT_SHOW_REAL_TOTAL_IF_CONTAINS_HIDDEN ) {
             return $finalgrade;
+        }
+
+        //if we've moved on to another user don't return the previous user's affected grades
+        if ($previous_userid!=$this->user->id) {
+            $hiding_affected = null;
+            $previous_userid = $this->user->id;
         }
 
         if( !$hiding_affected ) {

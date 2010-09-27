@@ -92,8 +92,21 @@ class enrol_self_edit_form extends moodleform {
         $mform->setDefault('customint2', $plugin->get_config('longtimenosee'));
         $mform->addHelpButton('customint2', 'longtimenosee', 'enrol_self');
 
+        $mform->addElement('text', 'customint3', get_string('maxenrolled', 'enrol_self'));
+        $mform->setDefault('customint3', $plugin->get_config('maxenrolled'));
+        $mform->addHelpButton('customint3', 'maxenrolled', 'enrol_self');
+        $mform->setType('customint3', PARAM_INT);
+
+        $mform->addElement('advcheckbox', 'customint4', get_string('sendcoursewelcomemessage', 'enrol_self'));
+        $mform->setDefault('customint4', $plugin->get_config('sendcoursewelcomemessage'));
+        $mform->addHelpButton('customint4', 'sendcoursewelcomemessage', 'enrol_self');
+
+        $mform->addElement('textarea', 'customtext1', get_string('customwelcomemessage', 'enrol_self'), array('cols'=>'60', 'rows'=>'8'));
+
         $mform->addElement('hidden', 'id');
+        $mform->setType('id', PARAM_INT);
         $mform->addElement('hidden', 'courseid');
+        $mform->setType('courseid', PARAM_INT);
 
         $this->add_action_buttons(true, ($instance->id ? null : get_string('addinstance', 'enrol')));
 
@@ -122,7 +135,7 @@ class enrol_self_edit_form extends moodleform {
         if ($checkpassword) {
             $require = $plugin->get_config('requirepassword');
             $policy  = $plugin->get_config('usepasswordpolicy');
-            if ($require and trim($data['password'])) {
+            if ($require and trim($data['password']) === '') {
                 $errors['password'] = get_string('required');
             } else if ($policy) {
                 $errmsg = '';//prevent eclipse warning

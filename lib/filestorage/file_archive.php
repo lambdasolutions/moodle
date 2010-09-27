@@ -28,7 +28,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Each file arcive type must extend this class.
+ * Each file archive type must extend this class.
  *
  * @package    core
  * @subpackage filestorage
@@ -116,7 +116,7 @@ abstract class file_archive implements Iterator {
     /**
      * Tries to convert $localname into another encoding,
      * please note that it may fail really badly.
-     * @param strin $localname in utf-8 encoding
+     * @param string $localname in utf-8 encoding
      * @return string
      */
     protected function mangle_pathname($localname) {
@@ -132,7 +132,7 @@ abstract class file_archive implements Iterator {
             $result = $converted;
 
         } else {
-            // try ascci conversion
+            // try ascii conversion
             $converted2 = $textlib->specialtoascii($localname);
             $converted2 = $textlib->convert($converted2, 'utf-8', $this->encoding);
             $original2  = $textlib->convert($converted, $this->encoding, 'utf-8');
@@ -147,7 +147,7 @@ abstract class file_archive implements Iterator {
         }
 
         $result = preg_replace('/\.\.+/', '', $result);
-        $result = ltrim($result); // no leadin /
+        $result = ltrim($result); // no leading /
 
         if ($result === '.') {
             $result = '';
@@ -161,7 +161,7 @@ abstract class file_archive implements Iterator {
      * please note that it may fail really badly.
      * The resulting file name is cleaned.
      *
-     * @param strin $localname in another encoding
+     * @param string $localname in another encoding
      * @return string in utf-8
      */
     protected function unmangle_pathname($localname) {
@@ -172,7 +172,7 @@ abstract class file_archive implements Iterator {
 
         $result = $textlib->convert($localname, $this->encoding, 'utf-8');
         $result = clean_param($result, PARAM_PATH);
-        $result = ltrim($result); // no leadin /
+        $result = ltrim($result); // no leading /
 
         return $result;
     }

@@ -63,8 +63,6 @@ require_once($CFG->libdir.'/xmldb/xmldb_field.php');
 require_once($CFG->libdir.'/xmldb/xmldb_key.php');
 // Add required XMLDB DB classes
 require_once($CFG->libdir.'/xmldb/xmldb_index.php');
-// Add required XMLDB DB classes
-require_once($CFG->libdir.'/xmldb/xmldb_statement.php');
 
 require_once($CFG->libdir.'/ddl/sql_generator.php');
 require_once($CFG->libdir.'/ddl/database_manager.php');
@@ -107,7 +105,7 @@ class ddl_field_missing_exception extends ddl_exception {
      * @param string $debuginfo
      */
     function __construct($fieldname, $tablename, $debuginfo=null) {
-        $a = new object();
+        $a = new stdClass();
         $a->fieldname = $fieldname;
         $a->tablename = $tablename;
         parent::__construct('ddlfieldnotexist', $a, $debuginfo);
@@ -140,7 +138,7 @@ class ddl_change_structure_exception extends ddl_exception {
 class ddl_dependency_exception extends ddl_exception {
 
     function __construct($targettype, $targetname, $offendingtype, $offendingname, $debuginfo=null) {
-        $a = new object();
+        $a = new stdClass();
         $a->targettype = $targettype;
         $a->targetname = $targetname;
         $a->offendingtype = $offendingtype;

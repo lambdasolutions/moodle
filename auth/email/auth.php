@@ -79,9 +79,7 @@ class auth_plugin_email extends auth_plugin_base {
 
         $user->password = hash_internal_user_password($user->password);
 
-        if (! ($user->id = $DB->insert_record('user', $user)) ) {
-            print_error('auth_emailnoinsert','auth_email');
-        }
+        $user->id = $DB->insert_record('user', $user);
 
         /// Save any custom profile field information
         profile_save_data($user);
@@ -133,12 +131,8 @@ class auth_plugin_email extends auth_plugin_base {
                 return AUTH_CONFIRM_ERROR;
 
             } else if ($user->secret == $confirmsecret) {   // They have provided the secret key to get in
-                if (!$DB->set_field("user", "confirmed", 1, array("id"=>$user->id))) {
-                    return AUTH_CONFIRM_FAIL;
-                }
-                if (!$DB->set_field("user", "firstaccess", time(), array("id"=>$user->id))) {
-                    return AUTH_CONFIRM_FAIL;
-                }
+                $DB->set_field("user", "confirmed", 1, array("id"=>$user->id));
+                $DB->set_field("user", "firstaccess", time(), array("id"=>$user->id));
                 return AUTH_CONFIRM_OK;
             }
         } else {
@@ -173,10 +167,10 @@ class auth_plugin_email extends auth_plugin_base {
      * Returns the URL for changing the user's pw, or empty if the default can
      * be used.
      *
-     * @return mixed
+     * @return moodle_url
      */
     function change_password_url() {
-        return ''; // use dafult internal method
+        return null; // use default internal method
     }
 
     /**

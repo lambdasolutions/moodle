@@ -107,9 +107,7 @@ if ($formdata = $mform->get_data()) {
 
     // use current (non-conflicting) time stamp
     $importcode = get_new_importcode();
-    if (!$filename = make_upload_directory('temp/gradeimport/cvs/'.$USER->id, true)) {
-        die;
-    }
+    $filename = make_upload_directory('temp/gradeimport/cvs/'.$USER->id);
     $filename = $filename.'/'.$importcode;
 
     $text = $mform->get_file_content('userfile');
@@ -185,7 +183,7 @@ if ($formdata = $mform->get_data()) {
         $map[$i] = $formdata->{'mapping_'.$i};
     }
 
-    // if mapping informatioin is supplied
+    // if mapping information is supplied
     $map[clean_param($formdata->mapfrom, PARAM_RAW)] = clean_param($formdata->mapto, PARAM_RAW);
 
     // check for mapto collisions
@@ -265,7 +263,7 @@ if ($formdata = $mform->get_data()) {
                 switch ($t0) {
                     case 'userid': //
                         if (!$user = $DB->get_record('user', array('id' => $value))) {
-                            // user not found, abort whold import
+                            // user not found, abort whole import
                             import_cleanup($importcode);
                             echo $OUTPUT->notification("user mapping error, could not find user with id \"$value\"");
                             $status = false;
@@ -275,7 +273,7 @@ if ($formdata = $mform->get_data()) {
                     break;
                     case 'useridnumber':
                         if (!$user = $DB->get_record('user', array('idnumber' => $value))) {
-                             // user not found, abort whold import
+                             // user not found, abort whole import
                             import_cleanup($importcode);
                             echo $OUTPUT->notification("user mapping error, could not find user with idnumber \"$value\"");
                             $status = false;
@@ -306,7 +304,7 @@ if ($formdata = $mform->get_data()) {
 
                         if (empty($newgradeitems[$key])) {
 
-                            $newgradeitem = new object();
+                            $newgradeitem = new stdClass();
                             $newgradeitem->itemname = $header[$key];
                             $newgradeitem->importcode = $importcode;
                             $newgradeitem->importer   = $USER->id;
@@ -316,7 +314,7 @@ if ($formdata = $mform->get_data()) {
                             // add this to grade_import_newitem table
                             // add the new id to $newgradeitem[$key]
                         }
-                        $newgrade = new object();
+                        $newgrade = new stdClass();
                         $newgrade->newgradeitem = $newgradeitems[$key];
                         $newgrade->finalgrade   = $value;
                         $newgrades[] = $newgrade;
@@ -338,7 +336,7 @@ if ($formdata = $mform->get_data()) {
                             }
 
                             // t1 is the id of the grade item
-                            $feedback = new object();
+                            $feedback = new stdClass();
                             $feedback->itemid   = $t1;
                             $feedback->feedback = $value;
                             $newfeedbacks[] = $feedback;
@@ -366,7 +364,7 @@ if ($formdata = $mform->get_data()) {
                                 break 3;
                             }
 
-                            $newgrade = new object();
+                            $newgrade = new stdClass();
                             $newgrade->itemid     = $gradeitem->id;
                             if ($gradeitem->gradetype == GRADE_TYPE_SCALE and $verbosescales) {
                                 if ($value === '' or $value == '-') {
@@ -412,7 +410,7 @@ if ($formdata = $mform->get_data()) {
 
             // no user mapping supplied at all, or user mapping failed
             if (empty($studentid) || !is_numeric($studentid)) {
-                // user not found, abort whold import
+                // user not found, abort whole import
                 $status = false;
                 import_cleanup($importcode);
                 echo $OUTPUT->notification('user mapping error, could not find user!');

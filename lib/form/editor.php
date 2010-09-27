@@ -161,7 +161,7 @@ class MoodleQuickForm_editor extends HTML_QuickForm_element {
                 $draftitemid = $this->_values['itemid'];
             }
 
-            $args = new stdclass;
+            $args = new stdClass();
             // need these three to filter repositories list
             $args->accepted_types = array('image');
             $args->return_types = (FILE_INTERNAL | FILE_EXTERNAL);
@@ -233,7 +233,8 @@ class MoodleQuickForm_editor extends HTML_QuickForm_element {
                     'maxbytes'=>$maxbytes,
                     'maxfiles'=>$maxfiles,
                     'ctx_id'=>$ctx->id,
-                    'course'=>$PAGE->course->id
+                    'course'=>$PAGE->course->id,
+                    'sesskey'=>sesskey(),
                     ));
                 $str .= '<noscript>';
                 $str .= "<object type='text/html' data='$editorurl' height='160' width='600' style='border:1px solid #000'></object>";

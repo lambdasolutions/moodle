@@ -25,11 +25,11 @@
  * http://code.google.com/p/dropbox-php/ has the same problem
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2010 Dongsheng Cai
- * @author Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage dropbox
+ * @copyright  2010 Dongsheng Cai
+ * @author     Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(dirname(__FILE__).'/locallib.php');
@@ -95,7 +95,7 @@ class repository_dropbox extends repository {
         $url = $result['authorize_url'];
         if ($this->options['ajax']) {
             $ret = array();
-            $popup_btn = new stdclass;
+            $popup_btn = new stdClass();
             $popup_btn->type = 'popup';
             $popup_btn->url = $url;
             $ret['login'] = array($popup_btn);
@@ -130,18 +130,27 @@ class repository_dropbox extends repository {
         } else {
             $path = file_correct_filepath($path);
         }
-        $result = $this->dropbox->get_listing($path, $this->access_key, $this->access_secret);
-        $current_path = file_correct_filepath($result->path);
-        if (empty($result->path)) {
-            $current_path = '/';
-        }
 
         $list = array();
         $list['list'] = array();
+        $list['manage'] = false;
+        $list['dynload'] = true;
+        $list['nosearch'] = true;
         // process breacrumb trail
         $list['path'] = array(
-            array('name'=>'Dropbox Sandbox', 'path'=>'/')
+            array('name'=>get_string('sandbox', 'repository_dropbox'), 'path'=>'/')
         );
+
+        $result = $this->dropbox->get_listing($path, $this->access_key, $this->access_secret);
+        if (!is_object($result) || empty($result)) {
+            return $list;
+        }
+        if (empty($result->path)) {
+            $current_path = '/';
+        } else {
+            $current_path = file_correct_filepath($result->path);
+        }
+
         $trail = '';
         if (!empty($path)) {
             $parts = explode('/', $path);
@@ -156,11 +165,11 @@ class repository_dropbox extends repository {
                 $list['path'][] = array('name'=>$path, 'path'=>$path);
             }
         }
-        $list['manage'] = false;
-        $list['dynload'] = true;
-        $list['nosearch'] = true;
 
         $files = $result->contents;
+        if (!is_array($files) || empty($files)) {
+            return $list;
+        }
         foreach ($files as $file) {
             if ($file->is_dir) {
                 $list['list'][] = array(
@@ -168,7 +177,7 @@ class repository_dropbox extends repository {
                     'path' => file_correct_filepath($file->path),
                     'size' => $file->size,
                     'date' => $file->modified,
-                    'thumbnail' => $OUTPUT->pix_url('f/folder-32').'',
+                    'thumbnail' => $OUTPUT->pix_url('f/folder-32')->out(false),
                     'children' => array(),
                 );
             } else {
@@ -177,7 +186,7 @@ class repository_dropbox extends repository {
                     'source' => $file->path,
                     'size' => $file->size,
                     'date' => $file->modified,
-                    'thumbnail' => $OUTPUT->pix_url(file_extension_icon($file->path, 32)).''
+                    'thumbnail' => $OUTPUT->pix_url(file_extension_icon($file->path, 32))->out(false)
                 );
             }
         }

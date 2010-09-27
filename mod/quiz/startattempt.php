@@ -51,7 +51,7 @@ if ($quizobj->is_preview_user() && $forcenew) {
 }
 
 
-/// Check capabilites.
+/// Check capabilities.
 if (!$quizobj->is_preview_user()) {
     $quizobj->require_capability('mod/quiz:attempt');
 }
@@ -123,7 +123,7 @@ foreach ($quizobj->get_questions() as $i => $question) {
     save_question_session($question, $states[$i]);
 }
 /// Trigger event
-$eventdata = new object();
+$eventdata = new stdClass();
 $eventdata->component  = 'mod_quiz';
 $eventdata->course     = $quizobj->get_courseid();
 $eventdata->quiz       = $quizobj->get_quizid();

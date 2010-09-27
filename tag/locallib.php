@@ -93,7 +93,7 @@ function tag_cloud_sort($a, $b) {
 /**
  * Prints a box with the description of a tag and its related tags
  *
- * @param unknown_type $tag_object
+ * @param stdClass $tag_object
  * @param $return if true return html string
  */
 function tag_print_description_box($tag_object, $return=false) {
@@ -113,7 +113,7 @@ function tag_print_description_box($tag_object, $return=false) {
     }
 
     if (!empty($tag_object->description)) {
-        $options = new object();
+        $options = new stdClass();
         $options->para = false;
         $tag_object->description = file_rewrite_pluginfile_urls($tag_object->description, 'pluginfile.php', get_context_instance(CONTEXT_SYSTEM)->id, 'tag', 'description', $tag_object->id);
         $output .= format_text($tag_object->description, $tag_object->descriptionformat, $options);

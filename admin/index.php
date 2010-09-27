@@ -18,7 +18,7 @@
 /**
  * Main administration script.
  *
- * @package    moodlecore
+ * @package    core
  * @copyright  1999 onwards Martin Dougiamas (http://dougiamas.com)
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -40,7 +40,9 @@ if (version_compare(phpversion(), '5.2.0') < 0) {
 
 // try to flush everything all the time
 @ob_implicit_flush(true);
-while(@ob_end_clean()); // ob_end_flush prevents sending of headers
+while(ob_get_level()) {
+    ob_end_clean(); // ob_end_flush prevents sending of headers
+}
 
 require('../config.php');
 require_once($CFG->libdir.'/adminlib.php');    // various admin-only functions
@@ -122,7 +124,8 @@ if (!core_tables_exist()) {
         $copyrightnotice = str_replace('target="_blank"', 'onclick="this.target=\'_blank\'"', $copyrightnotice); // extremely ugly validation hack
         echo $OUTPUT->box($copyrightnotice, 'copyrightnotice');
         echo '<br />';
-        echo $OUTPUT->confirm(get_string('doyouagree'), "index.php?agreelicense=1&lang=$CFG->lang", "http://docs.moodle.org/en/License");
+        $continue = new single_button(new moodle_url('/admin/index.php', array('lang'=>$CFG->lang, 'agreelicense'=>1)), get_string('continue'), 'get');
+        echo $OUTPUT->confirm(get_string('doyouagree'), $continue, "http://docs.moodle.org/en/License");
         echo $OUTPUT->footer();
         die;
     }
@@ -143,7 +146,7 @@ if (!core_tables_exist()) {
             print_upgrade_reload("index.php?agreelicense=1&amp;lang=$CFG->lang");
         } else {
             echo $OUTPUT->notification(get_string('environmentok', 'admin'), 'notifysuccess');
-            echo $OUTPUT->continue_button("index.php?agreelicense=1&confirmrelease=1&lang=$CFG->lang");
+            echo $OUTPUT->continue_button(new moodle_url('/admin/index.php', array('agreelicense'=>1, 'confirmrelease'=>1, 'lang'=>$CFG->lang)));
         }
 
         echo $OUTPUT->footer();
@@ -239,7 +242,9 @@ if ($version > $CFG->version) {  // upgrade
         echo $OUTPUT->box_end();
         print_plugin_tables();
         print_upgrade_reload('index.php?confirmupgrade=1&amp;confirmrelease=1');
-        echo $OUTPUT->continue_button('index.php?confirmupgrade=1&confirmrelease=1&confirmplugincheck=1');
+        $button = new single_button(new moodle_url('index.php', array('confirmupgrade'=>1, 'confirmrelease'=>1, 'confirmplugincheck'=>1)), get_string('upgradestart', 'admin'), 'get');
+        $button->class = 'continuebutton';
+        echo $OUTPUT->render($button);
         echo $OUTPUT->footer();
         die();
 
@@ -248,7 +253,8 @@ if ($version > $CFG->version) {  // upgrade
         upgrade_core($version, true);
     }
 } else if ($version < $CFG->version) {
-    echo $OUTPUT->notification('WARNING!!!  The code you are using is OLDER than the version that made these databases!');
+    // better stop here, we can not continue with plugin upgrades or anything else
+    throw new moodle_exception('downgradedcore', 'error', new moodle_url('/admin/'));
 }
 
 // Updated human-readable release version if necessary
@@ -256,15 +262,40 @@ if ($release <> $CFG->release) {  // Update the release version
     set_config('release', $release);
 }
 
-// upgrade all plugins and other parts
-upgrade_noncore(true);
+if (moodle_needs_upgrading()) {
+    if (!$PAGE->headerprinted) {
+        // means core upgrade or installation was not already done
+        if (!$confirmplugins) {
+            $PAGE->set_pagelayout('maintenance');
+            $strplugincheck = get_string('plugincheck');
+            $PAGE->navbar->add($strplugincheck);
+            $PAGE->set_title($strplugincheck);
+            $PAGE->set_heading($strplugincheck);
+            $PAGE->set_cacheable(false);
+            echo $OUTPUT->header();
+            echo $OUTPUT->heading($strplugincheck);
+            echo $OUTPUT->box_start('generalbox', 'notice');
+            print_string('pluginchecknotice');
+            echo $OUTPUT->box_end();
+            print_plugin_tables();
+            print_upgrade_reload('index.php');
+            $button = new single_button(new moodle_url('index.php', array('confirmplugincheck'=>1)), get_string('upgradestart', 'admin'), 'get');
+            $button->class = 'continuebutton';
+            echo $OUTPUT->render($button);
+            echo $OUTPUT->footer();
+            die();
+        }
+    }
+    // install/upgrade all plugins and other parts
+    upgrade_noncore(true);
+}
 
 // If this is the first install, indicate that this site is fully configured
 // except the admin password
 if (during_initial_install()) {
     set_config('rolesactive', 1); // after this, during_initial_install will return false.
     set_config('adminsetuppending', 1);
-    // we neeed this redirect to setup proper session
+    // we need this redirect to setup proper session
     upgrade_finished("index.php?sessionstarted=1&amp;lang=$CFG->lang");
 }
 
@@ -287,7 +318,8 @@ if (during_initial_install()) {
         }
     }
 
-    $adminuser = get_complete_user_data('username', 'admin');
+    // at this stage there can be only one admin - users may change username, so do not rely on that
+    $adminuser = get_complete_user_data('id', $CFG->siteadmins);
 
     if ($adminuser->password === 'adminsetuppending') {
         // prevent installation hijacking
@@ -371,6 +403,12 @@ if (time() - $lastcron > 3600 * 24) {
 $showbloglevelupgrade = ($CFG->bloglevel == BLOG_COURSE_LEVEL || $CFG->bloglevel == BLOG_GROUP_LEVEL) && empty($CFG->bloglevel_upgrade_complete);
 if ($showbloglevelupgrade) {
     echo $OUTPUT->box(get_string('bloglevelupgradenotice', 'admin'), 'generalbox adminwarning');
+}
+
+// diagnose DB, especially the sloppy MyISAM tables
+$diagnose = $DB->diagnose();
+if ($diagnose !== NULL) {
+    echo $OUTPUT->box($diagnose, 'generalbox adminwarning');
 }
 
 // Alert if we are currently in maintenance mode

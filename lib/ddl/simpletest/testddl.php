@@ -275,6 +275,39 @@ class ddl_test extends UnitTestCase {
         $this->assertEqual($dbrec->name, 'Moodle');
         $this->assertEqual($dbrec->thirdname, '');
 
+        // check exceptions if multiple R columns
+        $table = new xmldb_table ('test_table2');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('rid', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('course', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('primaryx', XMLDB_KEY_PRIMARY, array('id'));
+        $table->setComment("This is a test'n drop table. You can drop it safely");
+
+        $this->tables[$table->getName()] = $table;
+
+        try {
+            $dbman->create_table($table);
+            $this->fail('Exception expected');
+        } catch (Exception $e) {
+            $this->assertTrue($e instanceof ddl_exception);
+        }
+
+        // check exceptions missing primary key on R column
+        $table = new xmldb_table ('test_table2');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('course', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0');
+        $table->setComment("This is a test'n drop table. You can drop it safely");
+
+        $this->tables[$table->getName()] = $table;
+
+        try {
+            $dbman->create_table($table);
+            $this->fail('Exception expected');
+        } catch (Exception $e) {
+            $this->assertTrue($e instanceof ddl_exception);
+        }
+
     }
 
     /**
@@ -621,7 +654,7 @@ class ddl_test extends UnitTestCase {
         $table->add_index('onenumber', XMLDB_INDEX_NOTUNIQUE, array('onenumber'));
         $dbman->create_table($table);
 
-        $record = new object();
+        $record = new stdClass();
         $record->onenumber = 2;
         $record->anothernumber = 4;
         $recoriginal = $DB->insert_record('test_table_cust0', $record);
@@ -638,7 +671,7 @@ class ddl_test extends UnitTestCase {
         // column continues being integer 10 not null default 2
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['onenumber']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change column from integer to varchar. Must work because column has no dependencies
         $field = new xmldb_field('anothernumber');
@@ -647,7 +680,7 @@ class ddl_test extends UnitTestCase {
         // column is char 30 not null default 'test' now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'C');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change column back from char to integer
         $field = new xmldb_field('anothernumber');
@@ -656,7 +689,7 @@ class ddl_test extends UnitTestCase {
         // column is integer 8 not null default 5 now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change column once more from integer to char
         $field = new xmldb_field('anothernumber');
@@ -665,10 +698,10 @@ class ddl_test extends UnitTestCase {
         // column is char 30 not null default "test'n drop" now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'C');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // insert one string value and try to convert to integer. Must throw exception
-        $record = new object();
+        $record = new stdClass();
         $record->onenumber = 7;
         $record->anothernumber = 'string value';
         $rectodrop = $DB->insert_record('test_table_cust0', $record);
@@ -682,7 +715,7 @@ class ddl_test extends UnitTestCase {
         }
         // column continues being char 30 not null default "test'n drop" now
         $this->assertEqual($columns['anothernumber']->meta_type, 'C');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
         $DB->delete_records('test_table_cust0', array('id' => $rectodrop)); // Delete the string record
 
         // change the column from varchar to float
@@ -692,7 +725,7 @@ class ddl_test extends UnitTestCase {
         // column is float 20,10 null default null
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'N'); // floats are seen as number
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column back from float to varchar
         $field = new xmldb_field('anothernumber');
@@ -701,7 +734,7 @@ class ddl_test extends UnitTestCase {
         // column is char 20 not null default "test" now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'C');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column from varchar to number
         $field = new xmldb_field('anothernumber');
@@ -710,7 +743,7 @@ class ddl_test extends UnitTestCase {
         // column is number 20,10 null default null now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'N');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column from number to integer
         $field = new xmldb_field('anothernumber');
@@ -719,7 +752,7 @@ class ddl_test extends UnitTestCase {
         // column is integer 2 null default null now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column from integer to text
         $field = new xmldb_field('anothernumber');
@@ -736,7 +769,7 @@ class ddl_test extends UnitTestCase {
         // column is number 20,10 null default null now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'N');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column from number to text
         $field = new xmldb_field('anothernumber');
@@ -745,7 +778,7 @@ class ddl_test extends UnitTestCase {
         // column is char text not null default "test" now
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'X');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column back from text to integer
         $field = new xmldb_field('anothernumber');
@@ -754,7 +787,7 @@ class ddl_test extends UnitTestCase {
         // column is integer 10 not null default 10
         $columns = $DB->get_columns('test_table_cust0');
         $this->assertEqual($columns['anothernumber']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // check original value has survived to all the type changes
         $this->assertTrue($rec = $DB->get_record('test_table_cust0', array('id' => $recoriginal)));
@@ -783,7 +816,7 @@ class ddl_test extends UnitTestCase {
         $columns = $DB->get_columns('test_table1');
         // cannot check the text type, only the metatype
         $this->assertEqual($columns['intro']->meta_type, 'X');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change char field from 30 to 20
         $field = new xmldb_field('secondname');
@@ -791,7 +824,7 @@ class ddl_test extends UnitTestCase {
         $dbman->change_field_precision($table, $field);
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['secondname']->meta_type, 'C');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change char field from 20 to 10, having contents > 10cc. Throw exception
         $field = new xmldb_field('secondname');
@@ -805,7 +838,7 @@ class ddl_test extends UnitTestCase {
         // No changes in field specs at all
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['secondname']->meta_type, 'C');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change number field from 20,10 to 10,2
         $field = new xmldb_field('grade');
@@ -813,7 +846,7 @@ class ddl_test extends UnitTestCase {
         $dbman->change_field_precision($table, $field);
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['grade']->meta_type, 'N');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change integer field from 10 to 2
         $field = new xmldb_field('userid');
@@ -821,7 +854,7 @@ class ddl_test extends UnitTestCase {
         $dbman->change_field_precision($table, $field);
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['userid']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change the column from integer (2) to integer (6) (forces change of type in some DBs)
         $field = new xmldb_field('userid');
@@ -830,10 +863,10 @@ class ddl_test extends UnitTestCase {
         // column is integer 6 null default null now
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['userid']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // insert one record with 6-digit field
-        $record = new object();
+        $record = new stdClass();
         $record->course = 10;
         $record->secondname  = 'third record';
         $record->intro  = 'third record';
@@ -851,7 +884,7 @@ class ddl_test extends UnitTestCase {
         // No changes in field specs at all
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['userid']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
 
         // change integer field from 10 to 3, in field used by index. must throw exception.
         $field = new xmldb_field('course');
@@ -865,7 +898,7 @@ class ddl_test extends UnitTestCase {
         // No changes in field specs at all
         $columns = $DB->get_columns('test_table1');
         $this->assertEqual($columns['course']->meta_type, 'I');
-        //TODO: chek the rest of attributes
+        //TODO: check the rest of attributes
     }
 
     public function testChangeFieldSign() {
@@ -892,7 +925,7 @@ class ddl_test extends UnitTestCase {
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $dbman->create_table($table);
 
-        $record = new object();
+        $record = new stdClass();
         $record->name = NULL;
 
         ob_start(); // hide debug warning
@@ -944,7 +977,7 @@ class ddl_test extends UnitTestCase {
         $field->set_attributes(XMLDB_TYPE_CHAR, '30', null, XMLDB_NOTNULL, null, 'Moodle2');
         $dbman->change_field_default($table, $field);
 
-        $record = new object();
+        $record = new stdClass();
         $record->onenumber = 666;
         $id = $DB->insert_record('test_table_cust0', $record);
 
@@ -956,7 +989,7 @@ class ddl_test extends UnitTestCase {
         $field->set_attributes(XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, 666);
         $dbman->change_field_default($table, $field);
 
-        $record = new object();
+        $record = new stdClass();
         $record->name = 'something';
         $id = $DB->insert_record('test_table_cust0', $record);
 
@@ -977,7 +1010,7 @@ class ddl_test extends UnitTestCase {
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $dbman->create_table($table);
 
-        $record = new object();
+        $record = new stdClass();
         $record->onenumber = 666;
         $record->name = 'something';
         $DB->insert_record('test_table_cust0', $record, false);
@@ -1149,7 +1182,7 @@ class ddl_test extends UnitTestCase {
         ob_end_clean();
 
         // Insert some info
-        $record = new object();
+        $record = new stdClass();
         $record->course = 666;
         $record->type = 'qanda';
         $this->assertTrue($DB->insert_record('test_table_cust0', $record, false));
@@ -1449,6 +1482,10 @@ class ddl_test extends UnitTestCase {
         $dbman->drop_table($table);
     }
 
+    public function test_reserved_words() {
+        $reserved = sql_generator::getAllReservedWords();
+        $this->assertTrue(count($reserved) > 1);
+    }
 
  // Following methods are not supported == Do not test
 /*

@@ -244,7 +244,7 @@ $string['overridesbycontext'] = 'Overrides (by context)';
 $string['permission'] = 'Permission';
 $string['permission_help'] = 'Permissions are capability settings. There are 4 options:
 
-* Inherit - The permission without any override active i.e. the same permission as in a higher (less specific) context
+* Not set
 * Allow - Permission is granted for the capability
 * Prevent - Permission is removed for the capability, even if allowed in a higher context
 * Prohibit - Permission is completely denied  and cannot be overridden at any lower (more specific) context';
@@ -322,8 +322,6 @@ $string['site:config'] = 'Change site configuration';
 $string['site:doanything'] = 'Allowed to do everything';
 $string['site:doclinks'] = 'Show links to offsite docs';
 $string['site:import'] = 'Import other courses into a course';
-$string['site:langeditlocal'] = 'Customize local translation';
-$string['site:langeditmaster'] = 'Edit master language packages';
 $string['site:manageblocks'] = 'Manage blocks on a page';
 $string['site:mnetloginfromremote'] = 'Login from a remote Moodle';
 $string['site:mnetlogintoremote'] = 'Roam to a remote Moodle';

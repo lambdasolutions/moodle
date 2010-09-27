@@ -90,7 +90,7 @@ abstract class base_ui {
         }
         $this->progress = self::PROGRESS_PROCESSED;
 
-        if (optional_param('previous', false, PARAM_BOOL) && $this->stage->get_stage() > self::STAGE_INITIAL) {
+        if (optional_param('previous', false, PARAM_BOOL) && $this->stage->get_stage() > $this->get_first_stage_id()) {
             $this->stage = $this->initialise_stage($this->stage->get_prev_stage(), $this->stage->get_params());
             return false;
         }
@@ -212,7 +212,9 @@ abstract class base_ui {
      * Loads the backup controller if we are tracking one
      * @return backup_controller|false
      */
-    abstract public static function load_controller($uniqueid=false);
+    public static function load_controller($uniqueid=false) {
+        throw new coding_exception('load_controller() method needs to be overridden in each subclass of base_ui');
+    }
     /**
      * Gets an array of progress bar items that can be displayed through the backup renderer.
      * @return array Array of items for the progress bar

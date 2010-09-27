@@ -36,7 +36,7 @@ $string['defaultformat_help'] = 'This setting determines the default format used
 
 * HTML - The HTML editor is available
 * Creole - A common wiki markup language for which a small edit toolbar is available
-* Nwiki - The markup language used in the contributed Nwiki module';
+* Nwiki - Mediawiki-like markup language used in the contributed Nwiki module';
 $string['deletecomment'] = 'Deleting comment';
 $string['deleteupload'] = 'Delete';
 $string['deletedbegins'] = 'Deleted begins';
@@ -54,9 +54,18 @@ $string['firstpagetitle'] = 'First page name';
 $string['firstpagetitle_help'] = 'Title of the first page of the wiki.';
 $string['forceformat'] = 'Force format';
 $string['forceformat_help'] = 'If the format is forced (checkbox ticked), there is no option to choose a format when editing a wiki page.';
+$string['format'] = 'Format';
+$string['format_help'] = 'Format used when editing wiki pages.
+
+* HTML - The HTML editor is available
+* Creole - A common wiki markup language for which a small edit toolbar is available
+* Nwiki - Mediawiki-like markup language used in the contributed Nwiki module';
 $string['formathtml'] = 'HTML Format';
+$string['formathtml_help'] = '<a href="http://docs.moodle.org/en/HTML_format">HTML Format</a>';
 $string['formatcreole'] = 'Creole Format';
-$string['formatnwiki'] = 'NWIKI Format';
+$string['formatcreole_help'] = '<a href="http://docs.moodle.org/en/Creole_format">Creole Format</a>';
+$string['formatnwiki'] = 'NWiki Format';
+$string['formatnwiki_help'] = '<a href="http://docs.moodle.org/en/NWiki_format">NWiki Format</a>';
 $string['history'] = 'History';
 $string['html'] = 'HTML';
 $string['insertcomment'] = 'Insert comment';
@@ -116,6 +125,7 @@ $string['pageislocked'] = 'Someone is editing this page right now. Try to edit i
 $string['pageindex'] = 'Page index';
 $string['pagelist'] = 'Page list';
 $string['peerreview'] = 'Peer review';
+$string['pluginadministration'] = 'Wiki administration';
 $string['pluginname'] = 'Wiki';
 $string['prettyprint'] = 'Printer-friendly version';
 $string['previewwarning'] = 'This is a preview. Changes have not been saved yet.';
@@ -125,6 +135,7 @@ $string['ratingmode'] = 'Rating mode';
 $string['reparsetimeout'] = 'Reparsing default timeout';
 $string['repeatedsection'] = 'Wiki error: Section name cannot be repeated \'{$a}\'';
 $string['restore'] = 'Restore';
+$string['removeallwikitags'] = 'Remove all wiki tags';
 $string['restoreconfirm'] = 'Are you sure you want to restore version #{$a}?';
 $string['restoreerror'] = 'Version #{$a} could not be restored';
 $string['restorethis'] = 'Restore this version';
@@ -138,6 +149,7 @@ $string['searchcontent'] = 'Search in page content';
 $string['searchresult'] = 'Search results:';
 $string['searchwikis'] = 'Search wikis';
 $string['special'] = 'Special';
+$string['tagsdeleted'] = 'Wiki tags have been deleted';
 $string['teacherrating'] = 'Teacher rating';
 $string['timesrating']='This page has been rated  {$a->c} times with an average of: {$a->s}';
 $string['updatedpages'] = "Updated pages";
@@ -156,7 +168,6 @@ $string['viewperpage'] = 'Show {$a} versions per page';
 $string['viewversion'] = 'Viewing page version #{$a}';
 $string['viewcurrent'] = 'Current Version';
 $string['wiki'] = 'Wiki';
-$string['wikiadministration'] = 'Wiki Administration';
 $string['wikiattachments'] = 'Wiki attachments';
 $string['wikiboldtext'] = 'Bold Text';
 $string['wikiexternalurl'] = 'External URL';

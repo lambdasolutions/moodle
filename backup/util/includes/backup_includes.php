@@ -40,6 +40,7 @@ require_once($CFG->dirroot . '/backup/util/dbops/backup_dbops.class.php');
 require_once($CFG->dirroot . '/backup/util/dbops/backup_structure_dbops.class.php');
 require_once($CFG->dirroot . '/backup/util/dbops/backup_controller_dbops.class.php');
 require_once($CFG->dirroot . '/backup/util/dbops/backup_plan_dbops.class.php');
+require_once($CFG->dirroot . '/backup/util/dbops/backup_question_dbops.class.php');
 require_once($CFG->dirroot . '/backup/util/checks/backup_check.class.php');
 require_once($CFG->dirroot . '/backup/util/structure/base_atom.class.php');
 require_once($CFG->dirroot . '/backup/util/structure/base_attribute.class.php');
@@ -93,4 +94,5 @@ require_once($CFG->dirroot . '/backup/util/ui/backup_ui_stage.class.php');
 require_once($CFG->dirroot . '/backup/util/ui/backup_ui_setting.class.php');
 
 // And some moodle stuff too
+require_once($CFG->dirroot.'/course/lib.php');
 require_once($CFG->libdir.'/gradelib.php');

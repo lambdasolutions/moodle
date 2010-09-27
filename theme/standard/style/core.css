@@ -65,6 +65,7 @@ h2.headingblock {font-size:1.1em;}
 .files .file,
 .files .folder {font-size: 0.9em;}
 .files .folder .size {font-weight: bold;}
+.coursefilesbreadcrumb {margin: .5em 0; padding: .5em 0;}
 
 a.useredit,
 a:hover.useredit,
@@ -354,11 +355,9 @@ table#tag-management-list {margin: 10px auto;width: 80%;}
 .path-backup .mform .grouped_settings.section_level {border:1px solid #aaa;margin:10px;clear:both;background-color:#EEE;}
 .path-backup .mform .grouped_settings.section_level .grouped_settings.activity_level  {background-color:#fff;border:1px solid #fff;border-top-color:#DDD;}
 .path-backup .mform .grouped_settings.section_level .include_setting {font-weight:bold;}
+.path-backup .mform .grouped_settings.activity_level .include_setting label {font-weight:normal;}
 .path-backup .backup_progress {margin:10px;}
 .path-backup .backup_progress .backup_stage {margin:5px 20px;}
-.path-backup .backup_progress .backup_stage.backup_stage_complete {}
-.path-backup .backup_progress .backup_stage.backup_stage_next {}
-.path-backup .backup_progress .backup_stage.backup_stage_current {}
 
 /**
  * Site registration
@@ -377,14 +376,6 @@ table#tag-management-list {margin: 10px auto;width: 80%;}
  #page-course-publish-index .cell {border-width: 0 1px;}
  #page-course-publish-index .justifytext {text-align: justify}
  #page-course-publish-index .publicationwarning {color: #6666ff;}
-
- /**
- * Community block
- */
- #page-blocks-community-communitycourse .trustedtr {background-color: #ffe1c3;}
- #page-blocks-community-communitycourse .prioritisetr {background-color: #ffd4ff;}
- #page-blocks-community-communitycourse .additionaldesc {font-size: 80%; color: purple;}
- #page-blocks-community-communitycourse .additionaladmindesc {font-size: 80%; color: #6666ff;}
 
 /**
  * Custom menu

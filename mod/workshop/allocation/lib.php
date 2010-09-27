@@ -55,8 +55,18 @@ interface workshop_allocator {
      *
      * If a form is part of the UI, the caller should have called $PAGE->set_url(...)
      *
-     * @param stdclass $wsoutput workshop module renderer can be used
+     * @param stdClass $wsoutput workshop module renderer can be used
      * @return string HTML code to be echoed
      */
     public function ui();
+
+    /**
+     * Delete all data related to a given workshop module instance
+     *
+     * This is called from {@link workshop_delete_instance()}.
+     *
+     * @param int $workshopid id of the workshop module instance being deleted
+     * @return void
+     */
+    public static function delete_instance($workshopid);
 }

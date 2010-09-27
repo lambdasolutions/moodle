@@ -213,7 +213,7 @@ function question_type_menu() {
 /**
  * Sort an array of question type names according to the question type sort order stored in
  * config_plugins. Entries for which there is no xxx_sortorder defined will go
- * at the end, sorted according to asort($inarray, SORT_LOCALE_STRING).
+ * at the end, sorted according to textlib_get_instance()->asort($inarray).
  * @param $inarray an array $qtype => $QTYPES[$qtype]->local_name().
  * @param $config get_config('question'), if you happen to have it around, to save one DB query.
  * @return array the sorted version of $inarray.
@@ -237,7 +237,7 @@ function question_sort_qtype_array($inarray, $config = null) {
         $outarray[$name] = $inarray[$name];
         unset($inarray[$name]);
     }
-    asort($inarray, SORT_LOCALE_STRING);
+    textlib_get_instance()->asort($inarray);
     return array_merge($outarray, $inarray);
 }
 
@@ -748,9 +748,7 @@ function question_delete_course_category($category, $newcategory, $feedback=true
         if (!$newcontext = get_context_instance(CONTEXT_COURSECAT, $newcategory->id)) {
             return false;
         }
-        if (!$DB->set_field('question_categories', 'contextid', $newcontext->id, array('contextid'=>$context->id))) {
-            return false;
-        }
+        $DB->set_field('question_categories', 'contextid', $newcontext->id, array('contextid'=>$context->id));
         if ($feedback) {
             $a = new stdClass;
             $a->oldplace = print_context_name($context);
@@ -777,7 +775,7 @@ function question_save_from_deletion($questionids, $newcontextid, $oldplace, $ne
 
     // Make a category in the parent context to move the questions to.
     if (is_null($newcategory)) {
-        $newcategory = new object();
+        $newcategory = new stdClass();
         $newcategory->parent = 0;
         $newcategory->contextid = $newcontextid;
         $newcategory->name = get_string('questionsrescuedfrom', 'question', $oldplace);
@@ -855,7 +853,7 @@ function question_delete_activity($cm, $feedback=true) {
  */
 function question_move_questions_to_category($questionids, $newcategoryid) {
     global $DB, $QTYPES;
-    $result = true;
+
     $ids = explode(',', $questionids);
     foreach ($ids as $questionid) {
         $questionid = (int)$questionid;
@@ -872,14 +870,14 @@ function question_move_questions_to_category($questionids, $newcategoryid) {
 
 
     // Move the questions themselves.
-    $result = $result && $DB->set_field_select('question', 'category', $newcategoryid, "id IN ($questionids)");
+    $DB->set_field_select('question', 'category', $newcategoryid, "id IN ($questionids)");
 
     // Move any subquestions belonging to them.
-    $result = $result && $DB->set_field_select('question', 'category', $newcategoryid, "parent IN ($questionids)");
+    $DB->set_field_select('question', 'category', $newcategoryid, "parent IN ($questionids)");
 
     // TODO Deal with datasets.
 
-    return $result;
+    return true;
 }
 
 /**
@@ -1118,7 +1116,7 @@ function question_load_states(&$questions, &$states, $cmoptions, $attempt, $last
                 unset($states[$qid]->id);
             } else {
                 // create a new empty state
-                $states[$qid] = new object;
+                $states[$qid] = new stdClass();
                 $states[$qid]->question = $qid;
                 $states[$qid]->responses = array('' => '');
                 $states[$qid]->raw_grade = 0;
@@ -1603,7 +1601,7 @@ function regrade_question_in_attempt($question, $attempt, $cmoptions, $verbose=f
             }
         }
         if ($changed){
-            $toinsert = new object();
+            $toinsert = new stdClass();
             $toinsert->oldgrade = round((float)$states[count($states)-1]->grade, 5);
             $toinsert->newgrade = round((float)$replaystate->grade, 5);
             $toinsert->attemptid = $attempt->uniqueid;
@@ -1834,15 +1832,14 @@ function question_apply_penalty_and_timelimit(&$question, &$state, $attempt, $cm
 * @param boolean $return If true the functions returns the link as a string
 */
 function print_question_icon($question, $return = false) {
-    global $QTYPES, $CFG;
+    global $QTYPES, $CFG, $OUTPUT;
 
     if (array_key_exists($question->qtype, $QTYPES)) {
         $namestr = $QTYPES[$question->qtype]->local_name();
     } else {
         $namestr = 'missingtype';
     }
-    $html = '<img src="' . $CFG->wwwroot . '/question/type/' .
-            $question->qtype . '/icon.gif" alt="' .
+    $html = '<img src="' . $OUTPUT->pix_url('icon', 'qtype_'.$question->qtype) . '" alt="' .
             $namestr . '" title="' . $namestr . '" />';
     if ($return) {
         return $html;
@@ -1958,9 +1955,7 @@ function question_process_comment($question, &$state, &$attempt, $comment, $grad
     $comment = trim($comment);
     $state->manualcomment = $comment;
     $state->newflaggedstate = $state->flagged;
-    if (!$DB->set_field('question_sessions', 'manualcomment', $comment, array('attemptid'=>$attempt->uniqueid, 'questionid'=>$question->id))) {
-        return get_string('errorsavingcomment', 'question', $question);
-    }
+    $DB->set_field('question_sessions', 'manualcomment', $comment, array('attemptid'=>$attempt->uniqueid, 'questionid'=>$question->id));
 
     // Update the attempt if the score has changed.
     if ($grade !== '' && (abs($state->last_graded->grade - $grade) > 0.002 || $state->last_graded->event != QUESTION_EVENTMANUALGRADE)) {
@@ -2553,7 +2548,7 @@ function question_add_context_in_key($categories){
 function question_add_tops($categories, $pcontexts){
     $topcats = array();
     foreach ($pcontexts as $context){
-        $newcat = new object();
+        $newcat = new stdClass();
         $newcat->id = "0,$context";
         $newcat->name = get_string('top');
         $newcat->parent = -1;

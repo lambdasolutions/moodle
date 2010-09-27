@@ -64,7 +64,7 @@ class restore_lesson_activity_structure_step extends restore_activity_structure_
 
         // insert the lesson record
         $newitemid = $DB->insert_record('lesson', $data);
-        // inmediately after inserting "activity" record, call this
+        // immediately after inserting "activity" record, call this
         $this->apply_activity_instance($newitemid);
     }
 
@@ -74,18 +74,13 @@ class restore_lesson_activity_structure_step extends restore_activity_structure_
         $data = (object)$data;
         $oldid = $data->id;
         $data->lessonid = $this->get_new_parentid('lesson');
-        $data->prevpageid = (empty($data->prevpageid)) ? 0 : $this->get_mappingid('lesson_page', $data->prevpageid);
-        $data->nextpageid = 0; //we don't know the id of the next page as it hasn't been created yet.
+
+        // We'll remap all the prevpageid and nextpageid at the end, once all pages have been created
         $data->timemodified = $this->apply_date_offset($data->timemodified);
         $data->timecreated = $this->apply_date_offset($data->timecreated);
 
         $newitemid = $DB->insert_record('lesson_pages', $data);
         $this->set_mapping('lesson_page', $oldid, $newitemid, true); // Has related fileareas
-
-        //now update previous page with newitemid as the nextpageid
-        if (!empty($data->prevpageid)) {
-            $DB->set_field('lesson_pages', 'nextpageid', $newitemid, array('id' => $data->prevpageid));
-        }
     }
 
     protected function process_lesson_answer($data) {
@@ -169,10 +164,22 @@ class restore_lesson_activity_structure_step extends restore_activity_structure_
     }
 
     protected function after_execute() {
+        global $DB;
+
         // Add lesson mediafile, no need to match by itemname (just internally handled context)
         $this->add_related_files('mod_lesson', 'mediafile', null);
         // Add lesson page files, by lesson_page itemname
         $this->add_related_files('mod_lesson', 'page_contents', 'lesson_page');
+
+        // Remap all the restored prevpageid and nextpageid now that we have all the pages and their mappings
+        $rs = $DB->get_recordset('lesson_pages', array('lessonid' => $this->task->get_activityid()),
+                                 '', 'id, prevpageid, nextpageid');
+        foreach ($rs as $page) {
+            $page->prevpageid = (empty($page->prevpageid)) ? 0 : $this->get_mappingid('lesson_page', $page->prevpageid);
+            $page->nextpageid = (empty($page->nextpageid)) ? 0 : $this->get_mappingid('lesson_page', $page->nextpageid);
+            $DB->update_record('lesson_pages', $page);
+        }
+        $rs->close();
 
         // TODO: somewhere at the end of the restore... when all the activities have been restored
         // TODO: we need to decode the lesson->activitylink that points to another activity in the course

@@ -36,7 +36,7 @@ httpsrequired();
 
 $systemcontext = get_context_instance(CONTEXT_SYSTEM);
 $PAGE->set_url('/login/forgot_password.php');
-$PAGE->set_context($syscontext);
+$PAGE->set_context($systemcontext);
 
 // setup text strings
 $strforgotten = get_string('passwordforgotten');
@@ -92,7 +92,7 @@ if ($p_secret !== false) {
         reset_login_count();
 
         $changepasswordurl = "{$CFG->httpswwwroot}/login/change_password.php";
-        $a = new object();
+        $a = new stdClass();
         $a->email = $user->email;
         $a->link = $changepasswordurl;
 

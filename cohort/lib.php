@@ -18,9 +18,9 @@
 /**
  * Cohort related management functions, this file needs to be included manually.
  *
- * @package    moodlecore
+ * @package    core
  * @subpackage cohort
- * @copyright  2010 Petr Skoda  (info@skodak.org)
+ * @copyright  2010 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -132,7 +132,7 @@ function cohort_delete_category($category) {
  */
 function cohort_add_member($cohortid, $userid) {
     global $DB;
-    $record = new object();
+    $record = new stdClass();
     $record->cohortid  = $cohortid;
     $record->userid    = $userid;
     $record->timeadded = time();

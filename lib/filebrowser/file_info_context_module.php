@@ -42,7 +42,7 @@ class file_info_context_module extends file_info {
     protected $areas;
 
     public function __construct($browser, $context, $course, $cm, $modname) {
-        global $DB, $CFG;
+        global $CFG;
 
         parent::__construct($browser, $context);
         $this->course  = $course;
@@ -75,8 +75,6 @@ class file_info_context_module extends file_info {
      * @param $filename
      */
     public function get_file_info($component, $filearea, $itemid, $filepath, $filename) {
-        global $USER;
-
         if (!is_enrolled($this->context) and !is_viewing($this->context)) {
             // no peaking here if not enrolled or inspector
             return null;
@@ -169,6 +167,34 @@ class file_info_context_module extends file_info {
      */
     public function is_writable() {
         return false;
+    }
+
+    /**
+     * Is this empty area?
+     *
+     * @return bool
+     */
+    public function is_empty_area() {
+        if ($child = $this->get_area_backup(0, '/', '.')) {
+            if (!$child->is_empty_area()) {
+                return false;
+            }
+        }
+        if ($child = $this->get_area_intro(0, '/', '.')) {
+            if (!$child->is_empty_area()) {
+                return false;
+            }
+        }
+
+        foreach ($this->areas as $area=>$desctiption) {
+            if ($child = $this->get_file_info('mod_'.$this->modname, $area, null, null, null)) {
+                if (!$child->is_empty_area()) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**

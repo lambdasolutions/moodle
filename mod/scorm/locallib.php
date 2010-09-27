@@ -376,7 +376,7 @@ function scorm_insert_track($userid,$scormid,$scoid,$attempt,$element,$value,$fo
             if ($tracktest = $DB->get_record_select('scorm_scoes_track','userid=? AND scormid=? AND scoid=? AND attempt=? AND element=\'cmi.core.lesson_status\'', array($userid, $scormid, $scoid, $attempt))) {
                 if ($tracktest->value == "incomplete") {
                     $tracktest->value = "completed";
-                    $idtest = $DB->update_record('scorm_scoes_track',$tracktest);
+                    $DB->update_record('scorm_scoes_track',$tracktest);
                 }
             }
         }
@@ -386,7 +386,8 @@ function scorm_insert_track($userid,$scormid,$scoid,$attempt,$element,$value,$fo
         if ($element != 'x.start.time' ) { //don't update x.start.time - keep the original value.
             $track->value = addslashes_js($value);
             $track->timemodified = time();
-            $id = $DB->update_record('scorm_scoes_track',$track);
+            $DB->update_record('scorm_scoes_track',$track);
+            $id = $track->id;
         }
     } else {
         $track->userid = $userid;
@@ -421,6 +422,7 @@ function scorm_get_tracks($scoid,$userid,$attempt='') {
         }
     }
     if ($tracks = $DB->get_records('scorm_scoes_track', array('userid'=>$userid, 'scoid'=>$scoid, 'attempt'=>$attempt),'element ASC')) {
+        $usertrack = new stdClass();
         $usertrack->userid = $userid;
         $usertrack->scoid = $scoid;
         // Defined in order to unify scorm1.2 and scorm2004
@@ -431,7 +433,7 @@ function scorm_get_tracks($scoid,$userid,$attempt='') {
         $usertrack->timemodified = 0;
         foreach ($tracks as $track) {
             $element = $track->element;
-            $track->value = stripslashes($track->value);
+            $track->value = stripslashes($track->value); // TODO: this is probably wrong, the stripslashes() has undefined meaning now; was this related to JS quoting or magic quotes?
             $usertrack->{$element} = $track->value;
             switch ($element) {
                 case 'cmi.core.lesson_status':
@@ -481,7 +483,7 @@ function scorm_get_tracks($scoid,$userid,$attempt='') {
 function scorm_get_sco_runtime($scormid, $scoid, $userid, $attempt=1) {
     global $DB;
 
-    $timedata = new object();
+    $timedata = new stdClass();
     $sql = !empty($scoid) ? "userid=$userid AND scormid=$scormid AND scoid=$scoid AND attempt=$attempt" : "userid=$userid AND scormid=$scormid AND attempt=$attempt";
     $tracks = $DB->get_records_select('scorm_scoes_track',"$sql ORDER BY timemodified ASC");
     if ($tracks) {
@@ -1179,41 +1181,41 @@ function scorm_delete_attempt($userid, $scorm, $attemptid) {
 }
 
 /**
- * Converts SCORM date/time notation to human-readable format
+ * Converts SCORM duration notation to human-readable format
  * The function works with both SCORM 1.2 and SCORM 2004 time formats
- * @param $datetime string SCORM date/time
+ * @param $duration string SCORM duration
  * @return string human-readable date/time
  */
-function scorm_format_date_time($datetime) {
+function scorm_format_duration($duration) {
     // fetch date/time strings
-    $stryears = get_string('numyears');
+    $stryears = get_string('years');
     $strmonths = get_string('nummonths');
-    $strdays = get_string('numdays');
-    $strhours = get_string('numhours');
-    $strminutes = get_string('numminutes');
-    $strseconds = get_string('numseconds');
+    $strdays = get_string('days');
+    $strhours = get_string('hours');
+    $strminutes = get_string('minutes');
+    $strseconds = get_string('seconds');
 
-    if ($datetime[0] == 'P') {
+    if ($duration[0] == 'P') {
         // if timestamp starts with 'P' - it's a SCORM 2004 format
         // this regexp discards empty sections, takes Month/Minute ambiguity into consideration,
         // and outputs filled sections, discarding leading zeroes and any format literals
         // also saves the only zero before seconds decimals (if there are any) and discards decimals if they are zero
         $pattern = array( '#([A-Z])0+Y#', '#([A-Z])0+M#', '#([A-Z])0+D#', '#P(|\d+Y)0*(\d+)M#', '#0*(\d+)Y#', '#0*(\d+)D#', '#P#',
                           '#([A-Z])0+H#', '#([A-Z])[0.]+S#', '#\.0+S#', '#T(|\d+H)0*(\d+)M#', '#0*(\d+)H#', '#0+\.(\d+)S#', '#0*([\d.]+)S#', '#T#' );
-        $replace = array( '$1', '$1', '$1', '$1$2'.$strmonths.' ', '$1'.$stryears.' ', '$1'.$strdays.' ', '',
-                          '$1', '$1', 'S', '$1$2'.$strminutes.' ', '$1'.$strhours.' ', '0.$1'.$strseconds, '$1'.$strseconds, '');
+        $replace = array( '$1', '$1', '$1', '$1$2 '.$strmonths.' ', '$1 '.$stryears.' ', '$1 '.$strdays.' ', '',
+                          '$1', '$1', 'S', '$1$2 '.$strminutes.' ', '$1 '.$strhours.' ', '0.$1 '.$strseconds, '$1 '.$strseconds, '');
     } else {
         // else we have SCORM 1.2 format there
         // first convert the timestamp to some SCORM 2004-like format for conveniency
-        $datetime = preg_replace('#^(\d+):(\d+):([\d.]+)$#', 'T$1H$2M$3S', $datetime);
+        $duration = preg_replace('#^(\d+):(\d+):([\d.]+)$#', 'T$1H$2M$3S', $duration);
         // then convert in the same way as SCORM 2004
         $pattern = array( '#T0+H#', '#([A-Z])0+M#', '#([A-Z])[0.]+S#', '#\.0+S#', '#0*(\d+)H#', '#0*(\d+)M#', '#0+\.(\d+)S#', '#0*([\d.]+)S#', '#T#' );
-        $replace = array( 'T', '$1', '$1', 'S', '$1'.$strhours.' ', '$1'.$strminutes.' ', '0.$1'.$strseconds, '$1'.$strseconds, '' );
+        $replace = array( 'T', '$1', '$1', 'S', '$1 '.$strhours.' ', '$1 '.$strminutes.' ', '0.$1 '.$strseconds, '$1 '.$strseconds, '' );
         //$pattern = '##';
         //$replace = '';
     }
 
-    $result = preg_replace($pattern, $replace, $datetime);
+    $result = preg_replace($pattern, $replace, $duration);
 
     return $result;
 }

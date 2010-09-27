@@ -18,16 +18,22 @@
 /**
  * CLI sync for full external database synchronisation.
  *
+ * Sample cron entry:
+ * # 5 minutes past 4am
+ * 5 4 * * * $sudo -u www-data /usr/bin/php /var/www/moodle/enrol/database/cli/sync.php
+ *
+ * Notes:
+ *   - it is required to use the web server account when executing PHP CLI scripts
+ *   - you need to change the "www-data" to match the apache user account
+ *   - use "su" if "sudo" not available
+ *
  * @package    enrol
  * @subpackage database
  * @copyright  2010 Petr Skoda {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-if (isset($_SERVER['REMOTE_ADDR'])) {
-    error_log("enrol/database/cli/sync.php can not be called from web server!");
-    exit;
-}
+define('CLI_SCRIPT', true);
 
 require(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
 

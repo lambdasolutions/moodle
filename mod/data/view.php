@@ -169,7 +169,7 @@
                     }
                 }
                 if (!empty($val)) {
-                    $search_array[$field->id] = new object();
+                    $search_array[$field->id] = new stdClass();
                     list($search_array[$field->id]->sql, $search_array[$field->id]->params) = $searchfield->generate_sql('c'.$field->id, $val);
                     $search_array[$field->id]->data = $val;
                     $vals[] = $val;
@@ -189,7 +189,7 @@
             $ln = isset($search_array[DATA_LASTNAME]) ? $search_array[DATA_LASTNAME]->data : '';
         }
         if (!empty($fn)) {
-            $search_array[DATA_FIRSTNAME] = new object();
+            $search_array[DATA_FIRSTNAME] = new stdClass();
             $search_array[DATA_FIRSTNAME]->sql    = '';
             $search_array[DATA_FIRSTNAME]->params = array();
             $search_array[DATA_FIRSTNAME]->field  = 'u.firstname';
@@ -199,7 +199,7 @@
             unset($search_array[DATA_FIRSTNAME]);
         }
         if (!empty($ln)) {
-            $search_array[DATA_LASTNAME] = new object();
+            $search_array[DATA_LASTNAME] = new stdClass();
             $search_array[DATA_LASTNAME]->sql     = '';
             $search_array[DATA_FIRSTNAME]->params = array();
             $search_array[DATA_LASTNAME]->field   = 'u.lastname';
@@ -295,7 +295,7 @@
 
     $PAGE->set_title($title);
     $PAGE->set_heading($course->fullname);
-    
+
     echo $OUTPUT->header();
 
 /// Check to see if groups are being used here
@@ -323,7 +323,7 @@
     }*/
 
     if ($data->intro and empty($page) and empty($record) and $mode != 'single') {
-        $options = new object();
+        $options = new stdClass();
         $options->noclean = true;
         echo $OUTPUT->box(format_module_intro('data', $data, $cm->id), 'generalbox', 'intro');
     }
@@ -405,11 +405,11 @@ if ($showactivity) {
         if ($approve && confirm_sesskey() && $approvecap) {
             if ($approverecord = $DB->get_record('data_records', array('id'=>$approve))) {   // Need to check this is valid
                 if ($approverecord->dataid == $data->id) {                       // Must be from this database
+                    $newrecord = new stdClass();
                     $newrecord->id = $approverecord->id;
                     $newrecord->approved = 1;
-                    if ($DB->update_record('data_records', $newrecord)) {
-                        echo $OUTPUT->notification(get_string('recordapproved','data'), 'notifysuccess');
-                    }
+                    $DB->update_record('data_records', $newrecord);
+                    echo $OUTPUT->notification(get_string('recordapproved','data'), 'notifysuccess');
                 }
             }
         }
@@ -449,8 +449,6 @@ if ($showactivity) {
         } else {
             $groupselect = ' ';
         }
-
-        $ilike = $DB->sql_ilike(); //Be case-insensitive
 
         // Init some variables to be used by advanced search
         $advsearchselect = '';
@@ -502,7 +500,7 @@ if ($showactivity) {
                 foreach($search_array as $key => $val) {                              //what does $search_array hold?
                     if ($key == DATA_FIRSTNAME or $key == DATA_LASTNAME) {
                         $i++;
-                        $searchselect .= " AND $val->field $ilike :search_flname_$i";
+                        $searchselect .= " AND ".$DB->sql_like($val->field, ":search_flname_$i", false);
                         $params['search_flname_'.$i] = "%$val->data%";
                         continue;
                     }
@@ -512,7 +510,7 @@ if ($showactivity) {
                     $advparams = array_merge($advparams, $val->params);
                 }
             } else if ($search) {
-                $searchselect = " AND (cs.content $ilike :search1 OR u.firstname $ilike :search2 OR u.lastname $ilike :search3 ) ";
+                $searchselect = " AND (".$DB->sql_like('cs.content', ':search1', false)." OR ".$DB->sql_like('u.firstname', ':search2', false)." OR ".$DB->sql_like('u.lastname', ':search3', false)." ) ";
                 $params['search1'] = "%$search%";
                 $params['search2'] = "%$search%";
                 $params['search3'] = "%$search%";
@@ -548,7 +546,7 @@ if ($showactivity) {
                 foreach($search_array as $key => $val) {                              //what does $search_array hold?
                     if ($key == DATA_FIRSTNAME or $key == DATA_LASTNAME) {
                         $i++;
-                        $searchselect .= " AND $val->field $ilike :search_flname_$i";
+                        $searchselect .= " AND ".$DB->sql_like($val->field, ":search_flname_$i", false);
                         $params['search_flname_'.$i] = "%$val->data%";
                         continue;
                     }
@@ -558,7 +556,7 @@ if ($showactivity) {
                     $advparams = array_merge($advparams, $val->params);
                 }
             } else if ($search) {
-                $searchselect = " AND (cs.content $ilike :search1 OR u.firstname $ilike :search2 OR u.lastname $ilike :search3 ) ";
+                $searchselect = " AND (".$DB->sql_like('cs.content', ':search1', false)." OR ".$DB->sql_like('u.firstname', ':search2', false)." OR ".$DB->sql_like('u.lastname', ':search3', false)." ) ";
                 $params['search1'] = "%$search%";
                 $params['search2'] = "%$search%";
                 $params['search3'] = "%$search%";
@@ -621,7 +619,7 @@ if ($showactivity) {
 
         if (empty($records)) {
             if ($maxcount){
-                $a = new object();
+                $a = new stdClass();
                 $a->max = $maxcount;
                 $a->reseturl = "view.php?id=$cm->id&amp;mode=$mode&amp;search=&amp;advanced=0";
                 echo $OUTPUT->notification(get_string('foundnorecords','data', $a));
@@ -632,7 +630,7 @@ if ($showactivity) {
         } else { //  We have some records to print
 
             if ($maxcount != $totalcount) {
-                $a = new object();
+                $a = new stdClass();
                 $a->num = $totalcount;
                 $a->max = $maxcount;
                 $a->reseturl = "view.php?id=$cm->id&amp;mode=$mode&amp;search=&amp;advanced=0";

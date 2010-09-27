@@ -39,14 +39,18 @@ abstract class portfolio_format {
     /**
      * array of mimetypes this format supports
      */
-    public static abstract function mimetypes();
+    public static function mimetypes() {
+        throw new coding_exception('mimetypes() method needs to be overridden in each subclass of portfolio_format');
+    }
 
     /**
      * for multipart formats, eg html with attachments,
      * we need to have a directory to place associated files in
      * inside the zip file. this is the name of that directory
      */
-    public static abstract function get_file_directory();
+    public static function get_file_directory() {
+        throw new coding_exception('get_file_directory() method needs to be overridden in each subclass of portfolio_format');
+    }
 
     /**
      * given a file, return a snippet of markup in whatever format
@@ -62,7 +66,9 @@ abstract class portfolio_format {
      *
      * @return string some html or xml or whatever
      */
-    public static abstract function file_output($file, $options=null);
+    public static function file_output($file, $options=null) {
+        throw new coding_exception('file_output() method needs to be overridden in each subclass of portfolio_format');
+    }
 
     public static function make_tag($file, $path, $attributes) {
         $srcattr = 'href';
@@ -140,7 +146,7 @@ class portfolio_format_image extends portfolio_format_file {
      * return all mimetypes that use image.gif (eg all images)
      */
     public static function mimetypes() {
-        return mimeinfo_from_icon('type', 'image.gif', true);
+        return mimeinfo_from_icon('type', 'image', true);
     }
 
     public static function conflicts($format) {
@@ -174,8 +180,8 @@ class portfolio_format_plainhtml extends portfolio_format_file {
 class portfolio_format_video extends portfolio_format_file {
     public static function mimetypes() {
         return array_merge(
-            mimeinfo_from_icon('type', 'video.gif', true),
-            mimeinfo_from_icon('type', 'avi.gif', true)
+            mimeinfo_from_icon('type', 'video', true),
+            mimeinfo_from_icon('type', 'avi', true)
         );
     }
 }
@@ -235,20 +241,27 @@ class portfolio_format_leap2a extends portfolio_format_rich {
         return 'files/';
     }
 
+    public static function file_id_prefix() {
+        return 'storedfile';
+    }
+
     /**
      * return the link to a file
      *
      * @param stored_file $file
      * @param array       $options can contain the same as normal, with the addition of:
-     *             entry => whether the file is a LEAP2A entry or just a bundled file (default false)
+     *             entry => whether the file is a LEAP2A entry or just a bundled file (default true)
      */
     public static function file_output($file, $options=null) {
         $id = '';
         if (!is_array($options)) {
             $options = array();
         }
+        if (!array_key_exists('entry', $options)) {
+            $options['entry'] = true;
+        }
         if (!empty($options['entry'])) {
-            $path = 'portfolio:file' . $file->get_id;
+            $path = 'portfolio:' . self::file_id_prefix() . $file->get_id();
         } else {
             $path = self::get_file_directory() . $file->get_filename();
         }
@@ -302,9 +315,9 @@ class portfolio_format_document extends portfolio_format_file {
     public static function mimetypes() {
         return array_merge(
             array('text/plain', 'text/rtf'),
-            mimeinfo_from_icon('type', 'word.gif', true),
-            mimeinfo_from_icon('type', 'docx.gif', true),
-            mimeinfo_from_icon('type', 'odt.gif', true)
+            mimeinfo_from_icon('type', 'word', true),
+            mimeinfo_from_icon('type', 'docx', true),
+            mimeinfo_from_icon('type', 'odt', true)
         );
     }
 }
@@ -317,9 +330,9 @@ class portfolio_format_document extends portfolio_format_file {
 class portfolio_format_spreadsheet extends portfolio_format_file {
     public static function mimetypes() {
         return array_merge(
-            mimeinfo_from_icon('type', 'excel.gif', true),
-            mimeinfo_from_icon('type', 'xlsm.gif', true),
-            mimeinfo_from_icon('type', 'ods.gif', true)
+            mimeinfo_from_icon('type', 'excel', true),
+            mimeinfo_from_icon('type', 'xlsm', true),
+            mimeinfo_from_icon('type', 'ods', true)
         );
     }
 }
@@ -331,6 +344,6 @@ class portfolio_format_spreadsheet extends portfolio_format_file {
 */
 class portfolio_format_presentation extends portfolio_format_file {
     public static function mimetypes() {
-        return mimeinfo_from_icon('type', 'powerpoint.gif', true);
+        return mimeinfo_from_icon('type', 'powerpoint', true);
     }
 }

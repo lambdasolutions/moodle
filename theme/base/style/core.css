@@ -105,8 +105,7 @@ form.popupform div {display: inline;}
 /*Accessibility: text 'seen' by screen readers but not visual users. */
 .accesshide {position:absolute;top:-100000px;left:10px;font-weight:normal;font-size:1em;}
 span.hide,
-div.hide,
-.jsenabled .advancedbutton .showadvancedbtn {display:none;}
+div.hide {display:none;}
 .invisiblefieldset {display:inline;border-width:0;padding:0;margin:0;}
 /*Accessibility: Skip block link, for keyboard-only users. */
 a.skip-block,
@@ -419,29 +418,29 @@ body.tag .managelink {padding: 5px;}
  * first or middle sibling, no children
  */
 /* first or middle sibling, no children */
-.file-picker .ygtvtn {background: url(../pix/y/tn.gif) 0 0 no-repeat;width:17px;height:22px;}
+.file-picker .ygtvtn {background: url([[pix:moodle|y/tn]]) 0 0 no-repeat;width:17px;height:22px;}
 /* first or middle sibling, collapsable */
-.file-picker .ygtvtm {background: url(../pix/y/tm.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvtm {background: url([[pix:moodle|y/tm]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* first or middle sibling, collapsable, hover */
-.file-picker .ygtvtmh {background: url(../pix/y/tmh.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvtmh {background: url([[pix:moodle|y/tmh]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* first or middle sibling, expandable */
-.file-picker .ygtvtp {background: url(../pix/y/tp.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvtp {background: url([[pix:moodle|y/tp]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* first or middle sibling, expandable, hover */
-.file-picker .ygtvtph {background: url(../pix/y/tph.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvtph {background: url([[pix:moodle|y/tph]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* last sibling, no children */
-.file-picker .ygtvln {background: url(../pix/y/ln.gif) 0 0 no-repeat;width:17px;height:22px;}
+.file-picker .ygtvln {background: url([[pix:moodle|y/ln]]) 0 0 no-repeat;width:17px;height:22px;}
 /* Last sibling, collapsable */
-.file-picker .ygtvlm {background: url(../pix/y/lm.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvlm {background: url([[pix:moodle|y/lm]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* Last sibling, collapsable, hover */
-.file-picker .ygtvlmh {background: url(../pix/y/lmh.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvlmh {background: url([[pix:moodle|y/lmh]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* Last sibling, expandable */
-.file-picker .ygtvlp {background: url(../pix/y/lp.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvlp {background: url([[pix:moodle|y/lp]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* Last sibling, expandable, hover */
-.file-picker .ygtvlph {background: url(../pix/y/lph.gif) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
+.file-picker .ygtvlph {background: url([[pix:moodle|y/lph]]) 0 0 no-repeat;width:34px;height:22px;cursor:pointer;}
 /* Loading icon */
-.file-picker .ygtvloading {background: url(../pix/y/loading.gif) 0 0 no-repeat;width:16px;height:22px;}
+.file-picker .ygtvloading {background: url([[pix:moodle|y/loading]]) 0 0 no-repeat;width:16px;height:22px;}
 /* the style for the empty cells that are used for rendering the depth* of the node */
-.file-picker .ygtvdepthcell {background: url(../pix/y/vline.gif) 0 0 no-repeat;width:17px;height:22px;}
+.file-picker .ygtvdepthcell {background: url([[pix:moodle|y/vline]]) 0 0 no-repeat;width:17px;height:22px;}
 .file-picker .ygtvblankdepthcell {width:17px;height:22px;}
 /* the style of the div around each node */
 .file-picker .ygtvitem  table{margin-bottom:0;}
@@ -481,7 +480,7 @@ body.tag .managelink {padding: 5px;}
 .file-picker .fp-grid .label {height:48px;text-align:center;}
 .file-picker .fp-grid span {color:gray;}
 .file-picker .fp-error {padding: 2em 0;margin: 3em 5px;text-align:center;background: #FFBBBB;}
-.file-picker .fp-emptylist, .file-picker .fp-msg {padding: 2em 0;margin: 1em;text-align:center;background: green;}
+.file-picker .fp-emptylist, .file-picker .fp-msg {text-align:center;}
 .filepicker-filelist {padding: 5px;margin: 6px 0;background: #E9F4FF;border: #AACCEE 1px solid}
 /* file picker search dialog */
 .file-picker div.bd {text-align:left;}
@@ -512,8 +511,10 @@ body.tag .managelink {padding: 5px;}
 .path-backup .mform .grouped_settings {clear:both;overflow:hidden;}
 .path-backup .mform .grouped_settings .fitem .fitemtitle {width:40%;padding-right:10px;}
 .path-backup .mform .grouped_settings .fitem .felement {width:50%;}
-.path-backup .mform .grouped_settings.section_level .include_setting {width:50%;margin:0;float:left;clear:left;}
+.path-backup .mform .grouped_settings.section_level .include_setting {width:50%;margin:0;float:left;clear:left;font-weight:bold;}
 .path-backup .mform .grouped_settings.section_level .normal_setting {width:50%;margin:0;margin-left:50%;}
+.path-backup .mform .grouped_settings.activity_level .include_setting label {font-weight:normal;}
+.path-backup .mform .fitem fieldset.felement {margin-left:0;width:auto;padding-left:0;}
 .path-backup .notification.dependencies_enforced {text-align:center;color:#A00;font-weight:bold;}
 .path-backup .backup_progress {text-align:center;}
 .path-backup .backup_progress span.backup_stage {color:#999;}
@@ -533,7 +534,7 @@ body.tag .managelink {padding: 5px;}
 #helppopupbox .yui3-widget-hd {float:right;margin:3px 3px 0 0;}
 #helppopupbox .yui3-widget-bd {margin:0 1em 1em 1em;border-top:1px solid #eee;}
 #helppopupbox .helpheading {font-size: 1em;}
-#helppopupbox .spinner {margin:1em;} 
+#helppopupbox .spinner {margin:1em;}
 
 /**
  * Custom menu
@@ -612,7 +613,7 @@ body.tag .managelink {padding: 5px;}
 .userenrolment .col_enrol .enrolment {float:left;padding:3px;margin:3px;}
 .userenrolment .col_enrol .enrolment a {float:right;margin-left:3px;}
 
-/** 
+/**
 * Overide for RTL layout
 **/
 .dir-rtl .headermain {float:right;}
@@ -642,6 +643,8 @@ body.tag .managelink {padding: 5px;}
 .backup-restore .detail-pair-label {display:inline-block;width:25%;padding:8px;margin:0;text-align:right;font-weight:bold;color:#444;vertical-align:top;}
 .backup-restore .detail-pair-value {display:inline-block;width:65%;padding:8px;margin:0;}
 .backup-restore .detail-pair-value > .sub-detail {display:block;color:#1580B6;margin-left:2em;font-size:90%;font-style: italic;}
+.backup-restore > .singlebutton {text-align:right;}
+.path-backup .mform .fgroup .proceedbutton {float:right;margin-right:1%;}
 
 .restore-course-search .rcs-results {width:70%;min-width:400px;border:1px solid #ddd;margin:5px 0;}
 .restore-course-search .rcs-results table {width:100%;margin:0;border-width:0;}
@@ -654,15 +657,21 @@ body.tag .managelink {padding: 5px;}
 .corelightbox {background-color:#CCC;position:absolute;top:0;left:0;width:100%;height:100%;text-align:center;}
 .corelightbox img {position:fixed;top:50%;}
 
-/** 
+/**
  * IE - Overide for RTL layout
  */
 .ie.dir-rtl .mform .fitem .felement {margin-right:0;text-align:right;float:right;}
 
 /**
- * Choice
+ * Filters
  */
-.path-mod-choice .results .option,
-.path-mod-choice .results .numberofuser,
-.path-mod-choice .results .percentage {font-weight: bold; font-size: 108%;}
+.jsenabled .mediaplugin.mediaplugin_mp3 object {height:15px;width:100px; }
+.jsenabled .mediaplugin.mediaplugin_flv object {height:600px;width:800px;}
 
+.ie .mediaplugin.mediaplugin_mp3 object{height:20px;}
+
+/**
+ * Fix for broken YUI images in the menunav component
+ */
+.yui3-skin-sam .yui3-menu-horizontal .yui3-menu-label,
+.yui3-skin-sam .yui3-menu-horizontal .yui3-menu-content {background-image:none;}

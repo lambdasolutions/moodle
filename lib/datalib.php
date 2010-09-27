@@ -108,7 +108,6 @@ function get_admins() {
 function search_users($courseid, $groupid, $searchtext, $sort='', array $exceptions=null) {
     global $DB;
 
-    $LIKE      = $DB->sql_ilike();
     $fullname  = $DB->sql_fullname('u.firstname', 'u.lastname');
 
     if (!empty($exceptions)) {
@@ -125,7 +124,7 @@ function search_users($courseid, $groupid, $searchtext, $sort='', array $excepti
         $order = "";
     }
 
-    $select = "u.deleted = 0 AND u.confirmed = 1 AND ($fullname $LIKE :search1 OR u.email $LIKE :search2)";
+    $select = "u.deleted = 0 AND u.confirmed = 1 AND (".$DB->sql_like($fullname, ':search1', false)." OR ".$DB->sql_like('u.email', ':search2', false).")";
     $params['search1'] = "%$searchtext%";
     $params['search2'] = "%$searchtext%";
 
@@ -184,7 +183,7 @@ function search_users($courseid, $groupid, $searchtext, $sort='', array $excepti
  */
 function get_users($get=true, $search='', $confirmed=false, array $exceptions=null, $sort='firstname ASC',
                    $firstinitial='', $lastinitial='', $page='', $recordsperpage='', $fields='*', $extraselect='', array $extraparams=null) {
-    global $DB;
+    global $DB, $CFG;
 
     if ($get && !$recordsperpage) {
         debugging('Call to get_users with $get = true no $recordsperpage limit. ' .
@@ -193,15 +192,14 @@ function get_users($get=true, $search='', $confirmed=false, array $exceptions=nu
                 'load so much data into memory.', DEBUG_DEVELOPER);
     }
 
-    $LIKE      = $DB->sql_ilike();
     $fullname  = $DB->sql_fullname();
 
-    $select = " username <> :guest AND deleted = 0";
-    $params = array('guest'=>'guest');
+    $select = " id <> :guestid AND deleted = 0";
+    $params = array('guestid'=>$CFG->siteguest);
 
     if (!empty($search)){
         $search = trim($search);
-        $select .= " AND ($fullname $LIKE :search1 OR email $LIKE :search2 OR username = :search3)";
+        $select .= " AND (".$DB->sql_like($fullname, ':search1', false)." OR ".$DB->sql_like('email', ':search2', false)." OR username = :search3)";
         $params['search1'] = "%$search%";
         $params['search2'] = "%$search%";
         $params['search3'] = "$search";
@@ -218,11 +216,11 @@ function get_users($get=true, $search='', $confirmed=false, array $exceptions=nu
     }
 
     if ($firstinitial) {
-        $select .= " AND firstname $LIKE :fni";
+        $select .= " AND ".$DB->sql_like('firstname', ':fni', false, false);
         $params['fni'] = "$firstinitial%";
     }
     if ($lastinitial) {
-        $select .= " AND lastname $LIKE :lni";
+        $select .= " AND ".$DB->sql_like('lastname', ':lni', false, false);
         $params['lni'] = "$lastinitial%";
     }
 
@@ -258,7 +256,6 @@ function get_users_listing($sort='lastaccess', $dir='ASC', $page=0, $recordsperp
                            $search='', $firstinitial='', $lastinitial='', $extraselect='', array $extraparams=null) {
     global $DB;
 
-    $LIKE      = $DB->sql_ilike();
     $fullname  = $DB->sql_fullname();
 
     $select = "deleted <> 1";
@@ -266,18 +263,20 @@ function get_users_listing($sort='lastaccess', $dir='ASC', $page=0, $recordsperp
 
     if (!empty($search)) {
         $search = trim($search);
-        $select .= " AND ($fullname $LIKE :search1 OR email $LIKE :search2 OR username = :search3)";
+        $select .= " AND (". $DB->sql_like($fullname, ':search1', false, false).
+                   " OR ". $DB->sql_like('email', ':search2', false, false).
+                   " OR username = :search3)";
         $params['search1'] = "%$search%";
         $params['search2'] = "%$search%";
         $params['search3'] = "$search";
     }
 
     if ($firstinitial) {
-        $select .= " AND firstname $LIKE :fni";
+        $select .= " AND ". $DB->sql_like('firstname', ':fni', false, false);
         $params['fni'] = "$firstinitial%";
     }
     if ($lastinitial) {
-        $select .= " AND lastname $LIKE :lni";
+        $select .= " AND ". $DB->sql_like('lastname', ':lni', false, false);
         $params['lni'] = "$lastinitial%";
     }
 
@@ -306,10 +305,10 @@ function get_users_listing($sort='lastaccess', $dir='ASC', $page=0, $recordsperp
  * @return array of unconfirmed users
  */
 function get_users_confirmed() {
-    global $DB;
+    global $DB, $CFG;
     return $DB->get_records_sql("SELECT *
                                    FROM {user}
-                                  WHERE confirmed = 1 AND deleted = 0 AND username <> ?", array('guest'));
+                                  WHERE confirmed = 1 AND deleted = 0 AND id <> ?", array($CFG->siteguest));
 }
 
 
@@ -716,7 +715,6 @@ function get_courses_search($searchterms, $sort='fullname ASC', $page=0, $record
         $REGEXP    = $DB->sql_regex(true);
         $NOTREGEXP = $DB->sql_regex(false);
     }
-    $LIKE = $DB->sql_ilike(); // case-insensitive
 
     $searchcond = array();
     $params     = array();
@@ -727,14 +725,14 @@ function get_courses_search($searchterms, $sort='fullname ASC', $page=0, $record
     foreach ($searchterms as $searchterm) {
         $i++;
 
-        $NOT = ''; /// Initially we aren't going to perform NOT LIKE searches, only MSSQL and Oracle
+        $NOT = false; /// Initially we aren't going to perform NOT LIKE searches, only MSSQL and Oracle
                    /// will use it to simulate the "-" operator with LIKE clause
 
     /// Under Oracle and MSSQL, trim the + and - operators and perform
     /// simpler LIKE (or NOT LIKE) queries
         if (!$DB->sql_regex_supported()) {
             if (substr($searchterm, 0, 1) == '-') {
-                $NOT = ' NOT ';
+                $NOT = true;
             }
             $searchterm = trim($searchterm, '+-');
         }
@@ -754,7 +752,7 @@ function get_courses_search($searchterms, $sort='fullname ASC', $page=0, $record
             $params['ss'.$i] = "(^|[^a-zA-Z0-9])$searchterm([^a-zA-Z0-9]|$)";
 
         } else {
-            $searchcond[] = "$concat $NOT $LIKE :ss$i";
+            $searchcond[] = $DB->sql_like($concat,":ss$i", false, true, $NOT);
             $params['ss'.$i] = "%$searchterm%";
         }
     }
@@ -920,7 +918,7 @@ function get_course_category($catid=0) {
             $category = reset($category);
 
         } else {
-            $cat = new object();
+            $cat = new stdClass();
             $cat->name         = get_string('miscellaneous');
             $cat->depth        = 1;
             $cat->sortorder    = MAX_COURSES_IN_CATEGORY;
@@ -1234,9 +1232,8 @@ function make_default_scale() {
                            get_string('postrating3', 'forum');
     $defaultscale->timemodified = time();
 
-    if ($defaultscale->id = $DB->insert_record('scale', $defaultscale)) {
-        $DB->execute("UPDATE {forum} SET scale = ?", array($defaultscale->id));
-    }
+    $defaultscale->id = $DB->insert_record('scale', $defaultscale);
+    $DB->execute("UPDATE {forum} SET scale = ?", array($defaultscale->id));
 }
 
 
@@ -1324,7 +1321,7 @@ function get_course_mods($courseid) {
  * @param int $strictness IGNORE_MISSING means compatible mode, false returned if record not found, debug message if more found;
  *                        IGNORE_MULTIPLE means return first, ignore multiple records found(not recommended);
  *                        MUST_EXIST means throw exception if no record or multiple records found
- * @return array Array of results
+ * @return stdClass
  */
 function get_coursemodule_from_id($modulename, $cmid, $courseid=0, $sectionnum=false, $strictness=IGNORE_MISSING) {
     global $DB;
@@ -1378,7 +1375,7 @@ function get_coursemodule_from_id($modulename, $cmid, $courseid=0, $sectionnum=f
  * @param int $strictness IGNORE_MISSING means compatible mode, false returned if record not found, debug message if more found;
  *                        IGNORE_MULTIPLE means return first, ignore multiple records found(not recommended);
  *                        MUST_EXIST means throw exception if no record or multiple records found
- * @return array Array of results
+ * @return stdClass
  */
 function get_coursemodule_from_instance($modulename, $instance, $courseid=0, $sectionnum=false, $strictness=IGNORE_MISSING) {
     global $DB;
@@ -1730,7 +1727,7 @@ function user_accesstime_log($courseid=0) {
     /// Update $USER->lastaccess for next checks
         $USER->lastaccess = $timenow;
 
-        $last = new object();
+        $last = new stdClass();
         $last->id         = $USER->id;
         $last->lastip     = getremoteaddr();
         $last->lastaccess = $timenow;
@@ -1752,7 +1749,7 @@ function user_accesstime_log($courseid=0) {
             // Update course lastaccess for next checks
             $USER->currentcourseaccess[$courseid] = $timenow;
 
-            $last = new object();
+            $last = new stdClass();
             $last->userid     = $USER->id;
             $last->courseid   = $courseid;
             $last->timeaccess = $timenow;
@@ -1895,7 +1892,7 @@ function count_login_failures($mode, $username, $lastlogin) {
     $params = array('mode'=>$mode, 'username'=>$username, 'lastlogin'=>$lastlogin);
     $select = "module='login' AND action='error' AND time > :lastlogin";
 
-    $count = new object();
+    $count = new stdClass();
 
     if (is_siteadmin()) {
         if ($count->attempts = $DB->count_records_select('log', $select, $params)) {

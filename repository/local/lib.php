@@ -19,10 +19,10 @@
  * repository_local class is used to browse moodle files
  *
  * @since 2.0
- * @package moodlecore
- * @subpackage repository
- * @copyright 2009 Dongsheng Cai <dongsheng@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    repository
+ * @subpackage local
+ * @copyright  2009 Dongsheng Cai <dongsheng@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 class repository_local extends repository {
@@ -94,8 +94,10 @@ class repository_local extends repository {
             // build file tree
             $children = $fileinfo->get_children();
             foreach ($children as $child) {
-                $shorttitle = $this->get_short_filename($child->get_visible_name(), 12);
                 if ($child->is_directory()) {
+                    if ($child->is_empty_area()) {
+                        continue;
+                    }
                     $params = $child->get_params();
                     $subdir_children = $child->get_children();
                     //if (empty($subdir_children)) {
@@ -109,24 +111,21 @@ class repository_local extends repository {
                     //}
                     $node = array(
                         'title' => $child->get_visible_name(),
-                        'shorttitle'=>$shorttitle,
                         'size' => 0,
                         'date' => '',
                         'path' => $encodedpath,
                         'children'=>array(),
-                        'thumbnail' => $OUTPUT->pix_url('f/folder-32') . ''
+                        'thumbnail' => $OUTPUT->pix_url('f/folder-32')->out(false)
                     );
                     $list[] = $node;
                 } else {
                     $encodedpath = base64_encode(serialize($child->get_params()));
-                    $icon = 'f/'.str_replace('.gif', '', mimeinfo('icon', $child->get_visible_name())).'-32';
                     $node = array(
                         'title' => $child->get_visible_name(),
-                        'shorttitle'=>$shorttitle,
                         'size' => 0,
                         'date' => '',
                         'source'=> $encodedpath,
-                        'thumbnail' => $OUTPUT->pix_url($icon) . '',
+                        'thumbnail' => $OUTPUT->pix_url(file_extension_icon($child->get_visible_name(), 32))->out(false)
                     );
                     $list[] = $node;
                 }
@@ -204,5 +203,8 @@ class repository_local extends repository {
         $info['filesize'] = $file_info->get_filesize();
 
         return $info;
+    }
+    function get_file_count($contextid) {
+        global $DB;
     }
 }

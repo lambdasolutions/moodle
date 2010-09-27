@@ -36,8 +36,7 @@ $PAGE->set_url('/blog/index.php', $url_params);
 
 //correct tagid if a text tag is provided as a param
 if (!empty($tag)) {
-    $ILIKE = $DB->sql_ilike();
-    if ($tagrec = $DB->get_record_sql("SELECT * FROM {tag} WHERE name $ILIKE ?", array("%$tag%"))) {
+    if ($tagrec = $DB->get_record_sql("SELECT * FROM {tag} WHERE ". $DB->sql_like('name', '?', false), array("%$tag%"))) {
         $tagid = $tagrec->id;
     } else {
         unset($tagid);
@@ -140,7 +139,7 @@ if (!empty($groupid)) {
     }
 }
 
-if (!empty($user)) {
+if (!empty($userid)) {
     if ($CFG->bloglevel < BLOG_USER_LEVEL) {
         print_error('blogdisable', 'blog');
     }

@@ -101,7 +101,7 @@ class mysqli_native_moodle_database extends moodle_database {
     /**
      * Returns more specific database driver type
      * Note: can be used before connect()
-     * @return string db type mysql, mysqli, postgres7
+     * @return string db type mysqli, pgsql, oci, mssql, sqlsrv
      */
     protected function get_dbtype() {
         return 'mysqli';
@@ -114,6 +114,73 @@ class mysqli_native_moodle_database extends moodle_database {
      */
     protected function get_dblibrary() {
         return 'native';
+    }
+
+    /**
+     * Returns the current MySQL db engine.
+     *
+     * This is an ugly workaround for MySQL default engine problems,
+     * Moodle is designed to work best on ACID compliant databases
+     * with full transaction support. Do not use MyISAM.
+     *
+     * @return string or null MySQL engine name
+     */
+    public function get_dbengine() {
+        if (isset($this->dboptions['dbengine'])) {
+            return $this->dboptions['dbengine'];
+        }
+
+        $engine = null;
+
+        if (!$this->external) {
+            // look for current engine of our config table (the first table that gets created),
+            // so that we create all tables with the same engine
+            $sql = "SELECT engine FROM INFORMATION_SCHEMA.TABLES WHERE table_schema = DATABASE() AND table_name = '{$this->prefix}config'";
+            $this->query_start($sql, NULL, SQL_QUERY_AUX);
+            $result = $this->mysqli->query($sql);
+            $this->query_end($result);
+            if ($rec = $result->fetch_assoc()) {
+                $engine = $rec['engine'];
+            }
+            $result->close();
+        }
+
+        if ($engine) {
+            return $engine;
+        }
+
+        // get the default database engine
+        $sql = "SELECT @@storage_engine";
+        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $result = $this->mysqli->query($sql);
+        $this->query_end($result);
+        if ($rec = $result->fetch_assoc()) {
+            $engine = $rec['@@storage_engine'];
+        }
+        $result->close();
+
+        if (!$this->external and $engine === 'MyISAM') {
+            // we really do not want MyISAM for Moodle, InnoDB or XtraDB is a reasonable defaults if supported
+            $sql = "SHOW STORAGE ENGINES";
+            $this->query_start($sql, NULL, SQL_QUERY_AUX);
+            $result = $this->mysqli->query($sql);
+            $this->query_end($result);
+            $engines = array();
+            while ($res = $result->fetch_assoc()) {
+                if ($res['Support'] === 'YES' or $res['Support'] === 'DEFAULT') {
+                    $engines[$res['Engine']] = true;
+                }
+            }
+            $result->close();
+            if (isset($engines['InnoDB'])) {
+                $engine = 'InnoDB';
+            }
+            if (isset($engines['XtraDB'])) {
+                $engine = 'XtraDB';
+            }
+        }
+
+        return $engine;
     }
 
     /**
@@ -141,6 +208,36 @@ class mysqli_native_moodle_database extends moodle_database {
      */
     public function get_configuration_hints() {
         return get_string('databasesettingssub_mysqli', 'install');
+    }
+
+    /**
+     * Diagnose database and tables, this function is used
+     * to verify database and driver settings, db engine types, etc.
+     *
+     * @return string null means everything ok, string means problem found.
+     */
+    public function diagnose() {
+        $sloppymyisamfound = false;
+        $prefix = str_replace('_', '\\_', $this->prefix);
+        $sql = "SHOW TABLE STATUS WHERE Name LIKE BINARY '$prefix%'";
+        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $result = $this->mysqli->query($sql);
+        $this->query_end($result);
+        if ($result) {
+            while ($arr = $result->fetch_assoc()) {
+                if ($arr['Engine'] === 'MyISAM') {
+                    $sloppymyisamfound = true;
+                    break;
+                }
+            }
+            $result->close();
+        }
+
+        if ($sloppymyisamfound) {
+            return get_string('myisamproblem', 'error');
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -220,7 +317,7 @@ class mysqli_native_moodle_database extends moodle_database {
 
     /**
      * Returns supported query parameter types
-     * @return bitmask
+     * @return int bitmask
      */
     protected function allowed_param_types() {
         return SQL_PARAMS_QM;
@@ -228,6 +325,7 @@ class mysqli_native_moodle_database extends moodle_database {
 
     /**
      * Returns last error reported by database engine.
+     * @return string error message
      */
     public function get_last_error() {
         return $this->mysqli->error;
@@ -315,7 +413,7 @@ class mysqli_native_moodle_database extends moodle_database {
         while ($rawcolumn = $result->fetch_assoc()) {
             $rawcolumn = (object)array_change_key_case($rawcolumn, CASE_LOWER);
 
-            $info = new object();
+            $info = new stdClass();
             $info->name = $rawcolumn->field;
             $matches = null;
 
@@ -568,7 +666,7 @@ class mysqli_native_moodle_database extends moodle_database {
      * @param array $params array of sql parameters
      * @param int $limitfrom return a subset of records, starting at this point (optional, required if $limitnum is set).
      * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
-     * @return mixed an moodle_recordset object
+     * @return moodle_recordset instance
      * @throws dml_exception if error
      */
     public function get_recordset_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {
@@ -610,7 +708,7 @@ class mysqli_native_moodle_database extends moodle_database {
      * @param array $params array of sql parameters
      * @param int $limitfrom return a subset of records, starting at this point (optional, required if $limitnum is set).
      * @param int $limitnum return a subset comprising this many records (optional, required if $limitfrom is set).
-     * @return mixed an array of objects, or empty array if no records were found
+     * @return array of objects, or empty array if no records were found
      * @throws dml_exception if error
      */
     public function get_records_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {
@@ -654,7 +752,7 @@ class mysqli_native_moodle_database extends moodle_database {
      *
      * @param string $sql The SQL query
      * @param array $params array of sql parameters
-     * @return mixed array of values
+     * @return array of values
      * @throws dml_exception if error
      */
     public function get_fieldset_sql($sql, array $params=null) {
@@ -682,7 +780,7 @@ class mysqli_native_moodle_database extends moodle_database {
      * @param bool $returnit return it of inserted record
      * @param bool $bulk true means repeated inserts expected
      * @param bool $customsequence true if 'id' included in $params, disables $returnid
-     * @return true or new id
+     * @return bool|int true or new id
      * @throws dml_exception if error
      */
     public function insert_record_raw($table, $params, $returnid=true, $bulk=false, $customsequence=false) {
@@ -737,7 +835,7 @@ class mysqli_native_moodle_database extends moodle_database {
      * @param string $table The database table to be inserted into
      * @param object $data A data object with values for one or more fields in the record
      * @param bool $returnid Should the id of the newly created record entry be returned? If this option is not requested then true/false is returned.
-     * @return true or new id
+     * @return bool|int true or new id
      * @throws dml_exception if error
      */
     public function insert_record($table, $dataobject, $returnid=true, $bulk=false) {
@@ -927,6 +1025,35 @@ class mysqli_native_moodle_database extends moodle_database {
         return ' CAST(' . $fieldname . ' AS SIGNED) ';
     }
 
+    /**
+     * Returns 'LIKE' part of a query.
+     *
+     * @param string $fieldname usually name of the table column
+     * @param string $param usually bound query parameter (?, :named)
+     * @param bool $casesensitive use case sensitive search
+     * @param bool $accensensitive use accent sensitive search (not all databases support accent insensitive)
+     * @param bool $notlike true means "NOT LIKE"
+     * @param string $escapechar escape char for '%' and '_'
+     * @return string SQL code fragment
+     */
+    public function sql_like($fieldname, $param, $casesensitive = true, $accentsensitive = true, $notlike = false, $escapechar = '\\') {
+        if (strpos($param, '%') !== false) {
+            debugging('Potential SQL injection detected, sql_ilike() expects bound parameters (? or :named)');
+        }
+        $escapechar = $this->mysqli->real_escape_string($escapechar); // prevents problems with C-style escapes of enclosing '\'
+
+        $LIKE = $notlike ? 'NOT LIKE' : 'LIKE';
+        if ($casesensitive) {
+            return "$fieldname $LIKE $param COLLATE utf8_bin ESCAPE '$escapechar'";
+        } else {
+            if ($accentsensitive) {
+                return "LOWER($fieldname) $LIKE LOWER($param) COLLATE utf8_bin ESCAPE '$escapechar'";
+            } else {
+                return "$fieldname $LIKE $param ESCAPE '$escapechar'";
+            }
+        }
+    }
+
     public function sql_concat() {
         $arr = func_get_args();
         $s = implode(', ', $arr);
@@ -1021,6 +1148,8 @@ class mysqli_native_moodle_database extends moodle_database {
      *
      * MyISAM does not support support transactions.
      *
+     * You can override this via the dbtransactions option.
+     *
      * @return bool
      */
     protected function transactions_supported() {
@@ -1028,20 +1157,20 @@ class mysqli_native_moodle_database extends moodle_database {
             return $this->transactions_supported;
         }
 
-        // Only will accept transactions if using InnoDB storage engine (more engines can be added easily BDB, Falcon...)
+        // this is all just guessing, might be better to just specify it in config.php
+        if (isset($this->dboptions['dbtransactions'])) {
+            $this->transactions_supported = $this->dboptions['dbtransactions'];
+            return $this->transactions_supported;
+        }
+
         $this->transactions_supported = false;
 
-        $sql = "SELECT @@storage_engine";
-        $this->query_start($sql, NULL, SQL_QUERY_AUX);
-        $result = $this->mysqli->query($sql);
-        $this->query_end($result);
+        $engine = $this->get_dbengine();
 
-        if ($rec = $result->fetch_assoc()) {
-            if (in_array($rec['@@storage_engine'], array('InnoDB'))) {
-                $this->transactions_supported = true;
-            }
+        // Only will accept transactions if using compatible storage engine (more engines can be added easily BDB, Falcon...)
+        if (in_array($engine, array('InnoDB', 'INNOBASE', 'BDB', 'XtraDB', 'Aria', 'Falcon'))) {
+            $this->transactions_supported = true;
         }
-        $result->close();
 
         return $this->transactions_supported;
     }

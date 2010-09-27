@@ -45,15 +45,15 @@ class block_activity_modules extends block_list {
             }
         }
 
-        asort($modfullnames, SORT_LOCALE_STRING);
+        textlib_get_instance()->asort($modfullnames);
 
         foreach ($modfullnames as $modname => $modfullname) {
             if ($modname === 'resources') {
-                $this->content->items[] = '<a href="'.$CFG->wwwroot.'/course/resources.php?id='.$course->id.'">'.$modfullname.'</a>';
-                $this->content->icons[] = '<img src="'.$OUTPUT->pix_url('f/html') . '" class="icon" alt="" />';
+                $icon = '<img src="'.$OUTPUT->pix_url('f/html') . '" class="icon" alt="" />&nbsp;';
+                $this->content->items[] = '<a href="'.$CFG->wwwroot.'/course/resources.php?id='.$course->id.'">'.$icon.$modfullname.'</a>';
             } else {
-                $this->content->items[] = '<a href="'.$CFG->wwwroot.'/mod/'.$modname.'/index.php?id='.$course->id.'">'.$modfullname.'</a>';
-                $this->content->icons[] = '<img src="'.$OUTPUT->pix_url('icon', $modname) . '" class="icon" alt="" />';
+                $icon = '<img src="'.$OUTPUT->pix_url('icon', $modname) . '" class="icon" alt="" />&nbsp;';
+                $this->content->items[] = '<a href="'.$CFG->wwwroot.'/mod/'.$modname.'/index.php?id='.$course->id.'">'.$icon.$modfullname.'</a>';
             }
         }
 

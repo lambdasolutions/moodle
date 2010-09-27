@@ -48,6 +48,16 @@ class backup_final_task extends backup_task {
         // including membership based on setting
         $this->add_step(new backup_groups_structure_step('groups', 'groups.xml'));
 
+        // Annotate all the question files for the already annotated question
+        // categories (this is performed here and not in the structure step because
+        // it involves multiple contexts and as far as we are always backup-ing
+        // complete question banks we don't need to restrict at all and can be
+        // done in a single pass
+        $this->add_step(new backup_annotate_all_question_files('question_files'));
+
+        // Generate the questions file with the final annotated question_categories
+        $this->add_step(new backup_questions_structure_step('questions', 'questions.xml'));
+
         // Annotate all the user files (conditionally) (private, profile and icon files)
         // Because each user has its own context, we need a separate/specialised step here
         // This step also ensures that the contexts for all the users exist, so next
@@ -73,6 +83,9 @@ class backup_final_task extends backup_task {
         // execute_condition() so only will be excuted if ALL module grade_items in course have been exported
         $this->add_step(new backup_gradebook_structure_step('course_gradebook','gradebook.xml'));
 
+        // Generate the course completion
+        $this->add_step(new backup_course_completion_structure_step('course_completion', 'completion.xml'));
+
         // Generate the scales file with all the (final) annotated scales
         $this->add_step(new backup_final_scales_structure_step('scaleslist', 'scales.xml'));
 
@@ -92,10 +105,10 @@ class backup_final_task extends backup_task {
         // to the backup, settings, license, versions and other useful information
         $this->add_step(new backup_main_structure_step('mainfile', 'moodle_backup.xml'));
 
-        // Generate the zip file
+        // Generate the zip file (mbz extension)
         $this->add_step(new backup_zip_contents('zip_contents'));
 
-        // Copy the generated zip file to final destination
+        // Copy the generated zip (.mbz) file to final destination
         $this->add_step(new backup_store_backup_file('save_backupfile'));
 
         // Clean the temp dir (conditionally) and drop temp table

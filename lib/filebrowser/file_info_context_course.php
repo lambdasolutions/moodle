@@ -53,8 +53,6 @@ class file_info_context_course extends file_info {
      * @param $filename
      */
     public function get_file_info($component, $filearea, $itemid, $filepath, $filename) {
-        global $DB;
-
         if (!$this->course->visible and !has_capability('moodle/course:viewhiddencourses', $this->context)) {
             return null;
         }
@@ -320,8 +318,6 @@ class file_info_area_course_legacy extends file_info_stored {
      * @return string url
      */
     public function get_url($forcedownload=false, $https=false) {
-        global $CFG;
-
         if (!$this->is_readable()) {
             return null;
         }
@@ -398,7 +394,7 @@ class file_info_area_course_section extends file_info {
      * @return string
      */
     public function get_visible_name() {
-        $format = $this->course->format;
+        //$format = $this->course->format;
         $sectionsname = get_string("coursesectionsummaries");
 
         return $sectionsname;
@@ -410,6 +406,16 @@ class file_info_area_course_section extends file_info {
      */
     public function is_writable() {
         return false;
+    }
+
+    /**
+     * Is this empty area?
+     *
+     * @return bool
+     */
+    public function is_empty_area() {
+        $fs = get_file_storage();
+        return $fs->is_area_empty($this->context->id, 'course', 'section');
     }
 
     /**
@@ -487,10 +493,7 @@ class file_info_area_backup_section extends file_info {
      * @return string
      */
     public function get_visible_name() {
-        $format = $this->course->format;
-        $sectionsname = get_string('sectionbackup', 'repository');
-
-        return $sectionsname;
+        return get_string('sectionbackup', 'repository');
     }
 
     /**
@@ -499,6 +502,16 @@ class file_info_area_backup_section extends file_info {
      */
     public function is_writable() {
         return false;
+    }
+
+    /**
+     * Is this empty area?
+     *
+     * @return bool
+     */
+    public function is_empty_area() {
+        $fs = get_file_storage();
+        return $fs->is_area_empty($this->context->id, 'backup', 'section');
     }
 
     /**

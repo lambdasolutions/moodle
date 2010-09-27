@@ -18,9 +18,10 @@
 /**
  * A class representing a single rating and containing some static methods for manipulating ratings
  *
- * @package   moodlecore
- * @copyright 2010 Andrew Davis
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    core
+ * @subpackage rating
+ * @copyright  2010 Andrew Davis
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 define('RATING_UNSET_RATING', -999);
@@ -168,6 +169,7 @@ class rating_manager {
     * @param object $options {
     *            contextid => int the context in which the ratings exist [required]
     *            ratingid => int the id of an individual rating to delete [optional]
+    *            userid => int delete the ratings submitted by this user. May be used in conjuction with itemid [optional]
     *            itemid => int delete all ratings attached to this item [optional]
     * }
     * @return void
@@ -179,9 +181,17 @@ class rating_manager {
             //delete a single rating
             $DB->delete_records('rating', array('contextid'=>$options->contextid, 'id'=>$options->ratingid) );
         }
+        else if( !empty($options->itemid) && !empty($options->userid) ) {
+            //delete the rating for an item submitted by a particular user
+            $DB->delete_records('rating', array('contextid'=>$options->contextid, 'itemid'=>$options->itemid, 'userid'=>$options->userid) );
+        }
         else if( !empty($options->itemid) ) {
             //delete all ratings for an item
             $DB->delete_records('rating', array('contextid'=>$options->contextid, 'itemid'=>$options->itemid) );
+        }
+        else if( !empty($options->userid) ) {
+            //delete all ratings submitted by a user
+            $DB->delete_records('rating', array('contextid'=>$options->contextid, 'userid'=>$options->userid) );
         }
         else {
             //delete all ratings for this context
@@ -377,7 +387,7 @@ class rating_manager {
                     $rating->count      = $rec->numratings; //unset($rec->numratings);
                     $rating->rating     = $rec->usersrating; //unset($rec->usersrating);
                     $rating->itemtimecreated = $this->get_item_time_created($item);
-                    
+
                     break;
                 }
             }
@@ -483,7 +493,7 @@ class rating_manager {
         $params['contextid']= $contextid;
         $itemtable          = $options->itemtable;
         $itemtableusercolumn= $options->itemtableusercolumn;
-        $scaleid            = $options->scaleid;        
+        $scaleid            = $options->scaleid;
         $aggregationstring = $this->get_aggregation_method($options->aggregationmethod);
 
         //if userid is not 0 we only want the grade for a single user
@@ -548,12 +558,12 @@ class rating_manager {
      * @return array
      */
     public function get_aggregate_types() {
-        return array (RATING_AGGREGATE_NONE  => get_string('aggregatenone', 'forum'),
-                      RATING_AGGREGATE_AVERAGE   => get_string('aggregateavg', 'forum'),
-                      RATING_AGGREGATE_COUNT => get_string('aggregatecount', 'forum'),
-                      RATING_AGGREGATE_MAXIMUM   => get_string('aggregatemax', 'forum'),
-                      RATING_AGGREGATE_MINIMUM   => get_string('aggregatemin', 'forum'),
-                      RATING_AGGREGATE_SUM   => get_string('aggregatesum', 'forum'));
+        return array (RATING_AGGREGATE_NONE  => get_string('aggregatenone', 'rating'),
+                      RATING_AGGREGATE_AVERAGE   => get_string('aggregateavg', 'rating'),
+                      RATING_AGGREGATE_COUNT => get_string('aggregatecount', 'rating'),
+                      RATING_AGGREGATE_MAXIMUM   => get_string('aggregatemax', 'rating'),
+                      RATING_AGGREGATE_MINIMUM   => get_string('aggregatemin', 'rating'),
+                      RATING_AGGREGATE_SUM   => get_string('aggregatesum', 'rating'));
     }
 
     /**

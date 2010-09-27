@@ -51,7 +51,7 @@ M.data_filepicker.callback = function(params) {
 M.data_filepicker.init = function(Y, options) {
     options.formcallback = M.data_filepicker.callback;
     if (!M.core_filepicker.instances[options.client_id]) {
-        M.core_filepicker.init(Y, options); 
+        M.core_filepicker.init(Y, options);
     }
     Y.on('click', function(e, client_id) {
         e.preventDefault();
@@ -71,10 +71,9 @@ M.data_filepicker.init = function(Y, options) {
 M.data_urlpicker = {};
 
 M.data_urlpicker.init = function(Y, options) {
-    this.formelementid = options.formelementid;
     options.formcallback = M.data_urlpicker.callback;
     if (!M.core_filepicker.instances[options.client_id]) {
-        M.core_filepicker.init(Y, options); 
+        M.core_filepicker.init(Y, options);
     }
     Y.on('click', function(e, client_id) {
         e.preventDefault();
@@ -84,11 +83,10 @@ M.data_urlpicker.init = function(Y, options) {
 };
 
 M.data_urlpicker.callback = function (params) {
-    document.getElementById(M.data_urlpicker.formelementid).value = params.url;
-}
+    document.getElementById('field_url_'+params.client_id).value = params.url;
+};
 
 M.data_imagepicker = {};
-
 
 M.data_imagepicker.callback = function(params) {
     var html = '<a href="'+params['url']+'"><img src="'+params['url']+'" /> '+params['file']+'</a>';
@@ -101,7 +99,7 @@ M.data_imagepicker.callback = function(params) {
 M.data_imagepicker.init = function(Y, options) {
     options.formcallback = M.data_imagepicker.callback;
     if (!M.core_filepicker.instances[options.client_id]) {
-        M.core_filepicker.init(Y, options); 
+        M.core_filepicker.init(Y, options);
     }
     Y.on('click', function(e, client_id) {
         e.preventDefault();

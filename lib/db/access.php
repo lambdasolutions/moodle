@@ -248,7 +248,7 @@ $capabilities = array(
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
 
         'captype' => 'write',
-        'contextlevel' => CONTEXT_MODULE,
+        'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
@@ -405,27 +405,6 @@ $capabilities = array(
     'moodle/site:uploadusers' => array(
 
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL,
-
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-            'manager' => CAP_ALLOW
-        )
-    ),
-
-    'moodle/site:langeditmaster' => array(
-
-        'riskbitmask' => RISK_CONFIG | RISK_XSS,
-
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-        )
-    ),
-
-    'moodle/site:langeditlocal' => array(
-
-        'riskbitmask' => RISK_CONFIG | RISK_XSS,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,

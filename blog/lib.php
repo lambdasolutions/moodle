@@ -68,7 +68,7 @@ function blog_user_can_view_user_entry($targetuserid, $blogentry=null) {
         return false; // blog system disabled
     }
 
-    if (isloggdin() && $USER->id == $targetuserid) {
+    if (isloggedin() && $USER->id == $targetuserid) {
         return true; // can view own entries in any case
     }
 
@@ -114,12 +114,15 @@ function blog_user_can_view_user_entry($targetuserid, $blogentry=null) {
  */
 function blog_remove_associations_for_user($userid) {
     global $DB;
+    throw new coding_exception('function blog_remove_associations_for_user() is not finished');
+    /*
     $blogentries = blog_fetch_entries(array('user' => $userid), 'lasmodified DESC');
     foreach ($blogentries as $entry) {
         if (blog_user_can_edit_entry($entry)) {
             blog_remove_associations_for_entry($entry->id);
         }
     }
+     */
 }
 
 /**
@@ -184,7 +187,7 @@ function blog_sync_external_entries($externalblog) {
             }
         }
 
-        $newentry = new object();
+        $newentry = new stdClass();
         $newentry->userid = $externalblog->userid;
         $newentry->module = 'blog_external';
         $newentry->content = $externalblog->id;
@@ -659,6 +662,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $cm = $DB->get_record('course_modules', array('id' => $modid));
         $cm->modname = $DB->get_field('modules', 'name', array('id' => $cm->module));
         $cm->name = $DB->get_field($cm->modname, 'name', array('id' => $cm->instance));
+        $a = new stdClass();
         $a->type = get_string('modulename', $cm->modname);
         $PAGE->set_cm($cm, $course);
         $headers['stradd'] = get_string('blogaboutthis', 'blog', $a);
@@ -691,8 +695,6 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
             $mycourseid = $site->id;
         }
 
-        $PAGE->navbar->add($strparticipants, "$CFG->wwwroot/user/index.php?id=$mycourseid");
-        $PAGE->navbar->add(fullname($user), "$CFG->wwwroot/user/view.php?id=$user->id");
         $PAGE->navbar->add($strblogentries, $blogurl);
 
         $blogurl->remove_params('userid');
@@ -712,9 +714,6 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
     // Case 3: A user's blog entries
     if (!empty($userid) && empty($entryid) && ((empty($courseid) && empty($modid)) || !$CFG->useblogassociations)) {
         $blogurl->param('userid', $userid);
-        $PAGE->navbar->add($strparticipants, "$CFG->wwwroot/user/index.php?id=$site->id");
-        $PAGE->navbar->add(fullname($user), "$CFG->wwwroot/user/view.php?id=$user->id");
-        $PAGE->navbar->add($strblogentries, $blogurl);
         $PAGE->set_title("$site->shortname: " . fullname($user) . ": " . get_string('blog', 'blog'));
         $PAGE->set_heading("$site->shortname: " . fullname($user) . ": " . get_string('blog', 'blog'));
         $headers['heading'] = get_string('userblog', 'blog', fullname($user));
@@ -724,7 +723,6 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
 
     // Case 4: No blog associations, no userid
     if (!$CFG->useblogassociations && empty($userid) && !in_array($action, array('edit', 'add'))) {
-        $PAGE->navbar->add($strblogentries, $blogurl);
         $PAGE->set_title("$site->shortname: " . get_string('blog', 'blog'));
         $PAGE->set_heading("$site->shortname: " . get_string('blog', 'blog'));
         $headers['heading'] = get_string('siteblog', 'blog', $site->shortname);
@@ -743,6 +741,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $PAGE->set_title("$site->shortname: $cm->name: " . fullname($user) . ': ' . get_string('blogentries', 'blog'));
         $PAGE->set_heading("$site->shortname: $cm->name: " . fullname($user) . ': ' . get_string('blogentries', 'blog'));
 
+        $a = new stdClass();
         $a->user = fullname($user);
         $a->mod = $cm->name;
         $a->type = get_string('modulename', $cm->modname);
@@ -756,13 +755,12 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $blogurl->param('userid', $userid);
         $blogurl->param('courseid', $courseid);
 
-        $PAGE->navbar->add($strparticipants, "$CFG->wwwroot/user/index.php?id=$course->id");
-        $PAGE->navbar->add(fullname($user), "$CFG->wwwroot/user/view.php?id=$user->id");
         $PAGE->navbar->add($strblogentries, $blogurl);
 
         $PAGE->set_title("$site->shortname: $course->shortname: " . fullname($user) . ': ' . get_string('blogentries', 'blog'));
         $PAGE->set_heading("$site->shortname: $course->shortname: " . fullname($user) . ': ' . get_string('blogentries', 'blog'));
 
+        $a = new stdClass();
         $a->user = fullname($user);
         $a->course = $course->fullname;
         $a->type = get_string('course');
@@ -786,6 +784,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $PAGE->set_title("$site->shortname: $course->shortname: " . get_string('blogentries', 'blog') . ": $group->name");
         $PAGE->set_heading("$site->shortname: $course->shortname: " . get_string('blogentries', 'blog') . ": $group->name");
 
+        $a = new stdClass();
         $a->group = $group->name;
         $a->course = $course->fullname;
         $a->type = get_string('course');
@@ -806,6 +805,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $PAGE->set_title("$site->shortname: $course->shortname: $cm->name: " . get_string('blogentries', 'blog') . ": $group->name");
         $PAGE->set_heading("$site->shortname: $course->shortname: $cm->name: " . get_string('blogentries', 'blog') . ": $group->name");
 
+        $a = new stdClass();
         $a->group = $group->name;
         $a->mod = $cm->name;
         $a->type = get_string('modulename', $cm->modname);
@@ -823,6 +823,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $PAGE->set_title("$site->shortname: $course->shortname: $cm->name: " . get_string('blogentries', 'blog'));
         $PAGE->set_heading("$site->shortname: $course->shortname: $cm->name: " . get_string('blogentries', 'blog'));
         $headers['heading'] = get_string('blogentriesabout', 'blog', $cm->name);
+        $a = new stdClass();
         $a->type = get_string('modulename', $cm->modname);
         $headers['stradd'] = get_string('blogaboutthis', 'blog', $a);
         $headers['strview'] = get_string('viewallmodentries', 'blog', $a);
@@ -834,6 +835,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
         $PAGE->navbar->add($strblogentries, $blogurl);
         $PAGE->set_title("$site->shortname: $course->shortname: " . get_string('blogentries', 'blog'));
         $PAGE->set_heading("$site->shortname: $course->shortname: " . get_string('blogentries', 'blog'));
+        $a = new stdClass();
         $a->type = get_string('course');
         $headers['heading'] = get_string('blogentriesabout', 'blog', $course->fullname);
         $headers['stradd'] = get_string('blogaboutthis', 'blog', $a);
@@ -863,16 +865,7 @@ function blog_get_headers($courseid=null, $groupid=null, $userid=null, $tagid=nu
 
     // Append edit mode info
     if (!empty($action) && $action == 'add') {
-        if (empty($modid) && empty($courseid)) {
-            if (empty($user)) {
-                $user = $USER;
-            }
-            $PAGE->navbar->add($strparticipants, "$CFG->wwwroot/user/index.php?id=$site->id");
-            $PAGE->navbar->add(fullname($user), "$CFG->wwwroot/user/view.php?id=$user->id");
-            $blogurl->param('userid', $user->id);
-            $PAGE->navbar->add($strblogentries, $blogurl);
-        }
-        $PAGE->navbar->add(get_string('addnewentry', 'blog'));
+
     } else if (!empty($action) && $action == 'edit') {
         $PAGE->navbar->add(get_string('editentry', 'blog'));
     }

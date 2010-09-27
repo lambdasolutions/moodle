@@ -170,7 +170,7 @@
 
         //Iterate over questions
         for($i = 0; $i < sizeof($questions); $i++) {
-            $question = new object;
+            $question = new stdClass();
             $que_info = $questions[$i];
             //traverse_xmlize($que_info);                                                                 //Debug
             //print_object ($GLOBALS['traverse_array']);                                                  //Debug
@@ -974,7 +974,7 @@
             $multianswer->answers = implode(",",$ansarr);
 
             //Build the new question structure
-            $question = new object;
+            $question = new stdClass();
             $question->category           = $parentquestion->category;
             $question->parent             = $parentquestion->id;
             $question->name               = $parentquestion->name;
@@ -1034,7 +1034,7 @@
         if ($status) {
             ksort($createdquestions);
 
-            $multianswerdb = new object;
+            $multianswerdb = new stdClass();
             $multianswerdb->question = $parentquestion->id;
             $multianswerdb->sequence = implode(",",$createdquestions);
             $mid = $DB->insert_record('question_multianswer', $multianswerdb);
@@ -1757,7 +1757,7 @@
                 $wtm = new WikiToMarkdown();
                 $record->questiontext = $wtm->convert($record->questiontext, $restore->course_id);
                 $record->questiontextformat = FORMAT_MARKDOWN;
-                $status = $DB->update_record('question', $record);
+                $DB->update_record('question', $record);
                 //Do some output
                 $i++;
                 if (($i+1) % 1 == 0) {
@@ -1774,7 +1774,7 @@
         return $status;
     }
 
-    //This function returns a log record with all the necessay transformations
+    //This function returns a log record with all the necessary transformations
     //done. It's used by restore_log_module() to restore modules log.
     function quiz_restore_pre15_logs($restore,$log) {
 

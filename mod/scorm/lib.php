@@ -292,7 +292,7 @@ function scorm_user_outline($course, $user, $mod, $scorm) {
     $grades = grade_get_grades($course->id, 'mod', 'scorm', $scorm->id, $user->id);
     if (!empty($grades->items[0]->grades)) {
         $grade = reset($grades->items[0]->grades);
-        $result = new object();
+        $result = new stdClass();
         $result->info = get_string('grade') . ': '. $grade->str_long_grade;
         $result->time = $grade->dategraded;
         return $result;
@@ -507,7 +507,7 @@ function scorm_get_user_grades($scorm, $userid=0) {
     if (empty($userid)) {
         if ($scousers = $DB->get_records_select('scorm_scoes_track', "scormid=? GROUP BY userid", array($scorm->id), "", "userid,null")) {
             foreach ($scousers as $scouser) {
-                $grades[$scouser->userid] = new object();
+                $grades[$scouser->userid] = new stdClass();
                 $grades[$scouser->userid]->id         = $scouser->userid;
                 $grades[$scouser->userid]->userid     = $scouser->userid;
                 $grades[$scouser->userid]->rawgrade = scorm_grade_user($scorm, $scouser->userid);
@@ -520,7 +520,7 @@ function scorm_get_user_grades($scorm, $userid=0) {
         if (!$DB->get_records_select('scorm_scoes_track', "scormid=? AND userid=? GROUP BY userid", array($scorm->id, $userid), "", "userid,null")) {
             return false; //no attempt yet
         }
-        $grades[$userid] = new object();
+        $grades[$userid] = new stdClass();
         $grades[$userid]->id         = $userid;
         $grades[$userid]->userid     = $userid;
         $grades[$userid]->rawgrade = scorm_grade_user($scorm, $userid);
@@ -546,7 +546,7 @@ function scorm_update_grades($scorm, $userid=0, $nullifnone=true) {
         scorm_grade_item_update($scorm, $grades);
 
     } else if ($userid and $nullifnone) {
-        $grade = new object();
+        $grade = new stdClass();
         $grade->userid   = $userid;
         $grade->rawgrade = NULL;
         scorm_grade_item_update($scorm, $grade);
@@ -598,6 +598,7 @@ function scorm_upgrade_grades() {
  */
 function scorm_grade_item_update($scorm, $grades=NULL) {
     global $CFG, $DB;
+    require_once($CFG->dirroot.'/mod/scorm/locallib.php');
     if (!function_exists('grade_update')) { //workaround for buggy PHP versions
         require_once($CFG->libdir.'/gradelib.php');
     }
@@ -728,7 +729,7 @@ function scorm_reset_gradebook($courseid, $type='') {
 }
 
 /**
- * Actual implementation of the rest coures functionality, delete all the
+ * Actual implementation of the reset course functionality, delete all the
  * scorm attempts for course $data->courseid.
  *
  * @global stdClass
@@ -949,7 +950,7 @@ function scorm_extend_navigation($navigation, $course, $module, $cm) {
  *
  * @param string $type - type of log(aicc,scorm12,scorm13) used as prefix for filename
  * @param integer $scoid - scoid of object this log entry is for
- * @return string The filename as an absolute path 
+ * @return string The filename as an absolute path
 */
 function scorm_debug_log_filename($type, $scoid) {
     global $CFG, $USER;
@@ -1030,7 +1031,7 @@ function scorm_print_overview($courses, &$htmlarray) {
     }
 
     if(empty($scormids)){
-        // no assigments to look at - we're done
+        // no scorms to look at - we're done
         return true;
     }
     $strscorm   = get_string('modulename', 'scorm');

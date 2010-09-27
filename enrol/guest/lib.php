@@ -31,7 +31,29 @@ defined('MOODLE_INTERNAL') || die();
 
 class enrol_guest_plugin extends enrol_plugin {
 
-    public function enrol_user(stdClass $instance, $userid, $roleid = null, $timestart = 0, $timeend = 0) {
+    /**
+     * Returns optional enrolment information icons.
+     *
+     * This is used in course list for quick overview of enrolment options.
+     *
+     * We are not using single instance parameter because sometimes
+     * we might want to prevent icon repetition when multiple instances
+     * of one type exist. One instance may also produce several icons.
+     *
+     * @param array $instances all enrol instances of this type in one course
+     * @return array of pix_icon
+     */
+    public function get_info_icons(array $instances) {
+        foreach ($instances as $instance) {
+            if ($instance->password) {
+                return array(new pix_icon('withoutpassword', get_string('pluginname', 'enrol_guest'), 'enrol_guest'));
+            } else {
+                return array(new pix_icon('withpassword', get_string('pluginname', 'enrol_guest'), 'enrol_guest'));
+            }
+        }
+    }
+
+    public function enrol_user(stdClass $instance, $userid, $roleid = NULL, $timestart = 0, $timeend = 0, $status = NULL) {
         // no real enrolments here!
         return;
     }
@@ -294,3 +316,16 @@ class enrol_guest_plugin extends enrol_plugin {
 
 }
 
+/**
+ * Indicates API features that the enrol plugin supports.
+ *
+ * @param string $feature
+ * @return mixed True if yes (some features may use other values)
+ */
+function enrol_guest_supports($feature) {
+    switch($feature) {
+        case ENROL_RESTORE_TYPE: return ENROL_RESTORE_NOUSERS;
+
+        default: return null;
+    }
+}

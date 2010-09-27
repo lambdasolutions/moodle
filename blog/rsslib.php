@@ -50,7 +50,7 @@ function blog_rss_add_http_header($context, $title, $filtertype, $filterselect=0
 
     //$componentname = 'blog';
     //rss_add_http_header($context, $componentname, $filterselect, $title);
-    
+
     if (!isloggedin()) {
         $userid = $CFG->siteguest;
     } else {
@@ -68,6 +68,8 @@ function blog_rss_add_http_header($context, $title, $filtertype, $filterselect=0
  */
 function blog_rss_get_params($filters) {
     $thingid = $rsscontext = $filtertype = null;
+
+    $sitecontext = get_context_instance(CONTEXT_SYSTEM);
 
     if (!$filters) {
         $thingid = SITEID;
@@ -230,24 +232,16 @@ function blog_rss_file_name($type, $id, $tagid=0) {
 //This function saves to file the rss feed specified in the parameters
 function blog_rss_save_file($type, $id, $tagid=0, $contents='') {
     global $CFG;
-    
+
     $status = true;
 
     //blog creates some additional dirs within the rss cache so make sure they all exist
-    if (! $basedir = make_upload_directory ('cache/rss/blog')) {
-        //Cannot be created, so error
-        $status = false;
-    }
-    if (! $basedir = make_upload_directory ('cache/rss/blog/'.$type)) {
-        //Cannot be created, so error
-        $status = false;
-    }
+    make_upload_directory('cache/rss/blog');
+    make_upload_directory('cache/rss/blog/'.$type);
 
-    if ($status) {
-        $filename = blog_rss_file_name($type, $id, $tagid);
-        $expandfilename = false; //we're supplying a full file path
-        $status = rss_save_file('blog', $filename, $contents, $expandfilename);
-    }
+    $filename = blog_rss_file_name($type, $id, $tagid);
+    $expandfilename = false; //we're supplying a full file path
+    $status = rss_save_file('blog', $filename, $contents, $expandfilename);
 
     return $status;
 }
