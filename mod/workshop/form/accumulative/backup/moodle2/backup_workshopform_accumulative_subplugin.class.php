@@ -16,8 +16,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package    workshopform_accumulative
- * @subpackage backup-moodle2
+ * @package    workshopform
+ * @subpackage accumulative
  * @copyright  2010 David Mudrak <david@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -83,7 +83,7 @@ class backup_workshopform_accumulative_subplugin extends backup_subplugin {
     /**
      * Returns the structure of dimension grades
      *
-     * @param string forst parameter of {@link backup_nested_element} constructor
+     * @param string first parameter of {@link backup_nested_element} constructor
      */
     private function dimension_grades_structure($elementname) {
 

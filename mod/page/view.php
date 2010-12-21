@@ -26,6 +26,7 @@
 
 require('../../config.php');
 require_once($CFG->dirroot.'/mod/page/locallib.php');
+require_once($CFG->libdir.'/completionlib.php');
 
 $id      = optional_param('id', 0, PARAM_INT); // Course Module ID
 $p       = optional_param('p', 0, PARAM_INT);  // Page instance ID
@@ -48,6 +49,7 @@ $course = $DB->get_record('course', array('id'=>$cm->course), '*', MUST_EXIST);
 
 require_course_login($course, true, $cm);
 $context = get_context_instance(CONTEXT_MODULE, $cm->id);
+require_capability('mod/page:view', $context);
 
 add_to_log($course->id, 'page', 'view', 'view.php?id='.$cm->id, $page->id, $cm->id);
 
@@ -90,7 +92,7 @@ if (!empty($options['printintro'])) {
 }
 
 $content = file_rewrite_pluginfile_urls($page->content, 'pluginfile.php', $context->id, 'mod_page', 'content', $page->revision);
-$formatoptions = (object)array('noclean'=>true);
+$formatoptions = array('noclean'=>true, 'overflowdiv'=>true);
 $content = format_text($content, $page->contentformat, $formatoptions, $course->id);
 echo $OUTPUT->box($content, "generalbox center clearfix");
 

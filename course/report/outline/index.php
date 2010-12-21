@@ -12,7 +12,7 @@
     }
 
     $PAGE->set_url('/course/report/outline/index.php', array('id'=>$id));
-    $PAGE->set_pagelayout('admin');
+    $PAGE->set_pagelayout('report');
 
     require_login($course);
     $context = get_context_instance(CONTEXT_COURSE, $course->id);

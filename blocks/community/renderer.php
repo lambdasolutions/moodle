@@ -46,6 +46,36 @@ class block_community_renderer extends plugin_renderer_base {
     }
 
     /**
+     * Display remove community success message and a button to be redirected to te referer page
+     * @param moodle_url $url the page to be redirected to
+     * @return string html
+     */
+    public function remove_success(moodle_url $url) {
+        $html = $this->output->notification(get_string('communityremoved', 'hub'),
+                    'notifysuccess');
+        $continuebutton = new single_button($url,
+                        get_string('continue', 'block_community'));
+        $html .= html_writer::tag('div', $this->output->render($continuebutton),
+                array('class' => 'continuebutton'));
+        return $html;
+    }
+
+    /**
+     * Display add community course success message and a button to be redirected to te referer page
+     * @param moodle_url $url the page to be redirected to
+     * @return string html
+     */
+    public function save_link_success(moodle_url $url) {
+        $html = $this->output->notification(get_string('addedtoblock', 'block_community'),
+                    'notifysuccess');
+        $continuebutton = new single_button($url,
+                        get_string('continue', 'block_community'));
+        $html .= html_writer::tag('div', $this->output->render($continuebutton),
+                array('class' => 'continuebutton'));
+        return $html;
+    }
+
+    /**
      * The 'Next'/'more course result' link for a courses search
      * @param array $data - the form parameter to execute the search on more result
      * @return string html code
@@ -94,33 +124,21 @@ class block_community_renderer extends plugin_renderer_base {
                 //create title html
                 $coursename = html_writer::tag('h3', $course->fullname,
                                 array('class' => 'hubcoursetitle'));
-                $coursenamehtml = html_writer::tag('div', $coursename, array());
+                $coursenamehtml = html_writer::tag('div', $coursename, 
+                        array('class' => 'hubcoursetitlepanel'));
 
                 // create screenshots html
                 $screenshothtml = '';
-
                 if (!empty($course->screenshots)) {
-                    $images = array();
                     $baseurl = new moodle_url($huburl . '/local/hub/webservice/download.php',
                                     array('courseid' => $course->id,
                                         'filetype' => HUB_SCREENSHOT_FILE_TYPE));
-                    for ($i = 1; $i <= $course->screenshots; $i = $i + 1) {
-                        $params['screenshotnumber'] = $i;
-                        $images[] = array(
-                            'thumburl' => new moodle_url($baseurl, array('screenshotnumber' => $i)),
-                            'imageurl' => new moodle_url($baseurl,
-                                    array('screenshotnumber' => $i, 'imagewidth' => 'original')),
-                            'title' => $course->fullname,
-                            'alt' => $course->fullname
-                        );
-                    }
-                    $imagegallery = new image_gallery($images, $course->shortname);
-                    $imagegallery->displayfirstimageonly = true;
-                    $screenshothtml = $this->output->render($imagegallery);
+                    $screenshothtml = html_writer::empty_tag('img',
+                        array('src' => $baseurl, 'alt' => $course->fullname));
                 }
                 $coursescreenshot = html_writer::tag('div', $screenshothtml,
-                                array('class' => 'coursescreenshot'));
-
+                                array('class' => 'coursescreenshot',
+                                    'id' => 'image-' . $course->id));
 
                 //create description html
                 $deschtml = html_writer::tag('div', $course->description,
@@ -159,7 +177,7 @@ class block_community_renderer extends plugin_renderer_base {
                     $course->lang = '';
                 }
                 //licence
-                require_once($CFG->dirroot . "/lib/licenselib.php");
+                require_once($CFG->libdir . "/licenselib.php");
                 $licensemanager = new license_manager();
                 $licenses = $licensemanager->get_licenses();
                 foreach ($licenses as $license) {
@@ -242,7 +260,7 @@ class block_community_renderer extends plugin_renderer_base {
                     $params = array('sesskey' => sesskey(), 'download' => 1, 'confirmed' => 1,
                         'remotemoodleurl' => $CFG->wwwroot, 'courseid' => $contextcourseid,
                         'downloadcourseid' => $course->id, 'huburl' => $huburl,
-                        'coursefullname' => $course->fullname);
+                        'coursefullname' => $course->fullname, 'backupsize' => $course->backupsize);
                     $downloadurl = new moodle_url("/blocks/community/communitycourse.php", $params);
                     $downloadbuttonhtml = html_writer::tag('a', get_string('download', 'block_community'),
                                     array('href' => $downloadurl, 'class' => 'centeredbutton, hubcoursedownload'));

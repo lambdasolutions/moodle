@@ -23,9 +23,10 @@
  * workshop_something() taking the workshop instance as the first
  * parameter, we use a class workshop that provides all methods.
  *
- * @package   mod-workshop
- * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    mod
+ * @subpackage workshop
+ * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -598,7 +599,7 @@ class workshop {
         global $DB;
 
         $sql = 'SELECT s.id, s.title,
-                       a.id AS assessmentid, a.weight, a.grade, a.gradinggrade
+                       a.id AS assessmentid, a.grade, a.gradinggrade
                   FROM {workshop_submissions} s
              LEFT JOIN {workshop_assessments} a ON (a.submissionid = s.id AND a.weight = 1)
                  WHERE s.example = 1 AND s.workshopid = :workshopid
@@ -620,7 +621,7 @@ class workshop {
             return false;
         }
         $sql = 'SELECT s.id, s.title,
-                       a.id AS assessmentid, a.weight, a.grade, a.gradinggrade
+                       a.id AS assessmentid, a.grade, a.gradinggrade
                   FROM {workshop_submissions} s
              LEFT JOIN {workshop_assessments} a ON (a.submissionid = s.id AND a.reviewerid = :reviewerid AND a.weight = 0)
                  WHERE s.example = 1 AND s.workshopid = :workshopid
@@ -629,29 +630,75 @@ class workshop {
     }
 
     /**
-     * Prepares component containing summary of given example to be rendered
+     * Prepares renderable submission component
+     *
+     * @param stdClass $record required by {@see workshop_submission}
+     * @param bool $showauthor show the author-related information
+     * @return workshop_submission
+     */
+    public function prepare_submission(stdClass $record, $showauthor = false) {
+
+        $submission         = new workshop_submission($record, $showauthor);
+        $submission->url    = $this->submission_url($record->id);
+
+        return $submission;
+    }
+
+    /**
+     * Prepares renderable submission summary component
+     *
+     * @param stdClass $record required by {@see workshop_submission_summary}
+     * @param bool $showauthor show the author-related information
+     * @return workshop_submission_summary
+     */
+    public function prepare_submission_summary(stdClass $record, $showauthor = false) {
+
+        $summary        = new workshop_submission_summary($record, $showauthor);
+        $summary->url   = $this->submission_url($record->id);
+
+        return $summary;
+    }
+
+    /**
+     * Prepares renderable example submission component
+     *
+     * @param stdClass $record required by {@see workshop_example_submission}
+     * @return workshop_example_submission
+     */
+    public function prepare_example_submission(stdClass $record) {
+
+        $example = new workshop_example_submission($record);
+
+        return $example;
+    }
+
+    /**
+     * Prepares renderable example submission summary component
+     *
+     * If the example is editable, the caller must set the 'editable' flag explicitly.
      *
      * @param stdClass $example as returned by {@link workshop::get_examples_for_manager()} or {@link workshop::get_examples_for_reviewer()}
-     * @return stdclass component to be rendered
+     * @return workshop_example_submission_summary to be rendered
      */
-    public function prepare_example_summary(stdclass $example) {
+    public function prepare_example_summary(stdClass $example) {
 
-        $summary = new stdclass();
-        $summary->example = $example;
+        $summary = new workshop_example_submission_summary($example);
+
         if (is_null($example->grade)) {
-            $summary->status   = 'notgraded';
-            $buttontext = get_string('assess', 'workshop');
+            $summary->status = 'notgraded';
+            $summary->assesslabel = get_string('assess', 'workshop');
         } else {
-            $summary->status   = 'graded';
-            $buttontext = get_string('reassess', 'workshop');
+            $summary->status = 'graded';
+            $summary->assesslabel = get_string('reassess', 'workshop');
         }
 
         $summary->gradeinfo           = new stdclass();
         $summary->gradeinfo->received = $this->real_grade($example->grade);
         $summary->gradeinfo->max      = $this->real_grade(100);
 
-        $aurl = new moodle_url($this->exsubmission_url($example->id), array('assess' => 'on', 'sesskey' => sesskey()));
-        $summary->btnform = new single_button($aurl, $buttontext, 'get');
+        $summary->url       = new moodle_url($this->exsubmission_url($example->id));
+        $summary->editurl   = new moodle_url($this->exsubmission_url($example->id), array('edit' => 'on'));
+        $summary->assessurl = new moodle_url($this->exsubmission_url($example->id), array('assess' => 'on', 'sesskey' => sesskey()));
 
         return $summary;
     }
@@ -1046,6 +1093,27 @@ class workshop {
     }
 
     /**
+     * Workshop wrapper around {@see add_to_log()}
+     *
+     * @param string $action to be logged
+     * @param moodle_url $url absolute url as returned by {@see workshop::submission_url()} and friends
+     * @param mixed $info additional info, usually id in a table
+     */
+    public function log($action, moodle_url $url = null, $info = null) {
+
+        if (is_null($url)) {
+            $url = $this->view_url();
+        }
+
+        if (is_null($info)) {
+            $info = $this->id;
+        }
+
+        $logurl = $this->log_convert_url($url);
+        add_to_log($this->course->id, 'workshop', $action, $logurl, $info, $this->cm->id);
+    }
+
+    /**
      * Are users allowed to create their submissions?
      *
      * @return bool
@@ -1225,7 +1293,7 @@ class workshop {
      * @param string $sorthow ASC|DESC
      * @return stdclass data for the renderer
      */
-    public function prepare_grading_report($userid, $groups, $page, $perpage, $sortby, $sorthow) {
+    public function prepare_grading_report_data($userid, $groups, $page, $perpage, $sortby, $sorthow) {
         global $DB;
 
         $canviewall     = has_capability('mod/workshop:viewallassessments', $this->context, $userid);
@@ -1914,7 +1982,27 @@ class workshop {
         );
     }
 
+    /**
+     * Converts absolute URL to relative URL needed by {@see add_to_log()}
+     *
+     * @param moodle_url $url absolute URL
+     * @return string
+     */
+    protected function log_convert_url(moodle_url $fullurl) {
+        static $baseurl;
+
+        if (!isset($baseurl)) {
+            $baseurl = new moodle_url('/mod/workshop/');
+            $baseurl = $baseurl->out();
+        }
+
+        return substr($fullurl->out(), strlen($baseurl));
+    }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Renderable components
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Represents the user planner tool
@@ -2296,5 +2384,398 @@ class workshop_user_plan implements renderable {
             $this->examples = $this->workshop->get_examples_for_reviewer($this->userid);
         }
         return $this->examples;
+    }
+}
+
+/**
+ * Common base class for submissions and example submissions rendering
+ *
+ * Subclasses of this class convert raw submission record from
+ * workshop_submissions table (as returned by {@see workshop::get_submission_by_id()}
+ * for example) into renderable objects.
+ */
+abstract class workshop_submission_base {
+
+    /** @var bool is the submission anonymous (ie contains author information) */
+    protected $anonymous;
+
+    /* @var array of columns from workshop_submissions that are assigned as properties */
+    protected $fields = array();
+
+    /**
+     * Copies the properties of the given database record into properties of $this instance
+     *
+     * @param stdClass $submission full record
+     * @param bool $showauthor show the author-related information
+     * @param array $options additional properties
+     */
+    public function __construct(stdClass $submission, $showauthor = false) {
+
+        foreach ($this->fields as $field) {
+            if (!property_exists($submission, $field)) {
+                throw new coding_exception('Submission record must provide public property ' . $field);
+            }
+            if (!property_exists($this, $field)) {
+                throw new coding_exception('Renderable component must accept public property ' . $field);
+            }
+            $this->{$field} = $submission->{$field};
+        }
+
+        if ($showauthor) {
+            $this->anonymous = false;
+        } else {
+            $this->anonymize();
+        }
+    }
+
+    /**
+     * Unsets all author-related properties so that the renderer does not have access to them
+     *
+     * Usually this is called by the contructor but can be called explicitely, too.
+     */
+    public function anonymize() {
+        foreach (array('authorid', 'authorfirstname', 'authorlastname',
+               'authorpicture', 'authorimagealt', 'authoremail') as $field) {
+            unset($this->{$field});
+        }
+        $this->anonymous = true;
+    }
+
+    /**
+     * Does the submission object contain author-related information?
+     *
+     * @return null|boolean
+     */
+    public function is_anonymous() {
+        return $this->anonymous;
+    }
+}
+
+/**
+ * Renderable object containing a basic set of information needed to display the submission summary
+ *
+ * @see workshop_renderer::render_workshop_submission_summary
+ */
+class workshop_submission_summary extends workshop_submission_base implements renderable {
+
+    /** @var int */
+    public $id;
+    /** @var string */
+    public $title;
+    /** @var string graded|notgraded */
+    public $status;
+    /** @var int */
+    public $timecreated;
+    /** @var int */
+    public $timemodified;
+    /** @var int */
+    public $authorid;
+    /** @var string */
+    public $authorfirstname;
+    /** @var string */
+    public $authorlastname;
+    /** @var int */
+    public $authorpicture;
+    /** @var string */
+    public $authorimagealt;
+    /** @var string */
+    public $authoremail;
+    /** @var moodle_url to display submission */
+    public $url;
+
+    /**
+     * @var array of columns from workshop_submissions that are assigned as properties
+     * of instances of this class
+     */
+    protected $fields = array(
+        'id', 'title', 'timecreated', 'timemodified',
+        'authorid', 'authorfirstname', 'authorlastname', 'authorpicture',
+        'authorimagealt', 'authoremail');
+}
+
+/**
+ * Renderable object containing all the information needed to display the submission
+ *
+ * @see workshop_renderer::render_workshop_submission()
+ */
+class workshop_submission extends workshop_submission_summary implements renderable {
+
+    /** @var string */
+    public $content;
+    /** @var int */
+    public $contentformat;
+    /** @var bool */
+    public $contenttrust;
+    /** @var array */
+    public $attachment;
+
+    /**
+     * @var array of columns from workshop_submissions that are assigned as properties
+     * of instances of this class
+     */
+    protected $fields = array(
+        'id', 'title', 'timecreated', 'timemodified', 'content', 'contentformat', 'contenttrust',
+        'attachment', 'authorid', 'authorfirstname', 'authorlastname', 'authorpicture',
+        'authorimagealt', 'authoremail');
+}
+
+/**
+ * Renderable object containing a basic set of information needed to display the example submission summary
+ *
+ * @see workshop::prepare_example_summary()
+ * @see workshop_renderer::render_workshop_example_submission_summary()
+ */
+class workshop_example_submission_summary extends workshop_submission_base implements renderable {
+
+    /** @var int */
+    public $id;
+    /** @var string */
+    public $title;
+    /** @var string graded|notgraded */
+    public $status;
+    /** @var stdClass */
+    public $gradeinfo;
+    /** @var moodle_url */
+    public $url;
+    /** @var moodle_url */
+    public $editurl;
+    /** @var string */
+    public $assesslabel;
+    /** @var moodle_url */
+    public $assessurl;
+    /** @var bool must be set explicitly by the caller */
+    public $editable = false;
+
+    /**
+     * @var array of columns from workshop_submissions that are assigned as properties
+     * of instances of this class
+     */
+    protected $fields = array('id', 'title');
+
+    /**
+     * Example submissions are always anonymous
+     *
+     * @return true
+     */
+    public function is_anonymous() {
+        return true;
+    }
+}
+
+/**
+ * Renderable object containing all the information needed to display the example submission
+ *
+ * @see workshop_renderer::render_workshop_example_submission()
+ */
+class workshop_example_submission extends workshop_example_submission_summary implements renderable {
+
+    /** @var string */
+    public $content;
+    /** @var int */
+    public $contentformat;
+    /** @var bool */
+    public $contenttrust;
+    /** @var array */
+    public $attachment;
+
+    /**
+     * @var array of columns from workshop_submissions that are assigned as properties
+     * of instances of this class
+     */
+    protected $fields = array('id', 'title', 'content', 'contentformat', 'contenttrust', 'attachment');
+}
+
+/**
+ * Renderable message to be displayed to the user
+ *
+ * Message can contain an optional action link with a label that is supposed to be rendered
+ * as a button or a link.
+ *
+ * @see workshop::renderer::render_workshop_message()
+ */
+class workshop_message implements renderable {
+
+    const TYPE_INFO     = 10;
+    const TYPE_OK       = 20;
+    const TYPE_ERROR    = 30;
+
+    /** @var string */
+    protected $text = '';
+    /** @var int */
+    protected $type = self::TYPE_INFO;
+    /** @var moodle_url */
+    protected $actionurl = null;
+    /** @var string */
+    protected $actionlabel = '';
+
+    /**
+     * @param string $text short text to be displayed
+     * @param string $type optional message type info|ok|error
+     */
+    public function __construct($text = null, $type = self::TYPE_INFO) {
+        $this->set_text($text);
+        $this->set_type($type);
+    }
+
+    /**
+     * Sets the message text
+     *
+     * @param string $text short text to be displayed
+     */
+    public function set_text($text) {
+        $this->text = $text;
+    }
+
+    /**
+     * Sets the message type
+     *
+     * @param int $type
+     */
+    public function set_type($type = self::TYPE_INFO) {
+        if (in_array($type, array(self::TYPE_OK, self::TYPE_ERROR, self::TYPE_INFO))) {
+            $this->type = $type;
+        } else {
+            throw new coding_exception('Unknown message type.');
+        }
+    }
+
+    /**
+     * Sets the optional message action
+     *
+     * @param moodle_url $url to follow on action
+     * @param string $label action label
+     */
+    public function set_action(moodle_url $url, $label) {
+        $this->actionurl    = $url;
+        $this->actionlabel  = $label;
+    }
+
+    /**
+     * Returns message text with HTML tags quoted
+     *
+     * @return string
+     */
+    public function get_message() {
+        return s($this->text);
+    }
+
+    /**
+     * Returns message type
+     *
+     * @return int
+     */
+    public function get_type() {
+        return $this->type;
+    }
+
+    /**
+     * Returns action URL
+     *
+     * @return moodle_url|null
+     */
+    public function get_action_url() {
+        return $this->actionurl;
+    }
+
+    /**
+     * Returns action label
+     *
+     * @return string
+     */
+    public function get_action_label() {
+        return $this->actionlabel;
+    }
+}
+
+/**
+ * Renderable output of submissions allocation process
+ */
+class workshop_allocation_init_result implements renderable {
+
+    /** @var workshop_message */
+    protected $message;
+    /** @var array of steps */
+    protected $info = array();
+    /** @var moodle_url */
+    protected $continue;
+
+    /**
+     * Supplied argument can be either integer status code or an array of string messages. Messages
+     * in a array can have optional prefix or prefixes, using '::' as delimiter. Prefixes determine
+     * the type of the message and may influence its visualisation.
+     *
+     * @param mixed $result int|array returned by {@see workshop_allocator::init()}
+     * @param moodle_url to continue
+     */
+    public function __construct($result, moodle_url $continue) {
+
+        if ($result === workshop::ALLOCATION_ERROR) {
+            $this->message = new workshop_message(get_string('allocationerror', 'workshop'), workshop_message::TYPE_ERROR);
+        } else {
+            $this->message = new workshop_message(get_string('allocationdone', 'workshop'), workshop_message::TYPE_OK);
+            if (is_array($result)) {
+                $this->info = $result;
+            }
+        }
+
+        $this->continue = $continue;
+    }
+
+    /**
+     * @return workshop_message instance to render
+     */
+    public function get_message() {
+        return $this->message;
+    }
+
+    /**
+     * @return array of strings with allocation process details
+     */
+    public function get_info() {
+        return $this->info;
+    }
+
+    /**
+     * @return moodle_url where the user shoudl continue
+     */
+    public function get_continue_url() {
+        return $this->continue;
+    }
+}
+
+/**
+ * Renderable component containing all the data needed to display the grading report
+ */
+class workshop_grading_report implements renderable {
+
+    /** @var stdClass returned by {@see workshop::prepare_grading_report_data()} */
+    protected $data;
+    /** @var stdClass rendering options */
+    protected $options;
+
+    /**
+     * Grades in $data must be already rounded to the set number of decimals or must be null
+     * (in which later case, the [mod_workshop,nullgrade] string shall be displayed)
+     *
+     * @param stdClass $data prepared by {@link workshop::prepare_grading_report_data()}
+     * @param stdClass $options display options (showauthornames, showreviewernames, sortby, sorthow, showsubmissiongrade, showgradinggrade)
+     */
+    public function __construct(stdClass $data, stdClass $options) {
+        $this->data     = $data;
+        $this->options  = $options;
+    }
+
+    /**
+     * @return stdClass grading report data
+     */
+    public function get_data() {
+        return $this->data;
+    }
+
+    /**
+     * @return stdClass rendering options
+     */
+    public function get_options() {
+        return $this->options;
     }
 }

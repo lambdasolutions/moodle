@@ -73,7 +73,9 @@ $wikipage = new page_wiki_create($wiki, $subwiki, $cm);
 if (!empty($swid)) {
     $wikipage->set_gid($subwiki->groupid);
     $wikipage->set_uid($subwiki->userid);
+    $wikipage->set_swid($swid);
 } else {
+    $wikipage->set_wid($wid);
     $wikipage->set_gid($gid);
     $wikipage->set_uid($uid);
 }
@@ -92,15 +94,13 @@ case 'create':
     $wikipage->create_page($title);
     break;
 case 'new':
-    if (!empty($title)) {
-        // create page from interlink with pagetitle
-        $wikipage->print_header();
-        $wikipage->print_content($title);
+    if ((int)$wiki->forceformat == 1 && !empty($title)) {
+        $wikipage->create_page($title);
     } else {
         // create link from moodle navigation block without pagetitle
         $wikipage->print_header();
         // new page without page title
-        $wikipage->print_content();
+        $wikipage->print_content($title);
     }
     $wikipage->print_footer();
     break;

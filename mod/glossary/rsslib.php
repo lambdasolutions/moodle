@@ -15,11 +15,11 @@
 
         //check capabilities
         //glossary module doesn't require any capabilities to view glossary entries (aside from being logged in)
-        if (!is_enrolled($context)) {
+        if (!is_enrolled($context) && !isguestuser()) {
             return null;
         }
 
-        $glossaryid = $args[3];
+        $glossaryid  = clean_param($args[3], PARAM_INT);
         $glossary = $DB->get_record('glossary', array('id' => $glossaryid), '*', MUST_EXIST);
 
         if (!rss_enabled_for_mod('glossary', $glossary)) {
@@ -37,8 +37,9 @@
         if (file_exists($cachedfilepath)) {
             $cachedfilelastmodified = filemtime($cachedfilepath);
         }
-
-        if (glossary_rss_newstuff($glossary, $cachedfilelastmodified)) {
+        //if the cache is more than 60 seconds old and there's new stuff
+        $dontrecheckcutoff = time()-60;
+        if ( $dontrecheckcutoff > $cachedfilelastmodified && glossary_rss_newstuff($glossary, $cachedfilelastmodified)) {
             if (!$recs = $DB->get_records_sql($sql, array(), 0, $glossary->rssarticles)) {
                 return null;
             }

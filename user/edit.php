@@ -29,17 +29,14 @@ require_once($CFG->dirroot.'/user/edit_form.php');
 require_once($CFG->dirroot.'/user/editlib.php');
 require_once($CFG->dirroot.'/user/profile/lib.php');
 
-httpsrequired();
+//HTTPS is required in this page when $CFG->loginhttps enabled
+$PAGE->https_required();
 
 $userid = optional_param('id', $USER->id, PARAM_INT);    // user id
 $course = optional_param('course', SITEID, PARAM_INT);   // course id (defaults to Site)
-$cancelemailchange = optional_param('cancelemailchange', false, PARAM_INT);   // course id (defaults to Site)
+$cancelemailchange = optional_param('cancelemailchange', 0, PARAM_INT);   // course id (defaults to Site)
 
-$url = new moodle_url('/user/edit.php', array('course'=>$course));
-if ($userid !== $USER->id) {
-    $url->param('id', $userid);
-}
-$PAGE->set_url($url);
+$PAGE->set_url('/user/edit.php', array('course'=>$course, 'id'=>$userid, 'cancelemailchange'=>$cancelemailchange));
 
 if (!$course = $DB->get_record('course', array('id'=>$course))) {
     print_error('invalidcourseid');
@@ -222,7 +219,6 @@ if ($usernew = $userform->get_data()) {
     if ($email_changed && $CFG->emailchangeconfirmation) {
         $temp_user = fullclone($user);
         $temp_user->email = $usernew->preference_newemail;
-        $temp_user->emailstop = NULL;
 
         $a = new stdClass();
         $a->url = $CFG->wwwroot . '/user/emailupdate.php?key=' . $usernew->preference_newemailkey . '&id=' . $user->id;
@@ -259,6 +255,9 @@ if ($usernew = $userform->get_data()) {
         redirect("$CFG->wwwroot/user/view.php?id=$user->id&course=$course->id");
     }
 }
+
+// make sure we really are on the https page when https login required
+$PAGE->verify_https_required();
 
 
 /// Display page header

@@ -98,7 +98,7 @@ if ($id) {
 
     // Getting first page. If it does not exists, redirecting to create page
     if (!$page = wiki_get_first_page($subwiki->id, $wiki)) {
-        $params = array('swid' => $wiki->id, 'title' => $wiki->firstpagetitle);
+        $params = array('swid'=>$subwiki->id, 'title'=>$wiki->firstpagetitle);
         $url = new moodle_url('/mod/wiki/create.php', $params);
         redirect($url);
     }
@@ -248,7 +248,7 @@ if ($id) {
     //     *
     //     * Error. No more options
     //     */
-    } else {
+} else {
     print_error('incorrectparameters');
 }
 require_course_login($course, true, $cm);

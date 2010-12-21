@@ -112,17 +112,25 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
                 if (!window_name && node.title != null) {
                     obj.setAttribute('data', url_prefix + node.title);
                 }
-                    if (window_name) {
-                        var mine = window.open('','','width=1,height=1,left=0,top=0,scrollbars=no');
-                        if(! mine) {
-                             alert(M.str.scorm.popupsblocked);
-                        }
-                        mine.close()
+                if (window_name) {
+                    var mine = window.open('','','width=1,height=1,left=0,top=0,scrollbars=no');
+                    if(! mine) {
+                         alert(M.str.scorm.popupsblocked);
                     }
+                    mine.close()
+                }
             }
             var old = YAHOO.util.Dom.get('scorm_object');
             if (old) {
-                content.replaceChild(obj, old);
+                if(window_name) { 
+                    var cwidth = scormplayerdata.cwidth;
+                    var cheight = scormplayerdata.cheight;
+                    var poptions = scormplayerdata.popupoptions;
+                    scorm_openpopup("loadSCO.php?" + node.title, window_name, poptions, cwidth, cheight);
+                }
+                else { 
+                    content.replaceChild(obj, old); 
+                }
             } else {
                 content.appendChild(obj);
             }
@@ -173,6 +181,9 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
                 if (newwidth > 600) {
                     scorm_layout_widget.setStyle('width', newwidth+'px');
                 }
+                else {
+                    scorm_layout_widget.setStyle('width', '600px');
+                }
             }
             // make sure that the max width of the TOC doesn't go to far
 
@@ -184,18 +195,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
                 left.set('width', (maxwidth - 10));
             }
 
-            var pageheight = scorm_get_htmlelement_size('page', 'height');
-            var layoutheight = scorm_get_htmlelement_size(scorm_layout_widget, 'height');
-            var newheight = layoutheight + parseInt(YAHOO.util.Dom.getViewportHeight()) - pageheight - 20;
-            if (newheight > 400) {
-                if (newheight > 768) {
-                    scorm_layout_widget.setStyle('height', '768px');
-                }
-                else {
-                    scorm_layout_widget.setStyle('height', newheight+'px');
-                }
-            }
-
+            scorm_layout_widget.setStyle('height', '100%');
             scorm_layout_widget.render();
             scorm_resize_frame();
 
@@ -298,7 +298,7 @@ M.mod_scorm.init = function(Y, hide_nav, hide_toc, toc_title, window_name, launc
 
         scorm_layout_widget = new YAHOO.widget.Layout('scorm_layout', {
             minWidth: 255,
-            minHeight: 400,
+            minHeight: 600,
             units: [
                 { position: 'left', body: 'scorm_toc', header: toc_title, width: 250, resize: true, gutter: '2px 5px 5px 2px', collapse: true, minWidth:250, maxWidth: 590},
                 { position: 'center', body: '<div id="scorm_content"></div>', gutter: '2px 5px 5px 2px', scroll: true}

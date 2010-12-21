@@ -31,8 +31,8 @@
  */
 
 
-require_once($CFG->dirroot . '/lib/formslib.php');
-require_once($CFG->dirroot . '/admin/registration/lib.php');
+require_once($CFG->libdir . '/formslib.php');
+require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/lib.php');
 
 /**
  * This form display a unregistration form.
@@ -154,8 +154,10 @@ class hub_selector_form extends moodleform {
         $mform->addElement('static', 'or', '', get_string('orenterprivatehub', 'hub'));
 
         //Private hub
-        $mform->addElement('text', 'unlistedurl', get_string('privatehuburl', 'hub'));
-        $mform->addElement('text', 'password', get_string('password'));
+        $mform->addElement('text', 'unlistedurl', get_string('privatehuburl', 'hub'),
+                array('class' => 'registration_textfield'));
+        $mform->addElement('text', 'password', get_string('password'),
+                array('class' => 'registration_textfield'));
 
         $this->add_action_buttons(false, get_string('selecthub', 'hub'));
     }
@@ -227,6 +229,10 @@ class site_registration_form extends moodleform {
         if ($country === false) {
             $country = $admin->country;
         }
+        $language = get_config('hub', 'site_language_' . $cleanhuburl);
+        if ($language === false) {
+            $language = current_language();
+        }
         $geolocation = get_config('hub', 'site_geolocation_' . $cleanhuburl);
         $contactable = get_config('hub', 'site_contactable_' . $cleanhuburl);
         $emailalert = get_config('hub', 'site_emailalert_' . $cleanhuburl);
@@ -277,10 +283,12 @@ class site_registration_form extends moodleform {
         $mform->addHelpButton('urlstring', 'siteurl', 'hub');
 
         $languages = get_string_manager()->get_list_of_languages();
-        $mform->addElement('static', 'langstring', get_string('sitelang', 'hub'), $languages[current_language()]);
-        $mform->addElement('hidden', 'language', current_language());
+        textlib_get_instance()->asort($languages);
+        $mform->addElement('select', 'language', get_string('sitelang', 'hub'),
+                $languages);
         $mform->setType('language', PARAM_ALPHANUMEXT);
-        $mform->addHelpButton('langstring', 'sitelang', 'hub');
+        $mform->addHelpButton('language', 'sitelang', 'hub');
+        $mform->setDefault('language', $language);
 
         $mform->addElement('static', 'versionstring', get_string('siteversion', 'hub'), $CFG->version);
         $mform->addElement('hidden', 'moodleversion', $CFG->version);
@@ -360,8 +368,8 @@ class site_registration_form extends moodleform {
         $questioncount = $DB->count_records('question');
         $resourcecount = $DB->count_records('resource');
         require_once($CFG->dirroot . "/course/lib.php");
-        $participantnumberaverage = average_number_of_participants();
-        $modulenumberaverage = average_number_of_courses_modules();
+        $participantnumberaverage = number_format(average_number_of_participants(), 2);
+        $modulenumberaverage = number_format(average_number_of_courses_modules(), 2);
 
         if (HUB_MOODLEORGHUBURL != $huburl) {
             $mform->addElement('checkbox', 'courses', get_string('sendfollowinginfo', 'hub'),

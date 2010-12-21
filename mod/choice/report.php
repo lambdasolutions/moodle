@@ -46,7 +46,7 @@
     add_to_log($course->id, "choice", "report", "report.php?id=$cm->id", "$choice->id",$cm->id);
 
     if (data_submitted() && $action == 'delete' && has_capability('mod/choice:deleteresponses',$context) && confirm_sesskey()) {
-        choice_delete_responses($attemptids, $choice->id); //delete responses.
+        choice_delete_responses($attemptids, $choice, $cm, $course); //delete responses.
         redirect("report.php?id=$cm->id");
     }
 
@@ -230,7 +230,7 @@
         $downloadoptions[] = html_writer::tag('li', $button, array('class'=>'reportoption'));
 
         $options["download"] = "xls";
-        $buttons = $OUTPUT->single_button(new moodle_url("report.php", $options), get_string("downloadexcel"));
+        $button = $OUTPUT->single_button(new moodle_url("report.php", $options), get_string("downloadexcel"));
         $downloadoptions[] = html_writer::tag('li', $button, array('class'=>'reportoption'));
 
         $options["download"] = "txt";

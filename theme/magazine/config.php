@@ -35,7 +35,6 @@ $THEME->enable_dock = true;
 // Do you want to use the new navigation dock?
 ////////////////////////////////////////////////////
 
-
 $THEME->editor_sheets = array('editor');
 
 ////////////////////////////////////////////////////
@@ -121,7 +120,11 @@ $THEME->layouts = array(
         'regions' => array(),
         'options' => array('nofooter'=>true, 'nonavbar'=>false, 'noblocks'=>true),
     ),
-
+    'report' => array(
+        'file' => 'general.php',
+        'regions' => array('side-pre'),
+        'defaultregion' => 'side-pre',
+    ),
 );
 
 ///////////////////////////////////////////////////////////////

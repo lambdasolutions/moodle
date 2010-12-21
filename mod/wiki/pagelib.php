@@ -527,7 +527,7 @@ class page_wiki_edit extends page_wiki {
             $url .= "&section=" . $this->section;
         }
 
-        $params = array('attachmentoptions' => page_wiki_edit::$attachmentoptions, 'format' => $version->contentformat, 'version' => $versionnumber);
+        $params = array('attachmentoptions' => page_wiki_edit::$attachmentoptions, 'format' => $version->contentformat, 'version' => $versionnumber, 'pagetitle'=>$this->page->title);
 
         $data = new StdClass();
         $data->newcontent = $content;
@@ -553,7 +553,7 @@ class page_wiki_edit extends page_wiki {
         }
 
         if (!empty($CFG->usetags)) {
-            $params['tags'] = tag_get_tags_csv('wiki_page', $this->page->id, TAG_RETURN_TEXT);
+            $params['tags'] = tag_get_tags_csv('wiki_pages', $this->page->id, TAG_RETURN_TEXT);
         }
 
         $form = new mod_wiki_edit_form($url, $params);
@@ -589,7 +589,7 @@ class page_wiki_edit extends page_wiki {
             file_save_draft_area_files($this->attachments, $context->id, 'mod_wiki', 'attachments', $this->subwiki->id);
             return null;
             //return wiki_process_attachments($this->attachments, $this->deleteuploads, $context->id, 'mod_wiki', 'attachments', $this->subwiki->id);
-            }
+        }
     }
 }
 
@@ -694,7 +694,7 @@ class page_wiki_comments extends page_wiki {
                 $t->data[] = $row3;
             }
 
-            echo html_writer::table($t);
+            echo html_writer::tag('div', html_writer::table($t), array('class'=>'no-overflow'));
 
         }
     }
@@ -788,7 +788,7 @@ class page_wiki_editcomment extends page_wiki {
         if ($this->format == 'html') {
             $this->form->display();
         } else {
-            wiki_print_editor_wiki($this->page->id, null, $this->format, -1, null, false, null, 'fromcomments');
+            wiki_print_editor_wiki($this->page->id, null, $this->format, -1, null, false, null, 'addcomments');
         }
     }
 
@@ -809,7 +809,7 @@ class page_wiki_editcomment extends page_wiki {
             $commentid = $com->id;
             $pageid = $this->page->id;
             $destination = $CFG->wwwroot . '/mod/wiki/instancecomments.php?pageid=' . $pageid . '&id=' . $commentid . '&action=' . $action;
-            wiki_print_editor_wiki($this->page->id, $com->content, $this->format, -1, null, false, array(), 'fromcomments', $commentid);
+            wiki_print_editor_wiki($this->page->id, $com->content, $this->format, -1, null, false, array(), 'editcomments', $commentid);
         }
 
     }
@@ -828,7 +828,7 @@ class page_wiki_search extends page_wiki {
     protected function create_navbar() {
         global $PAGE, $CFG;
 
-        $PAGE->navbar->add($PAGE->activityrecord->name, $CFG->wwwroot . '/mod/wiki/view.php?id=' . $PAGE->cm->id);
+        $PAGE->navbar->add(format_string($this->title));
     }
 
     function set_search_string($search, $searchcontent) {
@@ -865,6 +865,7 @@ class page_wiki_create extends page_wiki {
 
     private $format;
     private $swid;
+    private $wid;
     private $action;
     private $mform;
 
@@ -880,6 +881,7 @@ class page_wiki_create extends page_wiki {
         if ($this->action == 'new') {
             $params['action'] = 'new';
             $params['swid'] = $this->swid;
+            $params['wid'] = $this->wid;
             if ($this->title != get_string('newpage', 'wiki')) {
                 $params['title'] = $this->title;
             }
@@ -893,6 +895,10 @@ class page_wiki_create extends page_wiki {
 
     function set_format($format) {
         $this->format = $format;
+    }
+
+    function set_wid($wid) {
+        $this->wid = $wid;
     }
 
     function set_swid($swid) {
@@ -936,14 +942,18 @@ class page_wiki_create extends page_wiki {
         $this->mform->display();
     }
 
-    function create_page() {
+    function create_page($pagetitle) {
         global $USER, $CFG, $PAGE;
         $data = $this->mform->get_data();
         if (empty($this->subwiki)) {
             $swid = wiki_add_subwiki($PAGE->activityrecord->id, $this->gid, $this->uid);
             $this->subwiki = wiki_get_subwiki($swid);
         }
-        $id = wiki_create_page($this->subwiki->id, $data->pagetitle, $data->pageformat, $USER->id);
+        if ($data) {
+            $id = wiki_create_page($this->subwiki->id, $data->pagetitle, $data->pageformat, $USER->id);
+        } else {
+            $id = wiki_create_page($this->subwiki->id, $pagetitle, $PAGE->activityrecord->defaultformat, $USER->id);
+        }
         redirect($CFG->wwwroot . '/mod/wiki/edit.php?pageid=' . $id);
     }
 }
@@ -957,6 +967,7 @@ class page_wiki_preview extends page_wiki_edit {
         parent::__construct($wiki, $subwiki, $cm);
         $buttons = $OUTPUT->update_module_button($cm->id, 'wiki');
         $PAGE->set_button($buttons);
+
     }
 
     function print_header() {
@@ -1001,19 +1012,45 @@ class page_wiki_preview extends page_wiki_edit {
     }
 
     protected function print_preview() {
-        global $CFG, $OUTPUT;
+        global $CFG, $PAGE, $OUTPUT;
 
         $version = wiki_get_current_version($this->page->id);
         $format = $version->contentformat;
         $content = $version->content;
+        $context = get_context_instance(CONTEXT_MODULE, $PAGE->cm->id);
+
+        $url = $CFG->wwwroot . '/mod/wiki/edit.php?pageid=' . $this->page->id;
+        if (!empty($this->section)) {
+            $url .= "&section=" . $this->section;
+        }
+        $params = array('attachmentoptions' => page_wiki_edit::$attachmentoptions, 'format' => $this->format, 'version' => $this->versionnumber);
+
+        if ($this->format != 'html') {
+            $params['contextid'] = $context->id;
+            $params['component'] = 'mod_wiki';
+            $params['filearea'] = 'attachments';
+            $params['fileitemid'] = $this->page->id;
+        }
+        $form = new mod_wiki_edit_form($url, $params);
+
 
         $options = array('swid' => $this->page->subwikiid, 'pageid' => $this->page->id, 'pretty_print' => true);
 
-        $parseroutput = wiki_parse_content($format, $this->newcontent, $options);
-        echo $OUTPUT->notification(get_string('previewwarning', 'wiki'), 'notifyproblem wiki_info');
-        $content = format_text($parseroutput['parsed_text'], FORMAT_HTML);
-        echo $OUTPUT->box($content, 'generalbox wiki_previewbox');
-        $content = $this->newcontent;
+        if ($data = $form->get_data()) {
+            if (isset($data->newcontent)) {
+                // wiki fromat
+                $text = $data->newcontent;
+            } else {
+                // html format
+                $text = $data->newcontent_editor['text'];
+            }
+            $parseroutput = wiki_parse_content($data->contentformat, $text, $options);
+            $this->set_newcontent($text);
+            echo $OUTPUT->notification(get_string('previewwarning', 'wiki'), 'notifyproblem wiki_info');
+            $content = format_text($parseroutput['parsed_text'], FORMAT_HTML, array('overflowdiv'=>true));
+            echo $OUTPUT->box($content, 'generalbox wiki_previewbox');
+            $content = $this->newcontent;
+        }
 
         $this->print_edit($content);
     }
@@ -1229,7 +1266,7 @@ class page_wiki_history extends page_wiki {
                 $versionid = wiki_get_version($row->id);
                 $versionlink = new moodle_url('/mod/wiki/viewversion.php', array('pageid' => $pageid, 'versionid' => $versionid->id));
                 $userlink = new moodle_url('/user/view.php', array('id' => $username->id));
-                $contents[] = array('', html_writer::link($versionlink->out(false), $row->version), $picture . html_writer::link($userlink->out(false), fullname($username)), $time, print_container($date, false, 'wiki_histdate', '', true));
+                $contents[] = array('', html_writer::link($versionlink->out(false), $row->version), $picture . html_writer::link($userlink->out(false), fullname($username)), $time, $OUTPUT->container($date, 'wiki_histdate'));
 
                 $table = new html_table();
                 $table->head = array('', get_string('version'), get_string('user'), get_string('modified'), '');
@@ -1264,7 +1301,7 @@ class page_wiki_history extends page_wiki {
                         $viewlink = $version->version;
                     }
                     $userlink = new moodle_url('/user/view.php', array('id' => $version->userid));
-                    $contents[] = array($this->choose_from_radio(array($version->version  => null), 'compare', 'M.mod_wiki.history()', $checked - 1, true) . $this->choose_from_radio(array($version->version  => null), 'comparewith', 'M.mod_wiki.history()', $checked, true), $viewlink, $picture . html_writer::link($userlink->out(false), fullname($user)), $time, print_container($date, false, 'wiki_histdate', '', true));
+                    $contents[] = array($this->choose_from_radio(array($version->version  => null), 'compare', 'M.mod_wiki.history()', $checked - 1, true) . $this->choose_from_radio(array($version->version  => null), 'comparewith', 'M.mod_wiki.history()', $checked, true), $viewlink, $picture . html_writer::link($userlink->out(false), fullname($user)), $time, $OUTPUT->container($date, 'wiki_histdate'));
                 }
 
                 $table = new html_table();
@@ -1273,7 +1310,7 @@ class page_wiki_history extends page_wiki {
 
                 $table->head = array(get_string('diff', 'wiki') . $icon, get_string('version'), get_string('user'), get_string('modified'), '');
                 $table->data = $contents;
-                $table->attributes['class'] = 'mdl-align';
+                $table->attributes['class'] = 'generaltable mdl-align';
                 $table->rowclasses = $rowclass;
 
                 /*$table = new StdClass();
@@ -1287,11 +1324,13 @@ class page_wiki_history extends page_wiki {
                  $table->rowclass = $rowclass;*/
 
                 ///Print the form
-                echo '<form action="' . $CFG->wwwroot . '/mod/wiki/diff.php" method="get" id="diff">';
-                echo '<div><input type="hidden" name="pageid" value="' . $pageid . '" /></div>';
+                echo html_writer::start_tag('form', array('action'=>new moodle_url('/mod/wiki/diff.php'), 'method'=>'get', 'id'=>'diff'));
+                echo html_writer::tag('div', html_writer::empty_tag('input', array('type'=>'hidden', 'name'=>'pageid', 'value'=>$pageid)));
                 echo html_writer::table($table);
-                echo '<div><input class="wiki_form-button" type="submit" value="' . get_string('comparesel', 'wiki') . '"/></div>';
-                echo '</form>';
+                echo html_writer::start_tag('div', array('class'=>'mdl-align'));
+                echo html_writer::empty_tag('input', array('type'=>'submit', 'class'=>'wiki_form-button', 'value'=>get_string('comparesel', 'wiki')));
+                echo html_writer::end_tag('div');
+                echo html_writer::end_tag('form');
             }
         } else {
             print_string('nohistory', 'wiki');
@@ -1558,7 +1597,7 @@ class page_wiki_map extends page_wiki {
         foreach ($tolinks as $link) {
             if ($link->tomissingpage) {
                 $viewlink = new moodle_url('/mod/wiki/create.php', array('swid' => $page->subwikiid, 'title' => $link->tomissingpage, 'action' => 'new'));
-                $table->data[] = array(html_writer::link($viewlink->out(false), format_string($link)->tomissingpage, array('class' => 'wiki_newentry')));
+                $table->data[] = array(html_writer::link($viewlink->out(false), format_string($link->tomissingpage), array('class' => 'wiki_newentry')));
             } else {
                 $lpage = wiki_get_page($link->topageid);
                 $viewlink = new moodle_url('/mod/wiki/view.php', array('pageid' => $lpage->id));
@@ -1956,7 +1995,7 @@ class page_wiki_save extends page_wiki_edit {
                 $errors = $this->process_uploads($context);
             }
             if (!empty($CFG->usetags)) {
-                tag_set('wiki_page', $this->page->id, $data->tags);
+                tag_set('wiki_pages', $this->page->id, $data->tags);
             }
 
             $message = '<p>' . get_string('saving', 'wiki') . '</p>';
@@ -2055,7 +2094,7 @@ class page_wiki_viewversion extends page_wiki {
             print_container($heading, false, 'mdl-align wiki_modifieduser wiki_headingtime');
             $options = array('swid' => $this->subwiki->id, 'pretty_print' => true, 'pageid' => $this->page->id);
             $parseroutput = wiki_parse_content($pageversion->contentformat, $pageversion->content, $options);
-            $content = print_container(format_text($parseroutput['parsed_text'], FORMAT_HTML), false, '', '', true);
+            $content = print_container(format_text($parseroutput['parsed_text'], FORMAT_HTML, array('overflowdiv'=>true)), false, '', '', true);
             echo $OUTPUT->box($content, 'generalbox wiki_contentbox');
 
         } else {
@@ -2095,14 +2134,9 @@ class page_wiki_confirmrestore extends page_wiki_save {
 class page_wiki_prettyview extends page_wiki {
 
     function print_header() {
-        global $CFG, $OUTPUT;
-
-        echo $OUTPUT->doctype();
-        echo '<html>';
-        echo '<head>';
-        echo $OUTPUT->standard_head_html();
-        echo '</head>';
-        echo '<body>';
+        global $CFG, $PAGE, $OUTPUT;
+        $PAGE->set_pagelayout('embedded');
+        echo $OUTPUT->header();
 
         echo '<h1 id="wiki_printable_title">' . format_string($this->title) . '</h1>';
     }
@@ -2120,11 +2154,6 @@ class page_wiki_prettyview extends page_wiki {
         global $PAGE, $CFG;
 
         $PAGE->set_url($CFG->wwwroot . '/mod/wiki/prettyview.php', array('pageid' => $this->page->id));
-    }
-
-    function print_footer() {
-        echo '</body>';
-        echo '</html>';
     }
 
     private function print_pretty_view() {
@@ -2149,7 +2178,7 @@ class page_wiki_handlecomments extends page_wiki {
     }
 
     public function print_content() {
-        global $PAGE, $USER;
+        global $CFG, $PAGE, $USER;
 
         $context = get_context_instance(CONTEXT_MODULE, $PAGE->cm->id);
 
@@ -2160,16 +2189,17 @@ class page_wiki_handlecomments extends page_wiki {
         } else if ($this->action == 'edit') {
             $comment = wiki_get_comment($this->commentid);
             $edit = has_capability('mod/wiki:editcomment', $context);
-            $owner = $comment->userid == $USER->id;
+            $owner = ($comment->userid == $USER->id);
             if ($owner && $edit) {
                 $this->add_comment($this->content, $this->commentid);
             }
         } else if ($this->action == 'delete') {
             $comment = wiki_get_comment($this->commentid);
             $manage = has_capability('mod/wiki:managecomment', $context);
-            $owner = $comment->userid == $USER->id;
+            $owner = ($comment->userid == $USER->id);
             if ($owner || $manage) {
                 $this->delete_comment($this->commentid);
+                redirect($CFG->wwwroot . '/mod/wiki/comments.php?pageid=' . $this->page->id, get_string('deletecomment', 'wiki'), 2);
             }
         }
 
@@ -2205,6 +2235,7 @@ class page_wiki_handlecomments extends page_wiki {
             redirect($CFG->wwwroot . '/mod/wiki/comments.php?pageid=' . $pageid, get_string('createcomment', 'wiki'), 2);
         } else {
             $this->delete_comment($idcomment);
+            redirect($CFG->wwwroot . '/mod/wiki/comments.php?pageid=' . $pageid, get_string('editingcomment', 'wiki'), 2);
         }
     }
 
@@ -2216,8 +2247,6 @@ class page_wiki_handlecomments extends page_wiki {
         $pageid = $this->page->id;
 
         wiki_delete_comment($commentid, $context, $pageid);
-
-        redirect($CFG->wwwroot . '/mod/wiki/comments.php?pageid=' . $pageid, get_string('deletecomment', 'wiki'), 2);
     }
 
 }

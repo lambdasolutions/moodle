@@ -48,15 +48,15 @@ class backup_final_task extends backup_task {
         // including membership based on setting
         $this->add_step(new backup_groups_structure_step('groups', 'groups.xml'));
 
+        // Generate the questions file with the final annotated question_categories
+        $this->add_step(new backup_questions_structure_step('questions', 'questions.xml'));
+
         // Annotate all the question files for the already annotated question
         // categories (this is performed here and not in the structure step because
         // it involves multiple contexts and as far as we are always backup-ing
         // complete question banks we don't need to restrict at all and can be
         // done in a single pass
         $this->add_step(new backup_annotate_all_question_files('question_files'));
-
-        // Generate the questions file with the final annotated question_categories
-        $this->add_step(new backup_questions_structure_step('questions', 'questions.xml'));
 
         // Annotate all the user files (conditionally) (private, profile and icon files)
         // Because each user has its own context, we need a separate/specialised step here
@@ -105,14 +105,20 @@ class backup_final_task extends backup_task {
         // to the backup, settings, license, versions and other useful information
         $this->add_step(new backup_main_structure_step('mainfile', 'moodle_backup.xml'));
 
-        // Generate the zip file (mbz extension)
-        $this->add_step(new backup_zip_contents('zip_contents'));
+        // On backup::MODE_IMPORT, we don't have to zip nor store the the file, skip these steps
+        if ($this->plan->get_mode() != backup::MODE_IMPORT) {
+            // Generate the zip file (mbz extension)
+            $this->add_step(new backup_zip_contents('zip_contents'));
 
-        // Copy the generated zip (.mbz) file to final destination
-        $this->add_step(new backup_store_backup_file('save_backupfile'));
+            // Copy the generated zip (.mbz) file to final destination
+            $this->add_step(new backup_store_backup_file('save_backupfile'));
+        }
 
-        // Clean the temp dir (conditionally) and drop temp table
-        $this->add_step(new drop_and_clean_temp_stuff('drop_and_clean_temp_stuff'));
+        // Clean the temp dir (conditionally) and drop temp tables
+        $cleanstep = new drop_and_clean_temp_stuff('drop_and_clean_temp_stuff');
+        // Decide about to delete the temp dir (based on backup::MODE_IMPORT)
+        $cleanstep->skip_cleaning_temp_dir($this->plan->get_mode() == backup::MODE_IMPORT);
+        $this->add_step($cleanstep);
 
         $this->built = true;
     }

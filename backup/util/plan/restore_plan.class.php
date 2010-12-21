@@ -59,9 +59,18 @@ class restore_plan extends base_plan implements loggable {
         parent::__construct('restore_plan');
     }
 
+    /**
+     * Destroy all circular references. It helps PHP 5.2 a lot!
+     */
+    public function destroy() {
+        // No need to destroy anything recursively here, direct reset
+        $this->controller = null;
+        // Delegate to base plan the rest
+        parent::destroy();
+    }
+
     public function build() {
         restore_plan_builder::build_plan($this->controller); // We are moodle2 always, go straight to builder
-        restore_decode_processor::register_link_decoders($this->decoder); // Add decoder contents and rules
         $this->built = true;
     }
 
@@ -71,6 +80,10 @@ class restore_plan extends base_plan implements loggable {
 
     public function get_courseid() {
         return $this->controller->get_courseid();
+    }
+
+    public function get_mode() {
+        return $this->controller->get_mode();
     }
 
     public function get_basepath() {
@@ -143,6 +156,16 @@ class restore_plan extends base_plan implements loggable {
         $this->controller->set_status(backup::STATUS_EXECUTING);
         parent::execute();
         $this->controller->set_status(backup::STATUS_FINISHED_OK);
+    }
+
+    /**
+     * Execute the after_restore methods of all the executed tasks in the plan
+     */
+    public function execute_after_restore() {
+        // Simply iterate over each task in the plan and delegate to them the execution
+        foreach ($this->tasks as $task) {
+            $task->execute_after_restore();
+        }
     }
 }
 

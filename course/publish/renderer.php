@@ -158,4 +158,61 @@ class core_publish_renderer extends plugin_renderer_base {
                 $formcontinue, $formcancel);
     }
 
+    /**
+     * Display waiting information about backup size during uploading backup process
+     * @param object $backupfile the backup stored_file
+     * @return $html string
+     */
+    public function sendingbackupinfo($backupfile) {
+        $sizeinfo = new stdClass();
+        $sizeinfo->total = number_format($backupfile->get_filesize() / 1000000, 2);
+        $html = html_writer::tag('div', get_string('sendingsize', 'hub', $sizeinfo),
+                        array('class' => 'courseuploadtextinfo'));
+        return $html;
+    }
+
+    /**
+     * Display upload successfull message and a button to the publish index page
+     * @param int $id the course id
+     * @param string $huburl the hub url where the course is published
+     * @param string $hubname the hub name where the course is published
+     * @return $html string
+     */
+    public function sentbackupinfo($id, $huburl, $hubname) {
+        $html = html_writer::tag('div', get_string('sent', 'hub'),
+                        array('class' => 'courseuploadtextinfo'));
+        $publishindexurl = new moodle_url('/course/publish/index.php',
+                        array('sesskey' => sesskey(), 'id' => $id,
+                            'published' => true, 'huburl' => $huburl, 'hubname' => $hubname));
+        $continue = $this->output->render(
+                        new single_button($publishindexurl, get_string('continue', 'hub')));
+        $html .= html_writer::tag('div', $continue, array('class' => 'sharecoursecontinue'));
+        return $html;
+    }
+
+    /**
+     * Hub information (logo - name - description - link)
+     * @param object $hubinfo
+     * @return string html code
+     */
+    public function hubinfo($hubinfo) {
+        $params = array('filetype' => HUB_HUBSCREENSHOT_FILE_TYPE);
+        $imgurl = new moodle_url($hubinfo['url'] .
+                        "/local/hub/webservice/download.php", $params);
+        $screenshothtml = html_writer::empty_tag('img',
+                        array('src' => $imgurl, 'alt' => $hubinfo['name']));
+        $hubdescription = html_writer::tag('div', $screenshothtml,
+                        array('class' => 'hubscreenshot'));
+
+        $hubdescription .= html_writer::tag('a', $hubinfo['name'],
+                        array('class' => 'hublink', 'href' => $hubinfo['url'],
+                            'onclick' => 'this.target="_blank"'));
+        
+        $hubdescription .= html_writer::tag('div', format_text($hubinfo['description'], FORMAT_PLAIN),
+                        array('class' => 'hubdescription'));
+        $hubdescription = html_writer::tag('div', $hubdescription, array('class' => 'hubinfo'));
+
+        return $hubdescription;
+    }
+
 }

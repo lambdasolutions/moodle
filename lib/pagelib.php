@@ -80,7 +80,7 @@ defined('MOODLE_INTERNAL') || die();
  * @property-read string $pagetype Returns the page type string, should be used as the id for the body tag in the theme.
  * @property-read int $periodicrefreshdelay The periodic refresh delay to use with meta refresh
  * @property-read page_requirements_manager $requires Tracks the JavaScript, CSS files, etc. required by this page.
- * @property-read settings_navigation $settignsnav
+ * @property-read settings_navigation $settingsnav
  * @property-read int $state One of the STATE_... constants
  * @property-read string $subpage The subpage identifier, if any.
  * @property-read theme_config $theme Returns the initialised theme for this page.
@@ -222,6 +222,10 @@ class moodle_page {
      * @var bool
      */
     protected $_legacythemeinuse = false;
+
+    protected $_https_login_required = false;
+
+    protected $_popup_notification_allowed = true;
 
 /// Magic getter methods =============================================================
 /// Due to the __get magic below, you normally do not call these as $PAGE->magic_get_x
@@ -836,6 +840,13 @@ class moodle_page {
      * in the standard theme.
      */
     public function set_pagelayout($pagelayout) {
+        /**
+         * Uncomment this to debug theme pagelayout issues like missing blocks.
+         *
+         * if (!empty($this->_wherethemewasinitialised) && $pagelayout != $this->_pagelayout) {
+         *     debugging('Page layout has already been set and cannot be changed.', DEBUG_DEVELOPER);
+         * }
+         */
         $this->_pagelayout = $pagelayout;
     }
 
@@ -1086,23 +1097,67 @@ class moodle_page {
     }
 
     /**
-     * This function sets the $HTTPSPAGEREQUIRED global
-     * (used in some parts of moodle to change some links)
-     * and calculate the proper wwwroot to be used
+     * This function indicates that current page requires the https
+     * when $CFG->loginhttps enabled.
      *
      * By using this function properly, we can ensure 100% https-ized pages
      * at our entire discretion (login, forgot_password, change_password)
+     * @return void
      */
     public function https_required() {
-        global $CFG, $HTTPSPAGEREQUIRED;
+        global $CFG;
+
+        if (!is_null($this->_url)) {
+            throw new coding_exception('https_required() must be used before setting page url!');
+        }
 
         $this->ensure_theme_not_set();
 
+        $this->_https_login_required = true;
+
         if (!empty($CFG->loginhttps)) {
-            $HTTPSPAGEREQUIRED = true;
             $CFG->httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
         } else {
             $CFG->httpswwwroot = $CFG->wwwroot;
+        }
+    }
+
+    /**
+     * Makes sure that page previously marked with https_required()
+     * is really using https://, if not it redirects to https://
+     *
+     * @return void (may redirect to https://self)
+     */
+    public function verify_https_required() {
+        global $CFG, $FULLME;
+
+        if (is_null($this->_url)) {
+            throw new coding_exception('verify_https_required() must be called after setting page url!');
+        }
+
+        if (!$this->_https_login_required) {
+            throw new coding_exception('verify_https_required() must be called only after https_required()!');
+        }
+
+        if (empty($CFG->loginhttps)) {
+            // https not required, so stop checking
+            return;
+        }
+
+        if (strpos($this->_url, 'https://')) {
+            // detect if incorrect PAGE->set_url() used, it is recommended to use root-relative paths there
+            throw new coding_exception('Invalid page url specified, it must start with https:// for pages that set https_required()!');
+        }
+
+        if (!empty($CFG->sslproxy)) {
+            // it does not make much sense to use sslproxy and loginhttps at the same time
+            return;
+        }
+
+        // now the real test and redirect!
+        if (strpos($FULLME, 'https:') !== 0) {
+            // this may lead to infinite redirect on misconfigured sites, in that case use $CFG->loginhttps=0; in /config.php
+            redirect($this->_url);
         }
     }
 
@@ -1138,10 +1193,10 @@ class moodle_page {
                 $title .= ' - ';
             }
             $this->set_title($title . get_string('maintenancemode', 'admin'));
+        } else {
+            // Show the messaging popup if there are messages
+            message_popup_window();
         }
-
-        // Show the messaging popup, if there are messages.
-        message_popup_window();
 
         $this->initialise_standard_body_classes();
     }
@@ -1623,6 +1678,24 @@ class moodle_page {
 
     public function set_block_actions_done($setting = true) {
         $this->_block_actions_done = $setting;
+    }
+
+    /**
+     * Are popup notifications allowed on this page?
+     * Popup notifications may be disallowed in situations such as while upgrading or completing a quiz
+     * @return boolean true if popup notifications may be displayed
+     */
+    public function get_popup_notification_allowed() {
+        return $this->_popup_notification_allowed;
+    }
+
+    /**
+     * Allow or disallow popup notifications on this page. Popups are allowed by default.
+     * @param boolean true if notifications are allowed. False if not allowed. They are allowed by default.
+     * @return null
+     */
+    public function set_popup_notification_allowed($allowed) {
+        $this->_popup_notification_allowed = $allowed;
     }
 }
 

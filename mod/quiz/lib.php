@@ -895,7 +895,7 @@ function quiz_get_recent_mod_activity(&$activities, &$index, $timestart,
             $tmpactivity->content->maxgrade  = null;
         }
 
-        $tmpactivity->user->id   = $attempt->id;
+        $tmpactivity->user->id        = $attempt->userid;
         $tmpactivity->user->firstname = $attempt->firstname;
         $tmpactivity->user->lastname = $attempt->lastname;
         $tmpactivity->user->fullname = fullname($attempt, $viewfullnames);
@@ -1625,11 +1625,9 @@ function quiz_supports($feature) {
  * @return array all other caps used in module
  */
 function quiz_get_extra_capabilities() {
-    global $DB, $CFG;
+    global $CFG;
     require_once($CFG->libdir.'/questionlib.php');
     $caps = question_get_all_capabilities();
-    $reportcaps = $DB->get_records_select_menu('capabilities', 'name LIKE ?', array('quizreport/%'), 'id,name');
-    $caps = array_merge($caps, $reportcaps);
     $caps[] = 'moodle/site:accessallgroups';
     return $caps;
 }

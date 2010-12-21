@@ -150,7 +150,7 @@ function xmldb_wiki_upgrade($oldversion) {
          * Migrating wiki entries to new subwikis
          */
         $sql = "INSERT into {wiki_subwikis} (wikiid, groupid, userid)
-                    SELECT e.wikiid, e.groupid, e.userid
+                    SELECT DISTINCT e.wikiid, e.groupid, e.userid
                     FROM {wiki_entries_old} e";
         echo $OUTPUT->notification('Migrating old entries to new subwikis', 'notifysuccess');
 
@@ -204,10 +204,8 @@ function xmldb_wiki_upgrade($oldversion) {
 
         $pages = $DB->get_recordset('wiki_pages');
 
-        while ($pages->valid()) {
-            $page = $pages->current();
+        foreach ($pages as $page) {
             wiki_refresh_cachedcontent($page);
-            $pages->next();
         }
 
         $pages->close();
@@ -218,18 +216,20 @@ function xmldb_wiki_upgrade($oldversion) {
     // Step 8, migrating files
     if ($oldversion < 2010040108) {
         $fs = get_file_storage();
-        $sql = "SELECT DISTINCT po.pagename, w.id AS wikiid, po.userid,
-                    po.meta AS filemeta, eo.id AS entryid, eo.groupid, s.id AS subwiki,
-                    w.course AS courseid, cm.id AS cmid
-                    FROM {wiki_pages_old} po
-                    LEFT OUTER JOIN {wiki_entries_old} eo
-                    ON eo.id=po.wiki
-                    LEFT OUTER JOIN {wiki} w
-                    ON w.id = eo.wikiid
-                    LEFT OUTER JOIN {wiki_subwikis} s
-                    ON s.groupid = eo.groupid AND s.wikiid = eo.wikiid AND eo.userid = s.userid
-                    JOIN {modules} m ON m.name = 'wiki'
-                    JOIN {course_modules} cm ON (cm.module = m.id AND cm.instance = w.id)";
+        $sql = "SELECT files.*, po.meta AS filemeta FROM {wiki_pages_old} po JOIN (
+                    SELECT DISTINCT po.id, po.pagename, w.id AS wikiid, po.userid,
+                        eo.id AS entryid, eo.groupid, s.id AS subwiki,
+                        w.course AS courseid, cm.id AS cmid
+                        FROM {wiki_pages_old} po
+                        LEFT OUTER JOIN {wiki_entries_old} eo
+                        ON eo.id=po.wiki
+                        LEFT OUTER JOIN {wiki} w
+                        ON w.id = eo.wikiid
+                        LEFT OUTER JOIN {wiki_subwikis} s
+                        ON s.groupid = eo.groupid AND s.wikiid = eo.wikiid AND eo.userid = s.userid
+                        JOIN {modules} m ON m.name = 'wiki'
+                        JOIN {course_modules} cm ON (cm.module = m.id AND cm.instance = w.id)
+                ) files ON files.id = po.id";
 
         $rs = $DB->get_recordset_sql($sql);
         foreach ($rs as $r) {
@@ -273,8 +273,6 @@ function xmldb_wiki_upgrade($oldversion) {
                     }
                 } else {
                     echo $OUTPUT->notification("Bad data found: $r->pagename <br/> Expected file path: $thefile Please fix the bad file path manually.");
-                    // print file meta info, which can help admin find missing file
-                    print_object($filemeta);
                 }
             }
         }
@@ -330,7 +328,37 @@ function xmldb_wiki_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2010080201, 'wiki');
     }
 
+    if ($oldversion < 2010102500) {
 
+        // Define key subwikifk (foreign) to be added to wiki_pages
+        $table = new xmldb_table('wiki_pages');
+        $key = new xmldb_key('subwikifk', XMLDB_KEY_FOREIGN, array('subwikiid'), 'wiki_subwikis', array('id'));
+
+        // Launch add key subwikifk
+        $dbman->add_key($table, $key);
+
+         // Define key subwikifk (foreign) to be added to wiki_links
+        $table = new xmldb_table('wiki_links');
+        $key = new xmldb_key('subwikifk', XMLDB_KEY_FOREIGN, array('subwikiid'), 'wiki_subwikis', array('id'));
+
+        // Launch add key subwikifk
+        $dbman->add_key($table, $key);
+
+        // wiki savepoint reached
+        upgrade_mod_savepoint(true, 2010102500, 'wiki');
+    }
+
+    if ($oldversion < 2010102800) {
+
+        $sql = "UPDATE {tag_instance}
+                SET itemtype = 'wiki_pages'
+                WHERE itemtype = 'wiki_page'";
+        $DB->execute($sql);
+
+        echo $OUTPUT->notification('Updating tags itemtype', 'notifysuccess');
+
+        upgrade_mod_savepoint(true, 2010102800, 'wiki');
+    }
 
     return true;
 }

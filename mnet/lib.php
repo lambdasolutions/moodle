@@ -601,6 +601,8 @@ function mnet_profile_field_options() {
         'auth',
         'wwwroot',
         'session.gc_lifetime',
+        '_mnet_userpicture_timemodified',
+        '_mnet_userpicture_mimetype',
     );
 
     // these are the ones we used to send/receive (pre 2.0)
@@ -859,7 +861,7 @@ function mnet_fields_to_import(mnet_peer $peer) {
 function _mnet_field_helper(mnet_peer $peer, $key) {
     $tmp = mnet_profile_field_options();
     $defaults = explode(',', get_config('moodle', 'mnetprofile' . $key . 'fields'));
-    if (1 === get_config('mnet', 'host' . $peer->id . $key . 'default')) {
+    if ('1' === get_config('mnet', 'host' . $peer->id . $key . 'default')) {
         return array_merge($tmp['forced'], $defaults);
     }
     $hostsettings = get_config('mnet', 'host' . $peer->id . $key . 'fields');

@@ -16,32 +16,27 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * This is a one-line short description of the file
+ * Prints the list of all workshops in the course
  *
- * You can have a rather longer description of the file as well,
- * if you like, and it can span multiple lines.
- *
- * @package   mod-workshop
- * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    mod
+ * @subpackage workshop
+ * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-/// Replace workshop with the name of your module and remove this line
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once(dirname(__FILE__).'/lib.php');
 
 $id = required_param('id', PARAM_INT);   // course
 
-if (! $course = $DB->get_record('course', array('id' => $id))) {
-    error('Course ID is incorrect');
-}
+$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 
 require_course_login($course);
 
 add_to_log($course->id, 'workshop', 'view all', "index.php?id=$course->id", '');
 
-$PAGE->set_url('/mod/workshop/view.php', array('id' => $id));
+$PAGE->set_pagelayout('incourse');
+$PAGE->set_url('/mod/workshop/index.php', array('id' => $course->id));
 $PAGE->set_title($course->fullname);
 $PAGE->set_heading($course->shortname);
 $PAGE->navbar->add(get_string('modulenameplural', 'workshop'));
@@ -64,11 +59,10 @@ if ($usesections) {
     $sections = get_all_sections($course->id);
 }
 
-/// Print the list of instances (your module will probably extend this)
-
-$timenow  = time();
-$strsectionname  = get_string('sectionname', 'format_'.$course->format);
-$strname  = get_string('name');
+$timenow        = time();
+$strsectionname = get_string('sectionname', 'format_'.$course->format);
+$strname        = get_string('name');
+$table          = new html_table();
 
 if ($usesections) {
     $table->head  = array ($strsectionname, $strname);
@@ -79,24 +73,21 @@ if ($usesections) {
 }
 
 foreach ($workshops as $workshop) {
-    if (!$workshop->visible) {
-        //Show dimmed if the mod is hidden
-        $link = "<a class=\"dimmed\" href=\"view.php?id=$workshop->coursemodule\">$workshop->name</a>";
+    if (empty($workshop->visible)) {
+        $link = html_writer::link(new moodle_url('/mod/workshop/view.php', array('id' => $workshop->coursemodule)),
+                                  $workshop->name, array('class' => 'dimmed'));
     } else {
-        //Show normal if the mod is visible
-        $link = "<a href=\"view.php?id=$workshop->coursemodule\">$workshop->name</a>";
+        $link = html_writer::link(new moodle_url('/mod/workshop/view.php', array('id' => $workshop->coursemodule)),
+                                  $workshop->name);
     }
 
     if ($usesections) {
-        $table->data[] = array (get_section_name($course, $sections[$workshop->section]), $link);
+        $table->data[] = array(get_section_name($course, $sections[$workshop->section]), $link);
     } else {
-        $table->data[] = array ($link);
+        $table->data[] = array($link);
     }
 }
 
 echo $OUTPUT->heading(get_string('modulenameplural', 'workshop'), 2);
-print_table($table);
-
-/// Finish the page
-
+echo html_writer::table($table);
 echo $OUTPUT->footer();

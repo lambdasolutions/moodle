@@ -359,18 +359,17 @@ class assignment_uploadsingle extends assignment_base {
 
         $submissions = $this->get_submissions('','');
         if (empty($submissions)) {
-            error("there are no submissions to download");
+            print_error('errornosubmissions', 'assignment');
         }
         $filesforzipping = array();
         $fs = get_file_storage();
 
-        $groupmode = groupmode($this->course,$this->cm);
+        $groupmode = groups_get_activity_groupmode($this->cm);
         $groupid = 0;   // All users
         $groupname = '';
-        if($groupmode) {
-            $group = get_current_group($this->course->id, true);
-            $groupid = $group->id;
-            $groupname = $group->name.'-';
+        if ($groupmode) {
+            $groupid = groups_get_activity_group($this->cm, true);
+            $groupname = groups_get_group_name($groupid).'-';
         }
         $filename = str_replace(' ', '_', clean_filename($this->course->shortname.'-'.$this->assignment->name.'-'.$groupname.$this->assignment->id.".zip")); //name of new zip file.
         foreach ($submissions as $submission) {

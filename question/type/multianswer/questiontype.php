@@ -130,8 +130,7 @@ class embedded_cloze_qtype extends default_questiontype {
             $wrapped->parent = $question->id;
             $previousid = $wrapped->id ;
             $wrapped->category = $question->category . ',1'; // save_question strips this extra bit off again.
-            $wrapped = $QTYPES[$wrapped->qtype]->save_question($wrapped,
-                    clone($wrapped), $question->course);
+            $wrapped = $QTYPES[$wrapped->qtype]->save_question($wrapped, clone($wrapped));
             $sequence[] = $wrapped->id;
             if ($previousid != 0 && $previousid != $wrapped->id ) {
                 // for some reasons a new question has been created
@@ -160,7 +159,7 @@ class embedded_cloze_qtype extends default_questiontype {
         }
     }
 
-    function save_question($authorizedquestion, $form, $course) {
+    function save_question($authorizedquestion, $form) {
         $question = qtype_multianswer_extract_question($form->questiontext);
         if (isset($authorizedquestion->id)) {
             $question->id = $authorizedquestion->id;
@@ -176,7 +175,7 @@ class embedded_cloze_qtype extends default_questiontype {
         $form->questiontextformat = 0;
         $form->options = clone($question->options);
         unset($question->options);
-        return parent::save_question($question, $form, $course);
+        return parent::save_question($question, $form);
     }
 
     function create_session_and_responses(&$question, &$state, $cmoptions, $attempt) {
@@ -214,16 +213,11 @@ class embedded_cloze_qtype extends default_questiontype {
         return true;
     }
 
-    /**
-    * Deletes question from the question-type specific tables
-    *
-    * @return boolean Success/Failure
-    * @param object $question  The question being deleted
-    */
-    function delete_question($questionid) {
+    function delete_question($questionid, $contextid) {
         global $DB;
         $DB->delete_records("question_multianswer", array("question" => $questionid));
-        return true;
+
+        parent::delete_question($questionid, $contextid);
     }
 
     function get_correct_responses(&$question, &$state) {
@@ -527,11 +521,11 @@ class embedded_cloze_qtype extends default_questiontype {
 
                 // Print the answer text: no automatic numbering
 
-                $a->text =format_text($mcanswer->answer, FORMAT_MOODLE, $formatoptions, $cmoptions->course);
+                $a->text = format_text($mcanswer->answer, $mcanswer->answerformat, $formatoptions, $cmoptions->course);
 
                 // Print feedback if feedback is on
                 if (($options->feedback || $options->correct_responses) && ($checked )) { //|| $options->readonly
-                    $a->feedback = format_text($mcanswer->feedback, true, $formatoptions, $cmoptions->course);
+                    $a->feedback = format_text($mcanswer->feedback, $mcanswer->feedbackformat, $formatoptions, $cmoptions->course);
                 } else {
                     $a->feedback = '';
                 }
@@ -673,173 +667,6 @@ class embedded_cloze_qtype extends default_questiontype {
         return $totalfraction / count($question->options->questions);
     }
 
-/// RESTORE FUNCTIONS /////////////////
-
-    /*
-     * Restores the data in the question
-     *
-     * This is used in question/restorelib.php
-     */
-    function restore($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-
-        $status = true;
-
-        //Get the multianswers array
-        $multianswers = $info['#']['MULTIANSWERS']['0']['#']['MULTIANSWER'];
-        //Iterate over multianswers
-        for($i = 0; $i < sizeof($multianswers); $i++) {
-            $mul_info = $multianswers[$i];
-
-            //We need this later
-            $oldid = backup_todb($mul_info['#']['ID']['0']['#']);
-
-            //Now, build the question_multianswer record structure
-            $multianswer = new stdClass;
-            $multianswer->question = $new_question_id;
-            $multianswer->sequence = backup_todb($mul_info['#']['SEQUENCE']['0']['#']);
-
-            //We have to recode the sequence field (a list of question ids)
-            //Extracts question id from sequence
-            $sequence_field = "";
-            $in_first = true;
-            $tok = strtok($multianswer->sequence,",");
-            while ($tok) {
-                //Get the answer from backup_ids
-                $question = backup_getid($restore->backup_unique_code,"question",$tok);
-                if ($question) {
-                    if ($in_first) {
-                        $sequence_field .= $question->new_id;
-                        $in_first = false;
-                    } else {
-                        $sequence_field .= ",".$question->new_id;
-                    }
-                }
-                //check for next
-                $tok = strtok(",");
-            }
-            //We have the answers field recoded to its new ids
-            $multianswer->sequence = $sequence_field;
-            //The structure is equal to the db, so insert the question_multianswer
-            $newid = $DB->insert_record("question_multianswer", $multianswer);
-
-            //Save ids in backup_ids
-            if ($newid) {
-                backup_putid($restore->backup_unique_code,"question_multianswer",
-                             $oldid, $newid);
-            }
-
-            //Do some output
-            if (($i+1) % 50 == 0) {
-                if (!defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if (($i+1) % 1000 == 0) {
-                        echo "<br />";
-                    }
-                }
-                backup_flush(300);
-            }
-        }
-
-        return $status;
-    }
-
-    function restore_map($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-
-        $status = true;
-
-        //Get the multianswers array
-        $multianswers = $info['#']['MULTIANSWERS']['0']['#']['MULTIANSWER'];
-        //Iterate over multianswers
-        for($i = 0; $i < sizeof($multianswers); $i++) {
-            $mul_info = $multianswers[$i];
-
-            //We need this later
-            $oldid = backup_todb($mul_info['#']['ID']['0']['#']);
-
-            //Now, build the question_multianswer record structure
-            $multianswer->question = $new_question_id;
-            $multianswer->answers = backup_todb($mul_info['#']['ANSWERS']['0']['#']);
-            $multianswer->positionkey = backup_todb($mul_info['#']['POSITIONKEY']['0']['#']);
-            $multianswer->answertype = backup_todb($mul_info['#']['ANSWERTYPE']['0']['#']);
-            $multianswer->norm = backup_todb($mul_info['#']['NORM']['0']['#']);
-
-            //If we are in this method is because the question exists in DB, so its
-            //multianswer must exist too.
-            //Now, we are going to look for that multianswer in DB and to create the
-            //mappings in backup_ids to use them later where restoring states (user level).
-
-            //Get the multianswer from DB (by question and positionkey)
-            $db_multianswer = $DB->get_record ("question_multianswer",array("question"=>$new_question_id,
-                                                      "positionkey"=>$multianswer->positionkey));
-            //Do some output
-            if (($i+1) % 50 == 0) {
-                if (!defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if (($i+1) % 1000 == 0) {
-                        echo "<br />";
-                    }
-                }
-                backup_flush(300);
-            }
-
-            //We have the database multianswer, so update backup_ids
-            if ($db_multianswer) {
-                //We have the newid, update backup_ids
-                backup_putid($restore->backup_unique_code,"question_multianswer",$oldid,
-                             $db_multianswer->id);
-            } else {
-                $status = false;
-            }
-        }
-
-        return $status;
-    }
-
-    function restore_recode_answer($state, $restore) {
-        global $DB, $OUTPUT;
-        //The answer is a comma separated list of hypen separated sequence number and answers. We may have to recode the answers
-        $answer_field = "";
-        $in_first = true;
-        $tok = strtok($state->answer,",");
-        while ($tok) {
-            //Extract the multianswer_id and the answer
-            $exploded = explode("-",$tok);
-            $seqnum = $exploded[0];
-            $answer = $exploded[1];
-            // $sequence is an ordered array of the question ids.
-            if (!$sequence = $DB->get_field('question_multianswer', 'sequence', array('question' => $state->question))) {
-                print_error('missingoption', 'question', '', $state->question);
-            }
-            $sequence = explode(',', $sequence);
-            // The id of the current question.
-            $wrappedquestionid = $sequence[$seqnum-1];
-            // now we can find the question
-            if (!$wrappedquestion = $DB->get_record('question', array('id' => $wrappedquestionid))) {
-                echo $OUTPUT->notification("Can't find the subquestion $wrappedquestionid that is used as part $seqnum in cloze question $state->question");
-            }
-            // For multichoice question we need to recode the answer
-            if ($answer and $wrappedquestion->qtype == 'multichoice') {
-                //The answer is an answer_id, look for it in backup_ids
-                if (!$ans = backup_getid($restore->backup_unique_code,"question_answers",$answer)) {
-                    echo 'Could not recode cloze multichoice answer '.$answer.'<br />';
-                }
-                $answer = $ans->new_id;
-            }
-            //build the new answer field for each pair
-            if ($in_first) {
-                $answer_field .= $seqnum."-".$answer;
-                $in_first = false;
-            } else {
-                $answer_field .= ",".$seqnum."-".$answer;
-            }
-            //check for next
-            $tok = strtok(",");
-        }
-        return $answer_field;
-    }
-
     /**
      * Runs all the code required to set up and save an essay question for testing purposes.
      * Alternate DB table prefix may be used to facilitate data deletion.
@@ -866,7 +693,7 @@ Good luck!
             $course = $DB->get_record('course', array('id' => $courseid));
         }
 
-        return $this->save_question($question, $form, $course);
+        return $this->save_question($question, $form);
     }
 
 }

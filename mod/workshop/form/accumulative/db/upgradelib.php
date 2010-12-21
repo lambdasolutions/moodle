@@ -18,9 +18,10 @@
 /**
  * Functions used by some stages of accumulative grading upgrade
  *
- * @package   mod-workshopform-accumulative
- * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    workshopform
+ * @subpackage accumulative
+ * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 /**
@@ -72,6 +73,10 @@ function workshopform_accumulative_upgrade_legacy() {
         $rs = $DB->get_recordset_sql($sql, $params);
         $newassessmentids = workshop_upgrade_assessment_id_mappings();
         foreach ($rs as $old) {
+            if (!isset($newassessmentids[$old->assessmentid])) {
+                // orphaned grade - the assessment was removed but the grade remained
+                continue;
+            }
             if (!isset($newelementids[$old->workshopid]) or !isset($newelementids[$old->workshopid][$old->elementno])) {
                 // orphaned grade - the assessment form element has been removed after the grade was recorded
                 continue;

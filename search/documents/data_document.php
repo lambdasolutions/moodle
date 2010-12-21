@@ -161,16 +161,15 @@ function data_get_comments($database_id) {
           c.id,
           r.groupid,
           c.userid,
-          c.recordid,
+          c.itemid,
           c.content,
-          c.created,
-          c.modified,
+          c.timecreated,
           r.dataid
        FROM
-          {data_comments} as c,
-          {data_records} as r 
+          {data_records} as r
+       JOIN
+          {comments} as c ON c.contextid = r.id
        WHERE
-          c.recordid = r.id AND
           r.dataid = ?
     ";
     $comments = $DB->get_records_sql($query, array($database_id));
@@ -232,7 +231,7 @@ function data_get_content_for_index(&$database) {
     $records_comments = data_get_comments($database->id);
     if ($records_comments){
         foreach($records_comments as $aComment){
-            $aComment->title = $recordsTitle[$aComment->recordid];
+            $aComment->title = $recordsTitle[$aComment->itemid];
             $authoruser = $DB->get_record('user', array('id' => $aComment->userid));
             $aComment->author = fullname($authoruser);
             $documents[] = new DataCommentSearchDocument(get_object_vars($aComment), $database->course, $context->id);
@@ -275,7 +274,7 @@ function data_single_document($id, $itemtype) {
                 $content = @$content.' '.$aField;
             }
             unset($recordMetaData);
-            $recordMetaData = $DB->get_record('data_records', array('id' => $aRecordId));
+            $recordMetaData = $DB->get_record('data_records', array('id' => $id));
             $recordMetaData->title = $first;
             $recordMetaData->content = $content;
             return new DataSearchDocument(get_object_vars($recordMetaData), $record_course, $context->id);
@@ -319,10 +318,10 @@ function data_delete($info, $itemtype) {
 *
 */
 function data_db_names() {
-    //[primary id], [table name], [time created field name], [time modified field name]
+    //[primary id], [table name], [time created field name], [time modified field name], [docsubtype], [additional where conditions for sql]
     return array(
         array('id', 'data_records', 'timecreated', 'timemodified', 'record'),
-        array('id', 'data_comments', 'created', 'modified', 'comment')
+        array('id', 'comments', 'timecreated', 'timecreated', 'comment')
     );
 }
 

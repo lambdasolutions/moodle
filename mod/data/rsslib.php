@@ -12,11 +12,11 @@
             return null;
         }
 
-        if (!is_enrolled($context, null, 'mod/data:managetemplates')) {
+        if (!is_enrolled($context, null, 'mod/data:managetemplates') && !isguestuser()) {
             return null;
         }
 
-        $dataid = $args[3];
+        $dataid = clean_param($args[3], PARAM_INT);
         $data = $DB->get_record('data', array('id' => $dataid), '*', MUST_EXIST);
 
         if (!rss_enabled_for_mod('data', $data, false, true)) {
@@ -34,8 +34,9 @@
         if (file_exists($cachedfilepath)) {
             $cachedfilelastmodified = filemtime($cachedfilepath);
         }
-
-        if (data_rss_newstuff($data, $cachedfilelastmodified)) {
+        //if the cache is more than 60 seconds old and there's new stuff
+        $dontrecheckcutoff = time()-60;
+        if ( $dontrecheckcutoff > $cachedfilelastmodified && data_rss_newstuff($data, $cachedfilelastmodified)) {
             require_once($CFG->dirroot . '/mod/data/lib.php');
 
             // Get the first field in the list  (a hack for now until we have a selector)

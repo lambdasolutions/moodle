@@ -32,7 +32,7 @@ $user = optional_param('user',0,PARAM_INT);
 
 $url = new moodle_url('/mod/forum/subscribe.php', array('id'=>$id));
 if ($mode !== '') {
-    $url->param('force', $mode);
+    $url->param('mode', $mode);
 }
 if ($user !== 0) {
     $url->param('user', $user);
@@ -78,7 +78,7 @@ if (!is_enrolled($context)) {   // Guests and visitors can't subscribe - only en
     $PAGE->set_title($course->shortname);
     $PAGE->set_heading($course->fullname);
     echo $OUTPUT->header();
-    echo $OUTPUT->confirm(get_string('noguestsubscribe', 'forum').'<br /><br />'.get_string('liketologin'),
+    echo $OUTPUT->confirm(get_string('subscribeenrolledonly', 'forum').'<br /><br />'.get_string('liketologin'),
                  get_login_url(), new moodle_url('/mod/forum/view.php', array('f'=>$id)));
     echo $OUTPUT->footer();
     exit;
@@ -132,13 +132,9 @@ if (forum_is_subscribed($user->id, $forum->id)) {
         print_error('disallowsubscribe', 'forum', $_SERVER["HTTP_REFERER"]);
     }
     if (!has_capability('mod/forum:viewdiscussion', $context)) {
-        print_error('cannotsubscribe', 'forum', $_SERVER["HTTP_REFERER"]);
+        print_error('noviewdiscussionspermission', 'forum', $_SERVER["HTTP_REFERER"]);
     }
-    if (forum_subscribe($user->id, $forum->id) ) {
-        add_to_log($course->id, "forum", "subscribe", "view.php?f=$forum->id", $forum->id, $cm->id);
-        redirect($returnto, get_string("nowsubscribed", "forum", $info), 1);
-    } else {
-        print_error('cannotsubscribe', 'forum', $_SERVER["HTTP_REFERER"]);
-    }
+    forum_subscribe($user->id, $forum->id);
+    add_to_log($course->id, "forum", "subscribe", "view.php?f=$forum->id", $forum->id, $cm->id);
+    redirect($returnto, get_string("nowsubscribed", "forum", $info), 1);
 }
-

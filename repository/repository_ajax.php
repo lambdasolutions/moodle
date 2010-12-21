@@ -52,6 +52,14 @@ $saveas_path   = optional_param('savepath', '/', PARAM_PATH);   // save as file 
 $search_text   = optional_param('s', '', PARAM_CLEANHTML);
 $linkexternal  = optional_param('linkexternal', '', PARAM_ALPHA);
 
+@header('Content-type: text/plain');
+
+// if uploaded file is larger than post_max_size (php.ini) setting, $_POST content will lost
+if (empty($_POST) && !empty($action)) {
+    $err->error = get_string('errorpostmaxsize', 'repository');
+    die(json_encode($err));
+}
+
 list($context, $course, $cm) = get_context_info_array($contextid);
 require_login($course, false, $cm);
 $PAGE->set_context($context);
@@ -154,7 +162,7 @@ switch ($action) {
     case 'search':
         $search_result = $repo->search($search_text, (int)$page);
         $search_result['repo_id'] = $repo_id;
-        $search_result['search_result'] = true;
+        $search_result['issearchresult'] = true;
         echo json_encode($search_result);
         break;
     case 'download':
@@ -251,7 +259,7 @@ switch ($action) {
         // see MDL-23407
         try {
             // TODO: add file scanning MDL-19380 into each plugin
-            $result = $repo->upload();
+            $result = $repo->upload($saveas_filename, $maxbytes);
             echo json_encode($result);
         } catch (Exception $e) {
             $err->error = $e->getMessage();

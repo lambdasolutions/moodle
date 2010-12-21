@@ -204,7 +204,6 @@ class assignment_upload extends assignment_base {
             }
             echo $OUTPUT->single_button(new moodle_url('/mod/assignment/type/upload/upload.php', array('contextid'=>$this->context->id, 'userid'=>$USER->id)), $str, 'get');
         }
-
     }
 
     function view_notes() {
@@ -212,7 +211,7 @@ class assignment_upload extends assignment_base {
 
         if ($submission = $this->get_submission($USER->id)
           and !empty($submission->data1)) {
-            echo $OUTPUT->box(format_text($submission->data1, FORMAT_HTML), 'generalbox boxaligncenter boxwidthwide');
+            echo $OUTPUT->box(format_text($submission->data1, FORMAT_HTML, array('overflowdiv'=>true)), 'generalbox boxaligncenter boxwidthwide');
         } else {
             echo $OUTPUT->box(get_string('notesempty', 'assignment'), 'generalbox boxaligncenter');
         }
@@ -861,8 +860,7 @@ class assignment_upload extends assignment_base {
 
         if (is_enrolled($this->context, $USER, 'mod/assignment:submit')
           and $this->isopen()                                                 // assignment not closed yet
-          and (empty($submission) or ($submission->userid == $USER->id        // his/her own submission
-            and $this->count_user_files($submission->id) <= $this->assignment->var1))    // file limit not exceeded
+          and (empty($submission) or ($submission->userid == $USER->id))        // his/her own submission
           and !$this->is_finalized($submission)) {                            // no uploading after final submission
             return true;
         } else {
@@ -1094,18 +1092,17 @@ class assignment_upload extends assignment_base {
         require_once($CFG->libdir.'/filelib.php');
         $submissions = $this->get_submissions('','');
         if (empty($submissions)) {
-            error("there are no submissions to download");
+            print_error('errornosubmissions', 'assignment');
         }
         $filesforzipping = array();
         $fs = get_file_storage();
 
-        $groupmode = groupmode($this->course,$this->cm);
+        $groupmode = groups_get_activity_groupmode($this->cm);
         $groupid = 0;   // All users
         $groupname = '';
-        if($groupmode) {
-            $group = get_current_group($this->course->id, true);
-            $groupid = $group->id;
-            $groupname = $group->name.'-';
+        if ($groupmode) {
+            $groupid = groups_get_activity_group($this->cm, true);
+            $groupname = groups_get_group_name($groupid).'-';
         }
         $filename = str_replace(' ', '_', clean_filename($this->course->shortname.'-'.$this->assignment->name.'-'.$groupname.$this->assignment->id.".zip")); //name of new zip file.
         foreach ($submissions as $submission) {

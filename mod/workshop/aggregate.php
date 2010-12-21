@@ -18,9 +18,10 @@
 /**
  * Aggregates the grades for submission and grades for assessments
  *
- * @package   mod-workshop
- * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    mod
+ * @subpackage workshop
+ * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
@@ -48,25 +49,11 @@ require_capability('mod/workshop:overridegrades', $PAGE->context);
 $evaluator = $workshop->grading_evaluation_instance();
 $settingsform = $evaluator->get_settings_form($PAGE->url);
 
-if ($settingsform->is_cancelled()) {
-    redirect(new moodle_url($workshop->view_url(), compact('page', 'sortby', 'sorthow')));
-
-} elseif ($settingsdata = $settingsform->get_data()) {
+if ($settingsdata = $settingsform->get_data()) {
     $workshop->aggregate_submission_grades();           // updates 'grade' in {workshop_submissions}
     $evaluator->update_grading_grades($settingsdata);   // updates 'gradinggrade' in {workshop_assessments}
     $workshop->aggregate_grading_grades();              // updates 'gradinggrade' in {workshop_aggregations}
-    redirect(new moodle_url($workshop->view_url(), compact('page', 'sortby', 'sorthow')));
+    $workshop->log('update aggregate grades');
 }
 
-$PAGE->set_title($workshop->name);
-$PAGE->set_heading($course->fullname);
-$PAGE->navbar->add(get_string('aggregation', 'workshop'));
-
-//
-// Output starts here
-//
-echo $OUTPUT->header();
-echo $OUTPUT->confirm(get_string('aggregationinfo', 'workshop'),
-    new moodle_url($PAGE->url, $settingsdata),
-    new moodle_url($workshop->view_url(), compact('page', 'sortby', 'sorthow')));
-echo $OUTPUT->footer();
+redirect(new moodle_url($workshop->view_url(), compact('page', 'sortby', 'sorthow')));

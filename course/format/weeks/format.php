@@ -24,7 +24,10 @@
  * @package
  */
 
+defined('MOODLE_INTERNAL') || die();
+
     require_once($CFG->libdir.'/filelib.php');
+    require_once($CFG->libdir.'/completionlib.php');
 
     $week = optional_param('week', -1, PARAM_INT);
 
@@ -79,6 +82,7 @@
 
     $section = 0;
     $thissection = $sections[$section];
+    unset($sections[0]);
 
     if ($thissection->summary or $thissection->sequence or $PAGE->user_is_editing()) {
 
@@ -96,8 +100,9 @@
 
         $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
         $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
-        $summaryformatoptions = new stdClass();
+        $summaryformatoptions = new stdClass;
         $summaryformatoptions->noclean = true;
+        $summaryformatoptions->overflowdiv = true;
         echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
 
         if ($PAGE->user_is_editing() && has_capability('moodle/course:update', get_context_instance(CONTEXT_COURSE, $course->id))) {
@@ -227,8 +232,9 @@
                 echo '<div class="summary">';
                 $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
                 $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
-                $summaryformatoptions = new stdClass();
+                $summaryformatoptions = new stdClass;
                 $summaryformatoptions->noclean = true;
+                $summaryformatoptions->overflowdiv = true;
                 echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
 
                 if ($PAGE->user_is_editing() && has_capability('moodle/course:update', get_context_instance(CONTEXT_COURSE, $course->id))) {
@@ -248,9 +254,34 @@
             echo "</li>\n";
         }
 
+        unset($sections[$section]);
         $section++;
         $weekdate = $nextweekdate;
     }
+
+    if (!$displaysection and $PAGE->user_is_editing() and has_capability('moodle/course:update', get_context_instance(CONTEXT_COURSE, $course->id))) {
+        // print stealth sections if present
+        $modinfo = get_fast_modinfo($course);
+        foreach ($sections as $section=>$thissection) {
+            if (empty($modinfo->sections[$section])) {
+                continue;
+            }
+
+            echo '<li id="section-'.$section.'" class="section main clearfix stealth hidden">'; //'<div class="left side">&nbsp;</div>';
+
+            echo '<div class="left side">';
+            echo '</div>';
+            // Note, 'right side' is BEFORE content.
+            echo '<div class="right side">';
+            echo '</div>';
+            echo '<div class="content">';
+            echo $OUTPUT->heading(get_string('orphanedactivities'), 3, 'sectionname');
+            print_section($course, $thissection, $mods, $modnamesused);
+            echo '</div>';
+            echo "</li>\n";
+        }
+    }
+
     echo "</ul>\n";
 
     if (!empty($sectionmenu)) {

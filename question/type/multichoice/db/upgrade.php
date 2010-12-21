@@ -40,7 +40,8 @@ function xmldb_qtype_multichoice_upgrade($oldversion) {
                 GROUP BY qc.id, qc.name");
 
         // Rename the random qusetions in those categories.
-        $where = "qtype = 'random' AND category = ? AND " . $DB->sql_compare_text('questiontext') . " = ?";
+        $where = "qtype = 'random' AND category = ? AND " .
+                $DB->sql_compare_text('questiontext') . " = " . $DB->sql_compare_text('?');
         foreach ($categories as $cat) {
             $randomqname = $QTYPES[RANDOM]->question_name($cat, false);
             $DB->set_field_select('question', 'name', $randomqname, $where, array($cat->id, '0'));
@@ -79,25 +80,26 @@ function xmldb_qtype_multichoice_upgrade($oldversion) {
             $dbman->add_field($table, $field);
         }
 
-        $rs = $DB->get_recordset('question_multichoice');
+        // In the past, the correctfeedback, partiallycorrectfeedback,
+        // incorrectfeedback columns were assumed to contain content of the same
+        // form as questiontextformat. If we are using the HTML editor, then
+        // convert FORMAT_MOODLE content to FORMAT_HTML.
+        $rs = $DB->get_recordset_sql('
+                SELECT qm.*, q.oldquestiontextformat
+                FROM {question_multichoice} qm
+                JOIN {question} q ON qm.question = q.id');
         foreach ($rs as $record) {
-            if ($CFG->texteditors !== 'textarea') {
-                if (!empty($record->correctfeedback)) {
-                    $record->correctfeedback = text_to_html($record->correctfeedback);
-                }
+            if ($CFG->texteditors !== 'textarea' && $record->oldquestiontextformat == FORMAT_MOODLE) {
+                $record->correctfeedback = text_to_html($record->correctfeedback, false, false, true);
                 $record->correctfeedbackformat = FORMAT_HTML;
-                if (!empty($record->partiallycorrectfeedback)) {
-                    $record->partiallycorrectfeedback = text_to_html($record->partiallycorrectfeedback);
-                }
+                $record->partiallycorrectfeedback = text_to_html($record->partiallycorrectfeedback, false, false, true);
                 $record->partiallycorrectfeedbackformat = FORMAT_HTML;
-                if (!empty($record->incorrectfeedback)) {
-                    $record->incorrectfeedback = text_to_html($record->incorrectfeedback);
-                }
+                $record->incorrectfeedback = text_to_html($record->incorrectfeedback, false, false, true);
                 $record->incorrectfeedbackformat = FORMAT_HTML;
             } else {
-                $record->correctfeedbackformat = FORMAT_MOODLE;
-                $record->partiallycorrectfeedbackformat = FORMAT_MOODLE;
-                $record->incorrectfeedbackformat = FORMAT_MOODLE;
+                $record->correctfeedbackformat = $record->oldquestiontextformat;
+                $record->partiallycorrectfeedback = $record->oldquestiontextformat;
+                $record->incorrectfeedbackformat = $record->oldquestiontextformat;
             }
             $DB->update_record('question_multichoice', $record);
         }

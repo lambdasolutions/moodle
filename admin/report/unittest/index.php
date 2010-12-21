@@ -8,7 +8,8 @@
  * @package SimpleTestEx
  */
 
-/** */
+define('NO_OUTPUT_BUFFERING', true);
+
 require_once(dirname(__FILE__).'/../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->libdir.'/simpletestcoveragelib.php');
@@ -18,7 +19,7 @@ require_once('ex_reporter.php');
 // Always run the unit tests in developer debug mode.
 $CFG->debug = DEBUG_DEVELOPER;
 error_reporting($CFG->debug);
-raise_memory_limit('256M');
+raise_memory_limit(MEMORY_EXTRA);
 
 // page parameters
 $path         = optional_param('path', null, PARAM_PATH);
@@ -33,10 +34,19 @@ $unittest = true;
 global $UNITTEST;
 $UNITTEST = new stdClass();
 
+// This limit is the time allowed per individual test function. Please do not
+// increase this value. If you get a PHP time limit when running unit tests,
+// find the unit test which is running slowly, and either make it faster,
+// split it into multiple tests, or call set_time_limit within that test.
+define('TIME_ALLOWED_PER_UNIT_TEST', 60);
+
 // Print the header.
 $strtitle = get_string('unittests', 'simpletest');
 
 if (!is_null($path)) {
+    //trim so user doesn't get an error if they include a space on the end of the path (ie by pasting path)
+    $path = trim($path);
+
     // Turn off xmlstrictheaders during the unit test run.
     $origxmlstrictheaders = !empty($CFG->xmlstrictheaders);
     $CFG->xmlstrictheaders = false;
@@ -87,7 +97,6 @@ if (!is_null($path)) {
             $title = get_string('moodleunittests', 'simpletest', $displaypath);
         }
         echo $OUTPUT->heading($title);
-        set_time_limit(300); // 5 mins
         $test->run($reporter);
     }
 

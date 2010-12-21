@@ -18,14 +18,16 @@
 /**
  * Strings for component 'workshopallocation_random', language 'en', branch 'MOODLE_20_STABLE'
  *
- * @package   workshopallocation_random
- * @copyright 2009 David Mudrak <david@moodle.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    workshopallocation
+ * @subpackage random
+ * @copyright  2009 David Mudrak <david@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 $string['addselfassessment'] = 'Add self-assessments';
 $string['allocationaddeddetail'] = 'New assessment to be done: <strong>{$a->reviewername}</strong> is reviewer of <strong>{$a->authorname}</strong>';
 $string['allocationdeallocategraded'] = 'Unable to deallocate already graded assessment: reviewer <strong>{$a->reviewername}</strong>, submission author: <strong>{$a->authorname}</strong>';
+$string['allocationreuseddetail'] = 'Reused assessment: <strong>{$a->reviewername}</strong> kept as reviewer of <strong>{$a->authorname}</strong>';
 $string['allocationsettings'] = 'Allocation settings';
 $string['assessmentdeleteddetail'] = 'Assessment deallocated: <strong>{$a->reviewername}</strong> is no longer reviewer of <strong>{$a->authorname}</strong>';
 $string['assesswosubmission'] = 'Participants can assess without having submitted anything';

@@ -854,10 +854,11 @@ function tag_compute_correlations($min_correlation=2) {
         //var_dump($correlated);
 
         //saves correlation info in the caching table
-        if ($tag_correlation_obj = $DB->get_record('tag_correlation', array('tagid'=>$tag->id), 'tagid')) {
+        if ($tag_correlation_obj = $DB->get_record('tag_correlation', array('tagid'=>$tag->id), 'id')) {
             $tag_correlation_obj->correlatedtags = $correlated;
             $DB->update_record('tag_correlation', $tag_correlation_obj);
         } else {
+            $tag_correlation_obj = new stdClass();
             $tag_correlation_obj->tagid          = $tag->id;
             $tag_correlation_obj->correlatedtags = $correlated;
             $DB->insert_record('tag_correlation', $tag_correlation_obj);
@@ -944,7 +945,7 @@ function tag_get_correlated($tag_id, $limitnum=null) {
     }
 
     // this is (and has to) return the same fields as the query in tag_get_tags
-    if ( !$result = $DB->get_records_sql("SELECT tg.id, tg.tagtype, tg.name, tg.rawname, tg.flag, ti.ordering
+    if ( !$result = $DB->get_records_sql("SELECT DISTINCT tg.id, tg.tagtype, tg.name, tg.rawname, tg.flag, ti.ordering
                                             FROM {tag} tg INNER JOIN {tag_instance} ti ON tg.id = ti.tagid
                                            WHERE tg.id IN ({$tag_correlation->correlatedtags})") ) {
         return array();

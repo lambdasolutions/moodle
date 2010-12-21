@@ -24,6 +24,12 @@
 
 class question_calculated_qtype extends default_questiontype {
 
+    public $fileoptionsa = array(
+        'subdirs' => false,
+        'maxfiles' => -1,
+        'maxbytes' => 0,
+    );
+
     // Used by the function custom_generator_tools:
     public $calcgenerateidhasbeenadded = false;
     public $virtualqtype = false;
@@ -55,6 +61,9 @@ class question_calculated_qtype extends default_questiontype {
             $question->options->correctfeedback = '';
             $question->options->partiallycorrectfeedback = '';
             $question->options->incorrectfeedback = '';
+            $question->options->correctfeedbackformat = 0;
+            $question->options->partiallycorrectfeedbackformat = 0;
+            $question->options->incorrectfeedbackformat = 0;
         }
 
         if (!$question->options->answers = $DB->get_records_sql(
@@ -64,7 +73,7 @@ class question_calculated_qtype extends default_questiontype {
             "WHERE a.question = ? " .
             "AND   a.id = c.answer ".
             "ORDER BY a.id ASC", array($question->id))) {
-                echo $OUTPUT->notification('Error: Missing question answer for calculated question ' . $question->id . '!');
+                // echo $OUTPUT->notification('Error: Missing question answer for calculated question ' . $question->id . '!');
                 return false;
             }
 
@@ -147,11 +156,9 @@ class question_calculated_qtype extends default_questiontype {
         $options->shuffleanswers = $question->shuffleanswers;
 
         foreach (array('correctfeedback', 'partiallycorrectfeedback', 'incorrectfeedback') as $feedbackname) {
-            $feedback = $question->$feedbackname;
-            $options->$feedbackname = trim($feedback['text']);
+            $options->$feedbackname = '';
             $feedbackformat = $feedbackname . 'format';
-            $options->$feedbackformat = trim($feedback['format']);
-            $options->$feedbackname = file_save_draft_area_files($feedback['itemid'], $context->id, 'qtype_calculated', $feedbackname, $question->id, self::$fileoptions, trim($feedback['text']));
+            $options->$feedbackformat = 0 ;
         }
 
         if ($update) {
@@ -182,21 +189,33 @@ class question_calculated_qtype extends default_questiontype {
             $question->answers=$question->answer;
         }
         foreach ($question->answers as $key => $dataanswer) {
+            if (is_array($dataanswer)) {
+                $dataanswer = $dataanswer['text'];
+            }
             if ( trim($dataanswer) != '' ) {
                 $answer = new stdClass;
                 $answer->question = $question->id;
                 $answer->answer = trim($dataanswer);
                 $answer->fraction = $question->fraction[$key];
                 $answer->feedbackformat = $question->feedback[$key]['format'];
+                if (isset($question->feedback[$key]['files'])) {
+                    $files = $question->feedback[$key]['files'];
+                }
 
                 if ($oldanswer = array_shift($oldanswers)) {  // Existing answer, so reuse it
                     $answer->id = $oldanswer->id;
-                    $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $oldanswer->id, self::$fileoptions, trim($question->feedback[$key]['text']));
+                    $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $oldanswer->id, $this->fileoptionsa, trim($question->feedback[$key]['text']));
                     $DB->update_record("question_answers", $answer);
                 } else { // This is a completely new answer
-                    $answer->feedback = '';
+                    $answer->feedback = trim($question->feedback[$key]['text']);
                     $answer->id = $DB->insert_record("question_answers", $answer);
-                    $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, self::$fileoptions, trim($question->feedback[$key]['text']));
+                    if (isset($files)) {
+                        foreach ($files as $file) {
+                            $this->import_file($context, 'question', 'answerfeedback', $answer->id, $file);
+                        }
+                    } else {
+                        $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, $this->fileoptionsa , trim($question->feedback[$key]['text']));
+                    }
                     $DB->set_field('question_answers', 'feedback', $answer->feedback, array('id'=>$answer->id));
                 }
 
@@ -648,10 +667,10 @@ class question_calculated_qtype extends default_questiontype {
      * @param int $course
      * @param PARAM_ALPHA $wizardnow should be added as we are coming from question2.php
      */
-    function save_question($question, $form, $course) {
+    function save_question($question, $form) {
         global $DB;
         if ($this->wizard_pages_number() == 1 ){
-                $question = parent::save_question($question, $form, $course);
+                $question = parent::save_question($question, $form);
             return $question ;
         }
 
@@ -670,7 +689,7 @@ class question_calculated_qtype extends default_questiontype {
         case '' :
         case 'question': // coming from the first page, creating the second
             if (empty($form->id)) { // for a new question $form->id is empty
-                $question = parent::save_question($question, $form, $course);
+                $question = parent::save_question($question, $form);
                 //prepare the datasets using default $questionfromid
                 $this->preparedatasets($form);
                 $form->id = $question->id;
@@ -680,7 +699,7 @@ class question_calculated_qtype extends default_questiontype {
                 }
             } else if (!empty($form->makecopy)){
                 $questionfromid =  $form->id ;
-                $question = parent::save_question($question, $form, $course);
+                $question = parent::save_question($question, $form);
                 //prepare the datasets
                 $this->preparedatasets($form,$questionfromid);
                 $form->id = $question->id;
@@ -689,7 +708,7 @@ class question_calculated_qtype extends default_questiontype {
                     $this->addnamecategory($question);
                 }
             }  else {// editing a question
-                $question = parent::save_question($question, $form, $course);
+                $question = parent::save_question($question, $form);
                 //prepare the datasets
                 $this->preparedatasets($form,$question->id);
                 $form->id = $question->id;
@@ -726,13 +745,8 @@ class question_calculated_qtype extends default_questiontype {
         }
         return $question;
     }
-    /**
-     * Deletes question from the question-type specific tables
-     *
-     * @return boolean Success/Failure
-     * @param object $question  The question being deleted
-     */
-    function delete_question($questionid) {
+
+    function delete_question($questionid, $contextid) {
         global $DB;
 
         $DB->delete_records("question_calculated", array("question" => $questionid));
@@ -750,13 +764,16 @@ class question_calculated_qtype extends default_questiontype {
             }
         }
         $DB->delete_records("question_datasets", array("question" => $questionid));
-        return true;
+
+        parent::delete_question($questionid, $contextid);
     }
+
     function test_response(&$question, &$state, $answer) {
         $virtualqtype = $this->get_virtual_qtype();
         return $virtualqtype->test_response($question, $state, $answer);
 
     }
+
     function compare_responses(&$question, $state, $teststate) {
 
         $virtualqtype = $this->get_virtual_qtype();
@@ -906,7 +923,6 @@ class question_calculated_qtype extends default_questiontype {
             $numericalquestion->options->answers[$key] = clone($answer);
         }
         foreach ($numericalquestion->options->answers as $key => $answer) {
-            $answer = &$numericalquestion->options->answers[$key]; // for PHP 4.x
             $answer->answer = $this->substitute_variables_and_eval($answer->answer,
                 $state->options->dataset);
         }
@@ -1751,7 +1767,10 @@ class question_calculated_qtype extends default_questiontype {
                FROM {question_dataset_definitions} d, {question_dataset_items} i, {question_datasets} q
               WHERE q.question = ? AND q.datasetdefinition = d.id AND d.id = i.definition AND i.itemnumber = ?
            ORDER by i.id DESC ", array($question->id, $datasetitem))) {
-            print_error('cannotgetdsfordependent', 'question', '', array($question->id, $datasetitem));
+           $a = new stdClass;
+           $a->id = $question->id;
+           $a->item = $datasetitem ;
+            print_error('cannotgetdsfordependent', 'question', '', $a );
         }
         $dataset = Array();
         foreach($dataitems as $id => $dataitem  ){
@@ -2043,108 +2062,6 @@ class question_calculated_qtype extends default_questiontype {
         return $this->virtualqtype;
     }
 
-    /// RESTORE FUNCTIONS /////////////////
-
-    /*
-     * Restores the data in the question
-     *
-     * This is used in question/restorelib.php
-     */
-    function restore($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-
-        $status = true;
-
-        //Get the calculated-s array
-        $calculateds = $info['#']['CALCULATED'];
-
-        //Iterate over calculateds
-        for($i = 0; $i < sizeof($calculateds); $i++) {
-            $cal_info = $calculateds[$i];
-            //traverse_xmlize($cal_info);                                                                 //Debug
-            //print_object ($GLOBALS['traverse_array']);                                                  //Debug
-            //$GLOBALS['traverse_array']="";                                                              //Debug
-
-            //Now, build the question_calculated record structure
-            $calculated->question = $new_question_id;
-            $calculated->answer = backup_todb($cal_info['#']['ANSWER']['0']['#']);
-            $calculated->tolerance = backup_todb($cal_info['#']['TOLERANCE']['0']['#']);
-            $calculated->tolerancetype = backup_todb($cal_info['#']['TOLERANCETYPE']['0']['#']);
-            $calculated->correctanswerlength = backup_todb($cal_info['#']['CORRECTANSWERLENGTH']['0']['#']);
-            $calculated->correctanswerformat = backup_todb($cal_info['#']['CORRECTANSWERFORMAT']['0']['#']);
-
-            ////We have to recode the answer field
-            $answer = backup_getid($restore->backup_unique_code,"question_answers",$calculated->answer);
-            if ($answer) {
-                $calculated->answer = $answer->new_id;
-            }
-
-            //The structure is equal to the db, so insert the question_calculated
-            $newid = $DB->insert_record ("question_calculated",$calculated);
-
-            //Do some output
-            if (($i+1) % 50 == 0) {
-                if (!defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if (($i+1) % 1000 == 0) {
-                        echo "<br />";
-                    }
-                }
-                backup_flush(300);
-            }
-            //Get the calculated_options array
-            // need to check as old questions don't have calculated_options record
-            if(isset($info['#']['CALCULATED_OPTIONS'])){
-                $calculatedoptions = $info['#']['CALCULATED_OPTIONS'];
-
-                //Iterate over calculated_options
-                for($i = 0; $i < sizeof($calculatedoptions); $i++){
-                    $cal_info = $calculatedoptions[$i];
-                    //traverse_xmlize($cal_info);                                                                 //Debug
-                    //print_object ($GLOBALS['traverse_array']);                                                  //Debug
-                    //$GLOBALS['traverse_array']="";                                                              //Debug
-
-                    //Now, build the question_calculated_options record structure
-                    $calculated_options->questionid = $new_question_id;
-                    $calculated_options->synchronize = backup_todb($cal_info['#']['SYNCHRONIZE']['0']['#']);
-                    $calculated_options->single = backup_todb($cal_info['#']['SINGLE']['0']['#']);
-                    $calculated_options->shuffleanswers = isset($cal_info['#']['SHUFFLEANSWERS']['0']['#'])?backup_todb($mul_info['#']['SHUFFLEANSWERS']['0']['#']):'';
-                    $calculated_options->correctfeedback = backup_todb($cal_info['#']['CORRECTFEEDBACK']['0']['#']);
-                    $calculated_options->partiallycorrectfeedback = backup_todb($cal_info['#']['PARTIALLYCORRECTFEEDBACK']['0']['#']);
-                    $calculated_options->incorrectfeedback = backup_todb($cal_info['#']['INCORRECTFEEDBACK']['0']['#']);
-                    $calculated_options->answernumbering = backup_todb($cal_info['#']['ANSWERNUMBERING']['0']['#']);
-
-                    //The structure is equal to the db, so insert the question_calculated_options
-                    $newid = $DB->insert_record ("question_calculated_options",$calculated_options);
-
-                    //Do some output
-                    if (($i+1) % 50 == 0) {
-                        if (!defined('RESTORE_SILENTLY')) {
-                            echo ".";
-                            if (($i+1) % 1000 == 0) {
-                                echo "<br />";
-                            }
-                        }
-                        backup_flush(300);
-                    }
-                }
-            }
-            //Now restore numerical_units
-            $status = question_restore_numerical_units ($old_question_id,$new_question_id,$cal_info,$restore);
-            $status = question_restore_numerical_options($old_question_id,$new_question_id,$info,$restore);
-            //Now restore dataset_definitions
-            if ($status && $newid) {
-                $status = question_restore_dataset_definitions ($old_question_id,$new_question_id,$cal_info,$restore);
-            }
-
-            if (!$newid) {
-                $status = false;
-            }
-        }
-
-        return $status;
-    }
-
     /**
      * Runs all the code required to set up and save an essay question for testing purposes.
      * Alternate DB table prefix may be used to facilitate data deletion.
@@ -2170,7 +2087,7 @@ class question_calculated_qtype extends default_questiontype {
             $course = $DB->get_record('course', array('id'=> $courseid));
         }
 
-        $new_question = $this->save_question($question, $form, $course);
+        $new_question = $this->save_question($question, $form);
 
         $dataset_form = new stdClass();
         $dataset_form->nextpageparam["forceregeneration"]= 1;
@@ -2193,44 +2110,22 @@ class question_calculated_qtype extends default_questiontype {
         return $new_question;
     }
 
-    /**
-     * When move the category of questions, the belonging files should be moved as well
-     * @param object $question, question information
-     * @param object $newcategory, target category information
-     */
-    function move_files($question, $newcategory) {
-        global $DB;
-        parent::move_files($question, $newcategory);
-
+    function move_files($questionid, $oldcontextid, $newcontextid) {
         $fs = get_file_storage();
-        // process files in answer
-        if (!$oldanswers = $DB->get_records('question_answers', array('question' =>  $question->id), 'id ASC')) {
-            $oldanswers = array();
-        }
-        $component = 'question';
-        $filearea = 'answerfeedback';
-        foreach ($oldanswers as $answer) {
-            $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
-            foreach ($files as $storedfile) {
-                if (!$storedfile->is_directory()) {
-                    $newfile = new stdClass();
-                    $newfile->contextid = (int)$newcategory->contextid;
-                    $fs->create_file_from_storedfile($newfile, $storedfile);
-                    $storedfile->delete();
-                }
-            }
-        }
-        $component = 'qtype_numerical';
-        $filearea = 'instruction';
-        $files = $fs->get_area_files($question->contextid, $component, $filearea, $question->id);
-        foreach ($files as $storedfile) {
-            if (!$storedfile->is_directory()) {
-                $newfile = new stdClass();
-                $newfile->contextid = (int)$newcategory->contextid;
-                $fs->create_file_from_storedfile($newfile, $storedfile);
-                $storedfile->delete();
-            }
-        }
+
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+        $this->move_files_in_answers($questionid, $oldcontextid, $newcontextid);
+
+        $fs->move_area_files_to_new_context($oldcontextid,
+                $newcontextid, 'qtype_calculated', 'instruction', $questionid);
+    }
+
+    protected function delete_files($questionid, $contextid) {
+        $fs = get_file_storage();
+
+        parent::delete_files($questionid, $contextid);
+        $this->delete_files_in_answers($questionid, $contextid);
+        $fs->delete_area_files($contextid, 'qtype_calculated', 'instruction', $questionid);
     }
 
     function check_file_access($question, $state, $options, $contextid, $component,
@@ -2394,7 +2289,7 @@ function qtype_calculated_find_formula_errors($formula) {
         switch ($regs[2]) {
             // Simple parenthesis
         case '':
-            if ($regs[4] || strlen($regs[3])==0) {
+            if ((isset($regs[4])&& $regs[4]) || strlen($regs[3])==0) {
                 return get_string('illegalformulasyntax', 'quiz', $regs[0]);
             }
             break;

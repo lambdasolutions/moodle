@@ -80,13 +80,15 @@ class auth_plugin_mnet extends auth_plugin_base {
         $userdata['session.gc_maxlifetime']  = ini_get('session.gc_maxlifetime');
 
         if (array_key_exists('picture', $userdata) && !empty($user->picture)) {
-            //TODO: rewrite to use new file storage
-            /*
-            $imagefile = make_user_directory($user->id, true) . "/f1.jpg";
-            if (file_exists($imagefile)) {
-                $userdata['imagehash'] = sha1(file_get_contents($imagefile));
+            $fs = get_file_storage();
+            $usercontext = get_context_instance(CONTEXT_USER, $user->id, MUST_EXIST);
+            if ($usericonfile = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f1.png')) {
+                $userdata['_mnet_userpicture_timemodified'] = $usericonfile->get_timemodified();
+                $userdata['_mnet_userpicture_mimetype'] = $usericonfile->get_mimetype();
+            } else if ($usericonfile = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f1.jpg')) {
+                $userdata['_mnet_userpicture_timemodified'] = $usericonfile->get_timemodified();
+                $userdata['_mnet_userpicture_mimetype'] = $usericonfile->get_mimetype();
             }
-            */
         }
 
         $userdata['myhosts'] = array();
@@ -200,6 +202,7 @@ class auth_plugin_mnet extends auth_plugin_base {
     function confirm_mnet_session($token, $remotepeer) {
         global $CFG, $DB;
         require_once $CFG->dirroot . '/mnet/xmlrpc/client.php';
+        require_once $CFG->libdir . '/gdlib.php';
 
         // verify the remote host is configured locally before attempting RPC call
         if (! $remotehost = $DB->get_record('mnet_host', array('wwwroot' => $remotepeer->wwwroot, 'deleted' => 0))) {
@@ -284,41 +287,42 @@ class auth_plugin_mnet extends auth_plugin_base {
             print_error('sso_mnet_login_refused', 'mnet', '', array('user'=>$localuser->username, 'host'=>$remotehost->name));
         }
 
+        $fs = get_file_storage();
+
         // update the local user record with remote user data
         foreach ((array) $remoteuser as $key => $val) {
 
-            // TODO: fetch image if it has changed
-            //TODO: rewrite to use new file storage
-            if ($key == 'imagehash') {
-                /*
-                $dirname = make_user_directory($localuser->id, true);
-                $filename = "$dirname/f1.jpg";
-
-                $localhash = '';
-                if (file_exists($filename)) {
-                    $localhash = sha1(file_get_contents($filename));
-                } elseif (!file_exists($dirname)) {
-                    mkdir($dirname);
+            if ($key == '_mnet_userpicture_timemodified' and empty($CFG->disableuserimages) and isset($remoteuser->picture)) {
+                // update the user picture if there is a newer verion at the identity provider
+                $usercontext = get_context_instance(CONTEXT_USER, $localuser->id, MUST_EXIST);
+                if ($usericonfile = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f1.png')) {
+                    $localtimemodified = $usericonfile->get_timemodified();
+                } else if ($usericonfile = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f1.jpg')) {
+                    $localtimemodified = $usericonfile->get_timemodified();
+                } else {
+                    $localtimemodified = 0;
                 }
 
-                if ($localhash != $val) {
-                    // fetch image from remote host
+                if (!empty($val) and $localtimemodified < $val) {
+                    mnet_debug('refetching the user picture from the identity provider host');
                     $fetchrequest = new mnet_xmlrpc_client();
                     $fetchrequest->set_method('auth/mnet/auth.php/fetch_user_image');
                     $fetchrequest->add_param($localuser->username);
                     if ($fetchrequest->send($remotepeer) === true) {
                         if (strlen($fetchrequest->response['f1']) > 0) {
+                            $imagefilename = $CFG->dataroot . '/temp/mnet-usericon-' . $localuser->id;
                             $imagecontents = base64_decode($fetchrequest->response['f1']);
-                            file_put_contents($filename, $imagecontents);
-                            $localuser->picture = 1;
+                            file_put_contents($imagefilename, $imagecontents);
+                            if (process_new_icon($usercontext, 'user', 'icon', 0, $imagefilename)) {
+                                $localuser->picture = 1;
+                            }
+                            unlink($imagefilename);
                         }
-                        if (strlen($fetchrequest->response['f2']) > 0) {
-                            $imagecontents = base64_decode($fetchrequest->response['f2']);
-                            file_put_contents($dirname.'/f2.jpg', $imagecontents);
-                        }
+                        // note that since Moodle 2.0 we ignore $fetchrequest->response['f2']
+                        // the mimetype information provided is ignored and the type of the file is detected
+                        // by process_new_icon()
                     }
                 }
-                */
             }
 
             if($key == 'myhosts') {
@@ -460,9 +464,16 @@ class auth_plugin_mnet extends auth_plugin_base {
         }
         // make sure it is a user we have an in active session
         // with that host...
-        if (!$userid = $DB->get_field('mnet_session', 'userid',
-                            array('username'=>$username, 'mnethostid'=>$remoteclient->id))) {
-            throw new mnet_server_exception(1, 'authfail_nosessionexists');
+        $mnetsessions = $DB->get_records('mnet_session', array('username' => $username, 'mnethostid' => $remoteclient->id), '', 'id, userid');
+        $userid = null;
+        foreach ($mnetsessions as $mnetsession) {
+            if (is_null($userid)) {
+                $userid = $mnetsession->userid;
+                continue;
+            }
+            if ($userid != $mnetsession->userid) {
+                throw new mnet_server_exception(3, 'authfail_usermismatch');
+            }
         }
 
         if (empty($courses)) { // no courses? clear out quickly
@@ -538,9 +549,11 @@ class auth_plugin_mnet extends auth_plugin_base {
         }
 
         // Clean up courses that the user is no longer enrolled in.
-        $local_courseid_string = implode(', ', $local_courseid_array);
-        $whereclause = " userid = ? AND hostid = ? AND courseid NOT IN ($local_courseid_string)";
-        $DB->delete_records_select('mnetservice_enrol_enrolments', $whereclause, array($userid, $remoteclient->id));
+        if (!empty($local_courseid_array)) {
+            $local_courseid_string = implode(', ', $local_courseid_array);
+            $whereclause = " userid = ? AND hostid = ? AND remotecourseid NOT IN ($local_courseid_string)";
+            $DB->delete_records_select('mnetservice_enrol_enrolments', $whereclause, array($userid, $remoteclient->id));
+        }
     }
 
     function prevent_local_passwords() {
@@ -1100,31 +1113,45 @@ class auth_plugin_mnet extends auth_plugin_base {
     }
 
     /**
-     * Returns the user's image as a base64 encoded string.
+     * Returns the user's profile image info
      *
+     * If the user exists and has a profile picture, the returned array will contain keys:
+     *  f1          - the content of the default 100x100px image
+     *  f1_mimetype - the mimetype of the f1 file
+     *  f2          - the content of the 35x35px variant of the image
+     *  f2_mimetype - the mimetype of the f2 file
+     *
+     * The mimetype information was added in Moodle 2.0. In Moodle 1.x, images are always jpegs.
+     *
+     * @see process_new_icon()
+     * @uses mnet_remote_client callable via MNet XML-RPC
      * @param int $userid The id of the user
-     * @return string     The encoded image
+     * @return false|array false if user not found, empty array if no picture exists, array with data otherwise
      */
     function fetch_user_image($username) {
         global $CFG, $DB;
 
-        //TODO: rewrite to use new file storage
-        return false;
-        /*
-        if ($user = $DB->get_record('user', array('username'=>$username, 'mnethostid'=>$CFG->mnet_localhost_id))) {
-            $filename1 = make_user_directory($user->id, true) . "/f1.jpg";
-            $filename2 = make_user_directory($user->id, true) . "/f2.jpg";
+        if ($user = $DB->get_record('user', array('username' => $username, 'mnethostid' => $CFG->mnet_localhost_id))) {
+            $fs = get_file_storage();
+            $usercontext = get_context_instance(CONTEXT_USER, $user->id, MUST_EXIST);
             $return = array();
-            if (file_exists($filename1)) {
-                $return['f1'] = base64_encode(file_get_contents($filename1));
+            if ($f1 = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f1.png')) {
+                $return['f1'] = base64_encode($f1->get_content());
+                $return['f1_mimetype'] = $f1->get_mimetype();
+            } else if ($f1 = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f1.jpg')) {
+                $return['f1'] = base64_encode($f1->get_content());
+                $return['f1_mimetype'] = $f1->get_mimetype();
             }
-            if (file_exists($filename2)) {
-                $return['f2'] = base64_encode(file_get_contents($filename2));
+            if ($f2 = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f2.png')) {
+                $return['f2'] = base64_encode($f2->get_content());
+                $return['f2_mimetype'] = $f2->get_mimetype();
+            } else if ($f2 = $fs->get_file($usercontext->id, 'user', 'icon', 0, '/', 'f2.jpg')) {
+                $return['f2'] = base64_encode($f2->get_content());
+                $return['f2_mimetype'] = $f2->get_mimetype();
             }
             return $return;
         }
         return false;
-        */
     }
 
     /**
@@ -1239,17 +1266,27 @@ class auth_plugin_mnet extends auth_plugin_base {
      */
     function loginpage_idp_list($wantsurl) {
         global $DB, $CFG;
+
         // strip off wwwroot, since the remote site will prefix it's return url with this
         $wantsurl = preg_replace('/(' . preg_quote($CFG->wwwroot, '/') . '|' . preg_quote($CFG->httpswwwroot, '/') . ')/', '', $wantsurl);
-        if (!$hosts = $DB->get_records_sql('SELECT DISTINCT h.*, a.sso_jump_url,a.name as application
-                FROM {mnet_host} h
-                JOIN {mnet_host2service} m ON h.id=m.hostid
-                JOIN {mnet_service} s ON s.id=m.serviceid
-                JOIN {mnet_application} a ON h.applicationid = a.id
-                WHERE s.name=? AND h.deleted=? AND m.publish = ?',
-                array('sso_sp', 0, 1))) {
+
+        $sql = "SELECT DISTINCT h.id, h.wwwroot, h.name, a.sso_jump_url, a.name as application
+                  FROM {mnet_host} h
+                  JOIN {mnet_host2service} m ON h.id = m.hostid
+                  JOIN {mnet_service} s ON s.id = m.serviceid
+                  JOIN {mnet_application} a ON h.applicationid = a.id
+                 WHERE s.name = ? AND h.deleted = ? AND m.publish = ?";
+        $params = array('sso_sp', 0, 1);
+
+        if (!empty($CFG->mnet_all_hosts_id)) {
+            $sql .= " AND h.id <> ?";
+            $params[] = $CFG->mnet_all_hosts_id;
+        }
+
+        if (!$hosts = $DB->get_records_sql($sql, $params)) {
             return array();
         }
+
         $idps = array();
         foreach ($hosts as $host) {
             $idps[] = array(

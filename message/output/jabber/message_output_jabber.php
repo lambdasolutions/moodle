@@ -31,13 +31,6 @@
  * @package
  */
 
-
-define("JABBER_SERVER","jabber80.com");
-define("JABBER_USERNAME","");
-define("JABBER_PASSWORD","");
-
-define("RUN_TIME",15);  // set a maximum run time of 15 seconds
-
 require_once($CFG->dirroot.'/message/output/lib.php');
 require_once($CFG->libdir.'/jabber/XMPP/XMPP.php');
 
@@ -45,35 +38,45 @@ class message_output_jabber extends message_output {
 
     /**
      * Processes the message (sends using jabber).
-     * @param object $message the message to be sent
+     * @param object $eventdata the event data submitted by the message sender plus $eventdata->savedmessageid
      * @return true if ok, false if error
      */
-    function send_message($message){
-        global $DB;
+    function send_message($eventdata){
+        global $CFG;
 
-        if (!$userfrom = $DB->get_record('user', array('id' => $message->useridfrom))) {
-            return false;
-        }
-        if (!$userto = $DB->get_record('user', array('id' => $this->message->useridto))) {
-            return false;
-        }
-        if (!$jabberaddress = get_user_preferences('message_processor_jabber_jabberid', $userto->email, $userto->id)) {
-            $jabberaddress = $userto->email;
-        }
-        $jabbermessage = fullname($userfrom).': '.$message->fullmessage;
+        if (message_output_jabber::_jabber_configured()) {
+            //hold onto jabber id preference because /admin/cron.php sends a lot of messages at once
+            static $jabberaddresses = array();
 
-        $conn = new XMPPHP_XMPP(JABBER_SERVER, 5222, JABBER_USERNAME, JABBER_PASSWORD, 'moodle', JABBER_SERVER);
+            if (!array_key_exists($eventdata->userto->id, $jabberaddresses)) {
+                $jabberaddresses[$eventdata->userto->id] = get_user_preferences('message_processor_jabber_jabberid', $eventdata->userto->email, $eventdata->userto->id);
+            }
+            $jabberaddress = $jabberaddresses[$eventdata->userto->id];
 
-        try {
-            $conn->connect();
-            $conn->processUntil('session_start');
-            $conn->presence();
-            $conn->message($jabberaddress, $jabbermessage);
-            $conn->disconnect();
-        } catch(XMPPHP_Exception $e) {
-            return false;
+            $jabbermessage = fullname($eventdata->userfrom).': '.$eventdata->smallmessage;
+
+            if (!empty($eventdata->contexturl)) {
+                $jabbermessage .= "\n".get_string('view').': '.$eventdata->contexturl;
+            }
+
+            $jabbermessage .= "\n(".get_string('noreply','message').')';
+
+            $conn = new XMPPHP_XMPP($CFG->jabberhost,$CFG->jabberport,$CFG->jabberusername,$CFG->jabberpassword,'moodle',$CFG->jabberserver);
+
+            try {
+                //$conn->useEncryption(false);
+                $conn->connect();
+                $conn->processUntil('session_start');
+                $conn->presence();
+                $conn->message($jabberaddress, $jabbermessage);
+                $conn->disconnect();
+            } catch(XMPPHP_Exception $e) {
+                debugging($e->getMessage());
+                return false;
+            }
         }
 
+        //note that we're reporting success if message was sent or if Jabber simply isnt configured
         return true;
     }
 
@@ -82,7 +85,13 @@ class message_output_jabber extends message_output {
      * @param object $mform preferences form class
      */
     function config_form($preferences){
-        return get_string('pluginname', 'message_jabber').': <input size="30" name="jabber_jabberid" value="'.$preferences->jabber_jabberid.'" />';
+        global $CFG;
+        
+        if (!message_output_jabber::_jabber_configured()) {
+            return get_string('notconfigured','message_jabber');
+        } else {
+            return get_string('jabberid', 'message_jabber').': <input size="30" name="jabber_jabberid" value="'.$preferences->jabber_jabberid.'" />';
+        }
     }
 
     /**
@@ -101,6 +110,15 @@ class message_output_jabber extends message_output {
      */
     function load_data(&$preferences, $userid){
         $preferences->jabber_jabberid = get_user_preferences( 'message_processor_jabber_jabberid', '', $userid);
+    }
+
+    /**
+     * Tests whether the Jabber settings have been configured
+     * @return boolean true if Jabber is configured
+     */
+    private function _jabber_configured() {
+        global $CFG;
+        return (!empty($CFG->jabberhost) && !empty($CFG->jabberport) && !empty($CFG->jabberusername) && !empty($CFG->jabberpassword));
     }
 
 }

@@ -43,7 +43,8 @@
     require_login($course->id, false, $cm);
 
     if ($usertrack = scorm_get_tracks($scoid,$USER->id,$attempt)) {
-        if ((isset($usertrack->{'cmi.exit'}) && ($usertrack->{'cmi.exit'} != 'time-out')) || ($scorm->version != "SCORM_1.3")) {
+        //according to SCORM 2004 spec(RTE V1, 4.2.8), only cmi.exit==suspend should allow previous datamodel elements on re-launch
+        if ($scorm->version != "SCORM_1.3" || (isset($usertrack->{'cmi.exit'}) && ($usertrack->{'cmi.exit'} == 'suspend'))) {
             foreach ($usertrack as $key => $value) {
                 $userdata->$key = addslashes_js($value);
             }
@@ -71,10 +72,10 @@
             $userdata->$key = addslashes_js($value);
         }
     } else {
-        error('Sco not found');
+        print_error('cannotfindsco', 'scorm');
     }
     if (!$sco = scorm_get_sco($scoid)) {
-        error('Sco not found');
+        print_error('cannotfindsco', 'scorm');
     }
     $scorm->version = strtolower(clean_param($scorm->version, PARAM_SAFEDIR));   // Just to be safe
     if (file_exists($CFG->dirroot.'/mod/scorm/datamodels/'.$scorm->version.'.js.php')) {

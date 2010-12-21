@@ -33,45 +33,41 @@ class message_output_popup extends message_output{
      * The popup doesn't send data only saves in the database for later use,
      * the popup_interface.php takes the message from the message table into
      * the message_read.
-     * @param object $message the message to be sent
+     * @param object $eventdata the event data submitted by the message sender plus $eventdata->savedmessageid
      * @return true if ok, false if error
      */
-    public function send_message($message) {
+    public function send_message($eventdata) {
         global $DB;
 
-        //do we want to prevent users from messaging themselves?
-        //if ($message->useridfrom==$message->useridto) {
+        //hold onto the popup processor id because /admin/cron.php sends a lot of messages at once
+        static $processorid = null;
 
-        $processor = $DB->get_record('message_processors', array('name'=>'popup'));
-        $procmessage = new stdClass();
-        $procmessage->unreadmessageid = $message->id;
-        $procmessage->processorid     = $processor->id;
+        //prevent users from getting popup notifications of messages to themselves (happens with forum notifications)
+        if ($eventdata->userfrom->id!=$eventdata->userto->id) {
+            if (empty($processorid)) {
+                $processor = $DB->get_record('message_processors', array('name'=>'popup'));
+                $processorid = $processor->id;
+            }
+            $procmessage = new stdClass();
+            $procmessage->unreadmessageid = $eventdata->savedmessageid;
+            $procmessage->processorid     = $processorid;
 
-        //save this message for later delivery
-        $DB->insert_record('message_working', $procmessage);
+            //save this message for later delivery
+            $DB->insert_record('message_working', $procmessage);
+        }
 
         return true;
     }
 
     function config_form($preferences) {
-        return '<table>'.
-               '<tr><td align="right">'.get_string('blocknoncontacts', 'message').':</td><td><input type="checkbox" name="blocknoncontacts" '.($preferences->blocknoncontacts==1?" checked=\"checked\"":"").' /></td></tr>'.
-               '<tr><td align="right">'.get_string('beepnewmessage', 'message').':</td><td><input type="checkbox" name="beepnewmessage" '.($preferences->beepnewmessage==1?" checked=\"checked\"":"").' /></td></tr>'.
-               '</table>';
+        return null;
     }
 
     public function process_form($form, &$preferences) {
-        $preferences['message_blocknoncontacts']  = !empty($form->blocknoncontacts)?1:0;
-        $preferences['message_beepnewmessage']    = !empty($form->beepnewmessage)?1:0;
-
         return true;
     }
     public function load_data(&$preferences, $userid) {
         global $USER;
-
-        $preferences->blocknoncontacts  =  get_user_preferences( 'message_blocknoncontacts', '', $userid);
-        $preferences->beepnewmessage    =  get_user_preferences( 'message_beepnewmessage', '', $userid);
-
         return true;
     }
 }

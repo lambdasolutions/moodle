@@ -72,8 +72,6 @@ $THEME->filter_mediaplugin_colors =
  'waitForPlay=yes';
 /// ...And this controls the small embedded player
 
-$THEME->editor_sheets = array('styles_tinymce');
-
 $THEME->layouts = array(
     // Most pages - if we encounter an unknown or a missing page type, this one is used.
     'base' => array(
@@ -158,6 +156,11 @@ $THEME->layouts = array(
         'regions' => array(),
         'options' => array('nofooter'=>true, 'nonavbar'=>false, 'noblocks'=>true),
     ),
+    'report' => array(
+        'file' => 'report.php',
+        'regions' => array('side-pre'),
+        'defaultregion' => 'side-pre'
+    ),
 );
 
 $THEME->rendererfactory = 'theme_overridden_renderer_factory';
@@ -168,3 +171,5 @@ $THEME->javascripts_footer = array('navigation');
  * Sets the function that will replace our settings within the CSS
  */
 $THEME->csspostprocess = 'formalwhite_process_css';
+
+$THEME->editor_sheets = array('editor');

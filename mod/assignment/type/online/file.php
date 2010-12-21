@@ -59,8 +59,8 @@ if ($submission = $assignmentinstance->get_submission($user->id)) {
     echo '</table>';
     echo $OUTPUT->box_end();
 
-    $text = file_rewrite_pluginfile_urls($submission->data1, 'pluginfile.php', $context->id, 'mod_assignment', 'online_submission', $submission->id);
-    echo $OUTPUT->box(format_text($text, $submission->data2), 'generalbox boxaligncenter boxwidthwide');
+    $text = file_rewrite_pluginfile_urls($submission->data1, 'pluginfile.php', $context->id, 'mod_assignment', $assignmentinstance->filearea, $submission->id);
+    echo $OUTPUT->box(format_text($text, $submission->data2, array('overflowdiv'=>true)), 'generalbox boxaligncenter boxwidthwide');
     echo $OUTPUT->close_window_button();
     echo $OUTPUT->footer();
 } else {

@@ -32,17 +32,13 @@
 
 require_once('../../config.php');
 require_once($CFG->dirroot . '/course/publish/forms.php');
-require_once($CFG->dirroot . '/admin/registration/lib.php');
+require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/lib.php');
 require_once($CFG->dirroot . '/course/publish/lib.php');
-require_once($CFG->dirroot . '/lib/filelib.php');
+require_once($CFG->libdir . '/filelib.php');
 
 
 //check user access capability to this page
-$id = optional_param('id', 0, PARAM_INT);
-
-if (empty($id)) {
-    throw new moodle_exception('wrongurlformat', 'hub');
-}
+$id = required_param('id', PARAM_INT);
 
 $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 require_login($course);
@@ -79,8 +75,17 @@ if (has_capability('moodle/course:publish', get_context_instance(CONTEXT_COURSE,
     $coursepublicationform = new course_publication_form('',
                     array('huburl' => $huburl, 'hubname' => $hubname, 'sesskey' => sesskey(),
                         'course' => $course, 'advertise' => $advertise, 'share' => $share,
-                        'id' => $id));
+                        'id' => $id, 'page' => $PAGE));
     $fromform = $coursepublicationform->get_data();
+
+    //retrieve the token to call the hub
+    $registrationmanager = new registration_manager();
+    $registeredhub = $registrationmanager->get_registeredhub($huburl);
+
+    //setup web service xml-rpc client
+    $serverurl = $huburl . "/local/hub/webservice/webservices.php";
+    require_once($CFG->dirroot . "/webservice/xmlrpc/lib.php");
+    $xmlrpcclient = new webservice_xmlrpc_client($serverurl, $registeredhub->token);
 
     if (!empty($fromform)) {
 
@@ -162,7 +167,7 @@ if (has_capability('moodle/course:publish', get_context_instance(CONTEXT_COURSE,
 
         //save into screenshots field the references to the screenshot content hash
         //(it will be like a unique id from the hub perspective)
-        if (!empty($fromform->deletescreenshots)) {
+        if (!empty($fromform->deletescreenshots) or $share) {
             $courseinfo->screenshots = 0;
         } else {
             $courseinfo->screenshots = $fromform->existingscreenshotnumber;
@@ -177,16 +182,10 @@ if (has_capability('moodle/course:publish', get_context_instance(CONTEXT_COURSE,
         }
 
         // PUBLISH ACTION
-        //retrieve the token to call the hub
-        $registrationmanager = new registration_manager();
-        $registeredhub = $registrationmanager->get_registeredhub($huburl);
-
+        
         //publish the course information
         $function = 'hub_register_courses';
-        $params = array('courses' => array($courseinfo));
-        $serverurl = $huburl . "/local/hub/webservice/webservices.php";
-        require_once($CFG->dirroot . "/webservice/xmlrpc/lib.php");
-        $xmlrpcclient = new webservice_xmlrpc_client($serverurl, $registeredhub->token);
+        $params = array('courses' => array($courseinfo));     
         try {
             $courseids = $xmlrpcclient->call($function, $params);
         } catch (Exception $e) {
@@ -213,9 +212,8 @@ if (has_capability('moodle/course:publish', get_context_instance(CONTEXT_COURSE,
 
         // send screenshots
         if (!empty($fromform->screenshots)) {
-            require_once($CFG->dirroot . "/lib/filelib.php");
 
-            if (!empty($fromform->deletescreenshots)) {
+            if (!empty($fromform->deletescreenshots) or $share) {
                 $screenshotnumber = 0;
             } else {
                 $screenshotnumber = $fromform->existingscreenshotnumber;
@@ -253,6 +251,22 @@ if (has_capability('moodle/course:publish', get_context_instance(CONTEXT_COURSE,
 
     echo $OUTPUT->header();
     echo $OUTPUT->heading(get_string('publishcourseon', 'hub', !empty($hubname) ? $hubname : $huburl), 3, 'main');
+
+    //display hub information (logo, name, description)
+    $function = 'hub_get_info';
+    $params = array();
+    try {
+        $hubinfo = $xmlrpcclient->call($function, $params);
+    } catch (Exception $e) {
+        //only print error log in apache (for backward compatibility)
+        error_log(print_r($e->getMessage(), true));
+    }
+    $renderer = $PAGE->get_renderer('core', 'publish');
+    if (!empty($hubinfo)) {
+        echo $renderer->hubinfo($hubinfo);
+    }
+
+    //display metadata form
     $coursepublicationform->display();
     echo $OUTPUT->footer();
 }

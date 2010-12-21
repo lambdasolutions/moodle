@@ -1006,6 +1006,8 @@ M.core_filepicker.init = function(Y, options) {
             str += '<tr><td class="mdl-right">';
             str += '<label for="'+id+'_file">'+data.upload.label+': </label></td>';
             str += '<td class="mdl-left"><input type="file" id="'+id+'_file" name="repo_upload_file" />';
+            str += '<tr><td class="mdl-right"><label for="newname-'+client_id+'">'+M.str.repository.saveas+':</label></td>';
+            str += '<td class="mdl-left"><input type="text" name="title" id="newname-'+client_id+'" value="" /></td></tr>';
             str += '<input type="hidden" name="itemid" value="'+this.options.itemid+'" />';
             for (var i in types) {
                 str += '<input type="hidden" name="accepted_types[]" value="'+types[i]+'" />';
@@ -1035,7 +1037,7 @@ M.core_filepicker.init = function(Y, options) {
             str += '</td>';
             str += '</tr></table>';
             str += '</form>';
-            str += '<div class="fp-upload-btn"><button id="'+id+'_action">'+M.str.repository.upload+'...</button></div>';
+            str += '<div class="fp-upload-btn"><button id="'+id+'_action">'+M.str.repository.upload+'</button></div>';
             str += '</div>';
             var upload_form = Y.Node.create(str);
             Y.one('#panel-'+client_id).appendChild(upload_form);
@@ -1233,7 +1235,7 @@ M.core_filepicker.init = function(Y, options) {
             var r = this.active_repo;
             var str = '';
             var action = '';
-            if(r.pages) {
+            if(r.pages > 1) {
                 str += '<div class="fp-paging" id="paging-'+html_id+'-'+client_id+'">';
                 str += this.get_page_button(1)+'1</a> ';
 

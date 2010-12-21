@@ -47,7 +47,7 @@ assignment submission for \'<i>{$a->assignment}</i>\'<br /><br />
 You can see it appended to your <a href="{$a->url}">assignment submission</a>.';
 $string['assignmentname'] = 'Assignment name';
 $string['assignment:submit'] = 'Submit assignment';
-$string['assignmentsubmission'] = 'Assignment Submissions';
+$string['assignmentsubmission'] = 'Assignment submissions';
 $string['assignmenttype'] = 'Assignment type';
 $string['assignment:view'] = 'View assignment';
 $string['availabledate'] = 'Available from';
@@ -77,13 +77,13 @@ $string['editthisfile'] = 'Update this file';
 $string['addsubmission'] = 'Add submission';
 $string['emailstudents'] = 'Email alerts to students';
 $string['emailteachermail'] = '{$a->username} has updated their assignment submission
-for \'{$a->assignment}\'
+for \'{$a->assignment}\' at {$a->timeupdated}
 
 It is available here:
 
     {$a->url}';
 $string['emailteachermailhtml'] = '{$a->username} has updated their assignment submission
-for <i>\'{$a->assignment}\'</i><br /><br />
+for <i>\'{$a->assignment}\'  at {$a->timeupdated}</i><br /><br />
 It is <a href="{$a->url}">available on the web site</a>.';
 $string['emailteachers'] = 'Email alerts to teachers';
 $string['emailteachers_help'] = 'If enabled, teachers receive email notification whenever students add or update an assignment submission.
@@ -92,6 +92,7 @@ Only teachers who are able to grade the particular assignment are notified. So, 
 $string['emptysubmission'] = 'You have not submitted anything yet';
 $string['enableemailnotification'] = 'Send notification emails';
 $string['enableemailnotification_help'] = 'If enabled, students will receive email notification when their assignment submissions are graded.';
+$string['errornosubmissions'] = 'There are no submissions to download';
 $string['existingfiledeleted'] = 'Existing file has been deleted: {$a}';
 $string['failedupdatefeedback'] = 'Failed to update submission feedback for user {$a}';
 $string['feedback'] = 'Feedback';
@@ -132,6 +133,7 @@ $string['late'] = '{$a} late';
 $string['maximumgrade'] = 'Maximum grade';
 $string['maximumsize'] = 'Maximum size';
 $string['maxpublishstate'] = 'Maximum visibility for blog entry before due date';
+$string['messageprovider:assignment_updates'] = 'Assignment notifications';
 $string['modulename'] = 'Assignment';
 $string['modulename_help'] = 'Assignments enable the teacher to specify a task either on or offline which can then be graded.';
 $string['modulenameplural'] = 'Assignments';
@@ -178,7 +180,7 @@ $string['submitedformarking'] = 'Assignment was already submitted for marking an
 $string['submitformarking'] = 'Final submission for assignment marking';
 $string['submitted'] = 'Submitted';
 $string['submittedfiles'] = 'Submitted files';
-$string['trackdrafts'] = 'Enable Send for marking';
+$string['trackdrafts'] = 'Enable "Send for marking" button';
 $string['trackdrafts_help'] = 'The "Send for marking" button allows students to indicate to the teacher that they have finished working on an assignment. The teacher may choose to revert the assignment to draft status (if it requires further work, for example).';
 $string['typeblog'] = 'Blog post';
 $string['typeoffline'] = 'Offline activity';

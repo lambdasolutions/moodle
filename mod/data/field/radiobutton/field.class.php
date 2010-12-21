@@ -63,13 +63,19 @@ class data_field_radiobutton extends data_field_base {
     }
 
      function display_search_field($value = '') {
-        global $CFG, $DB, $OUTPUT;
-        $temp = $DB->get_records_sql_menu('SELECT id, content FROM {data_content} WHERE fieldid=? GROUP BY content ORDER BY content', array($this->field->id));
+        global $CFG, $DB;
+
+        $varcharcontent = $DB->sql_compare_text('content', 255);
+        $used = $DB->get_records_sql(
+            "SELECT DISTINCT $varcharcontent AS content
+               FROM {data_content}
+              WHERE fieldid=?
+             ORDER BY $varcharcontent", array($this->field->id));
+
         $options = array();
-        if(!empty($temp)) {
-            $options[''] = '';              //Make first index blank.
-            foreach ($temp as $key) {
-                $options[$key] = $key;  //Build following indicies from the sql.
+        if(!empty($used)) {
+            foreach ($used as $rec) {
+                $options[$rec->content] = $rec->content;  //Build following indicies from the sql.
             }
         }
         return html_writer::select($options, 'f_'.$this->field->id, $value);
@@ -80,10 +86,14 @@ class data_field_radiobutton extends data_field_base {
     }
 
     function generate_sql($tablealias, $value) {
+        global $DB;
+
         static $i=0;
         $i++;
-        $name = "df_number_$i";
-        return array(" ({$tablealias}.fieldid = {$this->field->id} AND {$tablealias}.content = :$name) ", array($name=>$value));
+        $name = "df_radiobutton_$i";
+        $varcharcontent = $DB->sql_compare_text("{$tablealias}.content", 255);
+
+        return array(" ({$tablealias}.fieldid = {$this->field->id} AND $varcharcontent = :$name) ", array($name=>$value));
     }
 
 }

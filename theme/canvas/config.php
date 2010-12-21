@@ -41,7 +41,7 @@ $THEME->name = 'canvas';
 ////////////////////////////////////////////////////
 
 $THEME->parents = array(
-		'base',
+    'base',
 );
 
 /////////////////////////////////////////////////////
@@ -55,15 +55,17 @@ $THEME->parents = array(
 ////////////////////////////////////////////////////
 
 $THEME->sheets = array(
-		'pagelayout',
-		'text',
-		'core',
-		'course',
-		'mods',
-		'blocks',
-		'tabs',
-		'admin',
-		'tables',
+    'pagelayout',
+    'text',
+    'core',
+    'course',
+    'mods',
+    'blocks',
+    'tabs',
+    'admin',
+    'tables',
+    'popups',
+    'question',
 );
 
 ////////////////////////////////////////////////////
@@ -72,10 +74,10 @@ $THEME->sheets = array(
 ////////////////////////////////////////////////////
 
 $THEME->parents_exclude_sheets = array(
-		'base'=>array(
-				'navigation',
-				'browser',
-		),
+    'base'=>array(
+        'navigation',
+        'browser',
+    ),
 );
 
 ////////////////////////////////////////////////////
@@ -161,7 +163,17 @@ $THEME->layouts = array(
         'regions' => array(),
         'options' => array('nofooter'=>true, 'nonavbar'=>false, 'noblocks'=>true),
     ),
-
+    // The pagelayout used when a redirection is occuring.
+    'redirect' => array(
+        'file' => 'embedded.php',
+        'regions' => array(),
+        'options' => array('nofooter'=>true, 'nonavbar'=>true),
+    ),
+    'report' => array(
+        'file' => 'report.php',
+        'regions' => array('side-pre'),
+        'defaultregion' => 'side-pre',
+    )
 );
 
 /////////////////////////////////////////////////////////
@@ -266,3 +278,5 @@ $THEME->hidefromselector = true;
 ////////////////////////////////////////////////////
 // Controls the colours for the MP3 player
 ////////////////////////////////////////////////////
+
+$THEME->editor_sheets = array('editor');

@@ -248,7 +248,6 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
             $hrefparams['view'] = 'day';
             $dayhref = calendar_get_link_href(new moodle_url(CALENDAR_URL.'view.php', $hrefparams), $day, $m, $y);
 
-            // OverLib popup
             $popupcontent = '';
             foreach($eventsbyday[$day] as $eventid) {
                 if (!isset($events[$eventid])) {
@@ -270,9 +269,9 @@ function calendar_get_mini($courses, $groups, $users, $cal_month = false, $cal_y
                 } else if ($event->userid) {                                       // User event
                     $popupicon = 'c/user';
                 }
-                
+
                 $dayhref->set_anchor('event_'.$event->id);
-                
+
                 $popupcontent .= html_writer::start_tag('div');
                 $popupcontent .= $OUTPUT->pix_icon($popupicon, $popupalt);
                 $popupcontent .= html_writer::link($dayhref, format_string($event->name, true));
@@ -715,7 +714,7 @@ function calendar_top_controls($type, $data) {
             $content .= $left.'<span class="hide"> | </span>';
             $content .= html_writer::tag('span', html_writer::link($calendarlink, userdate($time, get_string('strftimemonthyear')), array('title'=>get_string('monththis','calendar'))), array('class'=>'current'));
             $content .= '<span class="hide"> | </span>'. $right;
-            $content .= "<span class=\"clearer\"><!-- --></span></div>\n";
+            $content .= "<span class=\"clearer\"><!-- --></span>\n";
             $content .= html_writer::end_tag('div');
 
             break;
@@ -956,7 +955,7 @@ function calendar_time_representation($time) {
  * @param int $d
  * @param int $m
  * @param int $y
- * @return moodle_url 
+ * @return moodle_url
  */
 function calendar_get_link_href($linkbase, $d, $m, $y) {
     if (empty($linkbase)) {
@@ -1017,7 +1016,7 @@ function calendar_get_link_previous($text, $linkbase, $d, $m, $y, $accesshide=fa
 
 /**
  * Build and return a next month HTML link, with an arrow.
- * 
+ *
  * @param string $text The text label.
  * @param string|moodle_url $linkbase The URL stub.
  * @param int $d $m $y Day of month, month and year numbers.
@@ -1550,7 +1549,7 @@ function calendar_format_event_time($event, $now, $linkparams = null, $usecommon
             } else {
                 $url = calendar_get_link_href(new moodle_url(CALENDAR_URL.'view.php', $linkparams), $enddate['mday'], $enddate['mon'], $enddate['year']);
                 $eventtime  = html_writer::link($url, $daystart).$timestart.' <strong>&raquo;</strong> ';
-                
+
                 $url = calendar_get_link_href(new moodle_url(CALENDAR_URL.'view.php', $linkparams), $startdate['mday'], $startdate['mon'], $startdate['year']);
                 $eventtime .= html_writer::link($url, $dayend).$timeend;
             }
@@ -1948,8 +1947,9 @@ class calendar_event {
      * @see update_event()
      *
      * @param stdClass $data
+     * @param boolean $checkcapability if moodle should check calendar managing capability or not
      */
-    public function update($data) {
+    public function update($data, $checkcapability=true) {
         global $CFG, $DB, $USER;
 
         foreach ($data as $key=>$value) {
@@ -1961,8 +1961,10 @@ class calendar_event {
 
         if (empty($this->properties->id) || $this->properties->id < 1) {
 
-            if (!calendar_add_event_allowed($this->properties)) {
-                print_error('nopermissions');
+            if ($checkcapability) {
+                if (!calendar_add_event_allowed($this->properties)) {
+                    print_error('nopermissiontoupdatecalendar');
+                }
             }
 
             if ($usingeditor) {
@@ -2056,8 +2058,10 @@ class calendar_event {
             return true;
         } else {
 
-            if(!calendar_edit_event_allowed($this->properties)) {
-                print_error('nopermissions');
+            if ($checkcapability) {
+                if(!calendar_edit_event_allowed($this->properties)) {
+                    print_error('nopermissiontoupdatecalendar');
+                }
             }
 
             if ($usingeditor) {
@@ -2428,7 +2432,22 @@ class calendar_information {
      * @param int $month
      * @param int $year
      */
-    public function __construct($day, $month, $year) {
+    public function __construct($day=0, $month=0, $year=0) {
+
+        $date = usergetdate(time());
+
+        if (empty($day)) {
+            $day = $date['mday'];
+        }
+
+        if (empty($month)) {
+            $month = $date['mon'];
+        }
+
+        if (empty($year)) {
+            $year =  $date['year'];
+        }
+
         $this->day = $day;
         $this->month = $month;
         $this->year = $year;

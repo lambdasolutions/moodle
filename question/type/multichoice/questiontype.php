@@ -14,10 +14,6 @@ class question_multichoice_qtype extends default_questiontype {
         return 'multichoice';
     }
 
-    function has_html_answers() {
-        return true;
-    }
-
     function get_question_options(&$question) {
         global $DB, $OUTPUT;
         // Get additional information from database
@@ -40,126 +36,125 @@ class question_multichoice_qtype extends default_questiontype {
         global $DB;
         $context = $question->context;
         $result = new stdClass;
-        if (!$oldanswers = $DB->get_records("question_answers", array("question" => $question->id), "id ASC")) {
-            $oldanswers = array();
-        }
+
+        $oldanswers = $DB->get_records('question_answers',
+                array('question' => $question->id), 'id ASC');
 
         // following hack to check at least two answers exist
         $answercount = 0;
-        foreach ($question->answer as $key=>$dataanswer) {
-            if ($dataanswer != "") {
+        foreach ($question->answer as $key => $answer) {
+            if ($answer != '') {
                 $answercount++;
             }
         }
-        $answercount += count($oldanswers);
         if ($answercount < 2) { // check there are at lest 2 answers for multiple choice
-            $result->notice = get_string("notenoughanswers", "qtype_multichoice", "2");
+            $result->notice = get_string('notenoughanswers', 'qtype_multichoice', '2');
             return $result;
         }
 
         // Insert all the new answers
-
         $totalfraction = 0;
         $maxfraction = -1;
-
         $answers = array();
+        foreach ($question->answer as $key => $answerdata) {
+            if ($answerdata == '') {
+                continue;
+            }
 
-        foreach ($question->answer as $key => $dataanswer) {
-            if ($dataanswer != "") {
-                $feedbackformat = $question->feedback[$key]['format'];
-                if ($answer = array_shift($oldanswers)) {  // Existing answer, so reuse it
-                    $answer->answer     = $dataanswer;
-                    $answer->fraction   = $question->fraction[$key];
-                    $answer->feedbackformat = $feedbackformat;
-                    $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, self::$fileoptions, $question->feedback[$key]['text']);
-                    $DB->update_record("question_answers", $answer);
-                } else {
-                    unset($answer);
-                    $answer->answer   = $dataanswer;
-                    $answer->question = $question->id;
-                    $answer->fraction = $question->fraction[$key];
-                    $answer->feedback = '';
-                    $answer->feedbackformat = $feedbackformat;
-                    $answer->id = $DB->insert_record("question_answers", $answer);
-                    $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, self::$fileoptions, $question->feedback[$key]['text']);
-                    $DB->set_field('question_answers', 'feedback', $answer->feedback, array('id'=>$answer->id));
-                }
-                $answers[] = $answer->id;
+            // Update an existing answer if possible.
+            $answer = array_shift($oldanswers);
+            if (!$answer) {
+                $answer = new stdClass();
+                $answer->question = $question->id;
+                $answer->answer = '';
+                $answer->feedback = '';
+                $answer->id = $DB->insert_record('question_answers', $answer);
+            }
 
-                if ($question->fraction[$key] > 0) {                 // Sanity checks
-                    $totalfraction += $question->fraction[$key];
-                }
-                if ($question->fraction[$key] > $maxfraction) {
-                    $maxfraction = $question->fraction[$key];
-                }
+            if (is_array($answerdata)) {
+                // Doing an import
+                $answer->answer = $this->import_or_save_files($answerdata,
+                        $context, 'question', 'answer', $answer->id);
+                $answer->answerformat = $answerdata['format'];
+            } else {
+                // Saving the form
+                $answer->answer = $answerdata;
+                $answer->answerformat = FORMAT_HTML;
+            }
+            $answer->fraction = $question->fraction[$key];
+            $answer->feedback = $this->import_or_save_files($question->feedback[$key],
+                    $context, 'question', 'answerfeedback', $answer->id);
+            $answer->feedbackformat = $question->feedback[$key]['format'];
+
+            $DB->update_record('question_answers', $answer);
+            $answers[] = $answer->id;
+
+            if ($question->fraction[$key] > 0) {
+                $totalfraction += $question->fraction[$key];
+            }
+            if ($question->fraction[$key] > $maxfraction) {
+                $maxfraction = $question->fraction[$key];
             }
         }
 
-        $update = true;
-        $options = $DB->get_record("question_multichoice", array("question" => $question->id));
+        // Delete any left over old answer records.
+        $fs = get_file_storage();
+        foreach($oldanswers as $oldanswer) {
+            $fs->delete_area_files($context->id, 'question', 'answerfeedback', $oldanswer->id);
+            $DB->delete_records('question_answers', array('id' => $oldanswer->id));
+        }
+
+        $options = $DB->get_record('question_multichoice', array('question' => $question->id));
         if (!$options) {
-            $update = false;
             $options = new stdClass;
             $options->question = $question->id;
-
+            $options->correctfeedback = '';
+            $options->partiallycorrectfeedback = '';
+            $options->incorrectfeedback = '';
+            $options->id = $DB->insert_record('question_multichoice', $options);
         }
-        $options->answers = implode(",",$answers);
+
+        $options->answers = implode(',', $answers);
         $options->single = $question->single;
-        if(isset($question->layout)){
+        if (isset($question->layout)) {
             $options->layout = $question->layout;
         }
         $options->answernumbering = $question->answernumbering;
         $options->shuffleanswers = $question->shuffleanswers;
+        $options->correctfeedback = $this->import_or_save_files($question->correctfeedback,
+                $context, 'qtype_multichoice', 'correctfeedback', $question->id);
+        $options->correctfeedbackformat = $question->correctfeedback['format'];
+        $options->partiallycorrectfeedback = $this->import_or_save_files($question->partiallycorrectfeedback,
+                $context, 'qtype_multichoice', 'partiallycorrectfeedback', $question->id);
+        $options->partiallycorrectfeedbackformat = $question->partiallycorrectfeedback['format'];
+        $options->incorrectfeedback = $this->import_or_save_files($question->incorrectfeedback,
+                $context, 'qtype_multichoice', 'incorrectfeedback', $question->id);
+        $options->incorrectfeedbackformat = $question->incorrectfeedback['format'];
 
-        foreach (array('correct', 'partiallycorrect', 'incorrect') as $feedbacktype) {
-            $feedbackname = $feedbacktype . 'feedback';
-            $feedbackformat = $feedbackname . 'format';
-            $feedback = $question->$feedbackname;
-            $options->$feedbackformat = trim($feedback['format']);
-            $options->$feedbackname = file_save_draft_area_files($feedback['itemid'], $context->id, 'qtype_multichoice', $feedbackname, $question->id, self::$fileoptions, trim($feedback['text']));
-        }
-
-        if ($update) {
-            $DB->update_record("question_multichoice", $options);
-        } else {
-            $DB->insert_record("question_multichoice", $options);
-        }
-
-        // delete old answer records
-        if (!empty($oldanswers)) {
-            foreach($oldanswers as $oa) {
-                $DB->delete_records('question_answers', array('id' => $oa->id));
-            }
-        }
+        $DB->update_record('question_multichoice', $options);
 
         /// Perform sanity checks on fractional grades
         if ($options->single) {
             if ($maxfraction != 1) {
-                $maxfraction = $maxfraction * 100;
-                $result->noticeyesno = get_string("fractionsnomax", "qtype_multichoice", $maxfraction);
+                $result->noticeyesno = get_string('fractionsnomax', 'qtype_multichoice', $maxfraction * 100);
                 return $result;
             }
         } else {
-            $totalfraction = round($totalfraction,2);
+            $totalfraction = round($totalfraction, 2);
             if ($totalfraction != 1) {
-                $totalfraction = $totalfraction * 100;
-                $result->noticeyesno = get_string("fractionsaddwrong", "qtype_multichoice", $totalfraction);
+                $result->noticeyesno = get_string('fractionsaddwrong', 'qtype_multichoice', $totalfraction * 100);
                 return $result;
             }
         }
+
         return true;
     }
 
-    /**
-     * Deletes question from the question-type specific tables
-     *
-     * @return boolean Success/Failure
-     * @param object $question  The question being deleted
-     */
-    function delete_question($questionid) {
+    function delete_question($questionid, $contextid) {
         global $DB;
-        $DB->delete_records("question_multichoice", array("question" => $questionid));
-        return true;
+        $DB->delete_records('question_multichoice', array('question' => $questionid));
+
+        parent::delete_question($questionid, $contextid);
     }
 
     function create_session_and_responses(&$question, &$state, $cmoptions, $attempt) {
@@ -358,6 +353,23 @@ class question_multichoice_qtype extends default_questiontype {
         include("$CFG->dirroot/question/type/multichoice/display.html");
     }
 
+    function compare_responses($question, $state, $teststate) {
+        if ($question->options->single) {
+            if (!empty($state->responses[''])) {
+                return $state->responses[''] == $teststate->responses[''];
+            } else {
+                return empty($teststate->response['']);
+            }
+        } else {
+            foreach ($question->options->answers as $ansid => $notused) {
+                if (empty($state->responses[$ansid]) != empty($teststate->responses[$ansid])) {
+                    return false;
+                }
+            }
+            return true;
+        }
+    }
+
     function grade_responses(&$question, &$state, $cmoptions) {
         $state->raw_grade = 0;
         if($question->options->single) {
@@ -402,10 +414,6 @@ class question_multichoice_qtype extends default_questiontype {
         return $responses;
     }
 
-
-    function format_response($response, $format){
-        return $this->format_text($response, $format);
-    }
     /**
      * @param object $question
      * @return mixed either a integer score out of 1 that the average random
@@ -418,174 +426,6 @@ class question_multichoice_qtype extends default_questiontype {
             $totalfraction += $answer->fraction;
         }
         return $totalfraction / count($question->options->answers);
-    }
-
-    /// RESTORE FUNCTIONS /////////////////
-
-    /*
-     * Restores the data in the question
-     *
-     * This is used in question/restorelib.php
-     */
-    function restore($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-
-        $status = true;
-
-        //Get the multichoices array
-        $multichoices = $info['#']['MULTICHOICE'];
-
-        //Iterate over multichoices
-        for($i = 0; $i < sizeof($multichoices); $i++) {
-            $mul_info = $multichoices[$i];
-
-            //Now, build the question_multichoice record structure
-            $multichoice = new stdClass;
-            $multichoice->question = $new_question_id;
-            $multichoice->layout = backup_todb($mul_info['#']['LAYOUT']['0']['#']);
-            $multichoice->answers = backup_todb($mul_info['#']['ANSWERS']['0']['#']);
-            $multichoice->single = backup_todb($mul_info['#']['SINGLE']['0']['#']);
-            $multichoice->shuffleanswers = isset($mul_info['#']['SHUFFLEANSWERS']['0']['#'])?backup_todb($mul_info['#']['SHUFFLEANSWERS']['0']['#']):'';
-            if (array_key_exists("CORRECTFEEDBACK", $mul_info['#'])) {
-                $multichoice->correctfeedback = backup_todb($mul_info['#']['CORRECTFEEDBACK']['0']['#']);
-            } else {
-                $multichoice->correctfeedback = '';
-            }
-            if (array_key_exists("PARTIALLYCORRECTFEEDBACK", $mul_info['#'])) {
-                $multichoice->partiallycorrectfeedback = backup_todb($mul_info['#']['PARTIALLYCORRECTFEEDBACK']['0']['#']);
-            } else {
-                $multichoice->partiallycorrectfeedback = '';
-            }
-            if (array_key_exists("INCORRECTFEEDBACK", $mul_info['#'])) {
-                $multichoice->incorrectfeedback = backup_todb($mul_info['#']['INCORRECTFEEDBACK']['0']['#']);
-            } else {
-                $multichoice->incorrectfeedback = '';
-            }
-            if (array_key_exists("ANSWERNUMBERING", $mul_info['#'])) {
-                $multichoice->answernumbering = backup_todb($mul_info['#']['ANSWERNUMBERING']['0']['#']);
-            } else {
-                $multichoice->answernumbering = 'abc';
-            }
-
-            //We have to recode the answers field (a list of answers id)
-            //Extracts answer id from sequence
-            $answers_field = "";
-            $in_first = true;
-            $tok = strtok($multichoice->answers,",");
-            while ($tok) {
-                //Get the answer from backup_ids
-                $answer = backup_getid($restore->backup_unique_code,"question_answers",$tok);
-                if ($answer) {
-                    if ($in_first) {
-                        $answers_field .= $answer->new_id;
-                        $in_first = false;
-                    } else {
-                        $answers_field .= ",".$answer->new_id;
-                    }
-                }
-                //check for next
-                $tok = strtok(",");
-            }
-            //We have the answers field recoded to its new ids
-            $multichoice->answers = $answers_field;
-
-            //The structure is equal to the db, so insert the question_shortanswer
-            $newid = $DB->insert_record ("question_multichoice",$multichoice);
-
-            //Do some output
-            if (($i+1) % 50 == 0) {
-                if (!defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if (($i+1) % 1000 == 0) {
-                        echo "<br />";
-                    }
-                }
-                backup_flush(300);
-            }
-
-            if (!$newid) {
-                $status = false;
-            }
-        }
-
-        return $status;
-    }
-
-    function restore_recode_answer($state, $restore) {
-        $pos = strpos($state->answer, ':');
-        $order = array();
-        $responses = array();
-        if (false === $pos) { // No order of answers is given, so use the default
-            if ($state->answer) {
-                $responses = explode(',', $state->answer);
-            }
-        } else {
-            $order = explode(',', substr($state->answer, 0, $pos));
-            if ($responsestring = substr($state->answer, $pos + 1)) {
-                $responses = explode(',', $responsestring);
-            }
-        }
-        if ($order) {
-            foreach ($order as $key => $oldansid) {
-                $answer = backup_getid($restore->backup_unique_code,"question_answers",$oldansid);
-                if ($answer) {
-                    $order[$key] = $answer->new_id;
-                } else {
-                    echo 'Could not recode multichoice answer id '.$oldansid.' for state '.$state->oldid.'<br />';
-                }
-            }
-        }
-        if ($responses) {
-            foreach ($responses as $key => $oldansid) {
-                $answer = backup_getid($restore->backup_unique_code,"question_answers",$oldansid);
-                if ($answer) {
-                    $responses[$key] = $answer->new_id;
-                } else {
-                    echo 'Could not recode multichoice response answer id '.$oldansid.' for state '.$state->oldid.'<br />';
-                }
-            }
-        }
-        return implode(',', $order).':'.implode(',', $responses);
-    }
-
-    /**
-     * Decode links in question type specific tables.
-     * @return bool success or failure.
-     */
-    function decode_content_links_caller($questionids, $restore, &$i) {
-        global $DB;
-
-        $status = true;
-
-        // Decode links in the question_multichoice table.
-        if ($multichoices = $DB->get_records_list('question_multichoice', 'question',
-            $questionids, '', 'id, correctfeedback, partiallycorrectfeedback, incorrectfeedback')) {
-
-                foreach ($multichoices as $multichoice) {
-                    $correctfeedback = restore_decode_content_links_worker($multichoice->correctfeedback, $restore);
-                    $partiallycorrectfeedback = restore_decode_content_links_worker($multichoice->partiallycorrectfeedback, $restore);
-                    $incorrectfeedback = restore_decode_content_links_worker($multichoice->incorrectfeedback, $restore);
-                    if ($correctfeedback != $multichoice->correctfeedback ||
-                        $partiallycorrectfeedback != $multichoice->partiallycorrectfeedback ||
-                        $incorrectfeedback != $multichoice->incorrectfeedback) {
-                            $subquestion->correctfeedback = $correctfeedback;
-                            $subquestion->partiallycorrectfeedback = $partiallycorrectfeedback;
-                            $subquestion->incorrectfeedback = $incorrectfeedback;
-                            $DB->update_record('question_multichoice', $multichoice);
-                        }
-
-                    // Do some output.
-                    if (++$i % 5 == 0 && !defined('RESTORE_SILENTLY')) {
-                        echo ".";
-                        if ($i % 100 == 0) {
-                            echo "<br />";
-                        }
-                        backup_flush(300);
-                    }
-                }
-            }
-
-        return $status;
     }
 
     /**
@@ -622,48 +462,6 @@ class question_multichoice_qtype extends default_questiontype {
         }
     }
 
-    function find_file_links($question, $courseid){
-        $urls = array();
-        // find links in the answers table.
-        $urls +=  question_find_file_links_from_html($question->options->correctfeedback, $courseid);
-        $urls +=  question_find_file_links_from_html($question->options->partiallycorrectfeedback, $courseid);
-        $urls +=  question_find_file_links_from_html($question->options->incorrectfeedback, $courseid);
-        foreach ($question->options->answers as $answer) {
-            $urls += question_find_file_links_from_html($answer->answer, $courseid);
-        }
-        //set all the values of the array to the question id
-        if ($urls){
-            $urls = array_combine(array_keys($urls), array_fill(0, count($urls), array($question->id)));
-        }
-        $urls = array_merge_recursive($urls, parent::find_file_links($question, $courseid));
-        return $urls;
-    }
-
-    function replace_file_links($question, $fromcourseid, $tocourseid, $url, $destination){
-        global $DB;
-        parent::replace_file_links($question, $fromcourseid, $tocourseid, $url, $destination);
-        // replace links in the question_match_sub table.
-        // We need to use a separate object, because in load_question_options, $question->options->answers
-        // is changed from a comma-separated list of ids to an array, so calling $DB->update_record on
-        // $question->options stores 'Array' in that column, breaking the question.
-        $optionschanged = false;
-        $newoptions = new stdClass;
-        $newoptions->id = $question->options->id;
-        $newoptions->correctfeedback = question_replace_file_links_in_html($question->options->correctfeedback, $fromcourseid, $tocourseid, $url, $destination, $optionschanged);
-        $newoptions->partiallycorrectfeedback  = question_replace_file_links_in_html($question->options->partiallycorrectfeedback, $fromcourseid, $tocourseid, $url, $destination, $optionschanged);
-        $newoptions->incorrectfeedback = question_replace_file_links_in_html($question->options->incorrectfeedback, $fromcourseid, $tocourseid, $url, $destination, $optionschanged);
-        if ($optionschanged){
-            $DB->update_record('question_multichoice', $newoptions);
-        }
-        $answerchanged = false;
-        foreach ($question->options->answers as $answer) {
-            $answer->answer = question_replace_file_links_in_html($answer->answer, $fromcourseid, $tocourseid, $url, $destination, $answerchanged);
-            if ($answerchanged){
-                $DB->update_record('question_answers', $answer);
-            }
-        }
-    }
-
     /**
      * Runs all the code required to set up and save an essay question for testing purposes.
      * Alternate DB table prefix may be used to facilitate data deletion.
@@ -690,50 +488,31 @@ class question_multichoice_qtype extends default_questiontype {
             $course = $DB->get_record('course', array('id' => $courseid));
         }
 
-        return $this->save_question($question, $form, $course);
+        return $this->save_question($question, $form);
     }
-    /**
-     * When move the category of questions, the belonging files should be moved as well
-     * @param object $question, question information
-     * @param object $newcategory, target category information
-     */
-    function move_files($question, $newcategory) {
-        global $DB;
-        // move files belonging to question component
-        parent::move_files($question, $newcategory);
 
-        // move files belonging to qtype_multichoice
+    function move_files($questionid, $oldcontextid, $newcontextid) {
         $fs = get_file_storage();
-        // process files in answer
-        if (!$oldanswers = $DB->get_records('question_answers', array('question' =>  $question->id), 'id ASC')) {
-            $oldanswers = array();
-        }
-        $component = 'question';
-        $filearea = 'answerfeedback';
-        foreach ($oldanswers as $answer) {
-            $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
-            foreach ($files as $storedfile) {
-                if (!$storedfile->is_directory()) {
-                    $newfile = new stdClass();
-                    $newfile->contextid = (int)$newcategory->contextid;
-                    $fs->create_file_from_storedfile($newfile, $storedfile);
-                    $storedfile->delete();
-                }
-            }
-        }
 
-        $component = 'qtype_multichoice';
-        foreach (array('correctfeedback', 'partiallycorrectfeedback', 'incorrectfeedback') as $filearea) {
-            $files = $fs->get_area_files($question->contextid, $component, $filearea, $question->id);
-            foreach ($files as $storedfile) {
-                if (!$storedfile->is_directory()) {
-                    $newfile = new stdClass();
-                    $newfile->contextid = (int)$newcategory->contextid;
-                    $fs->create_file_from_storedfile($newfile, $storedfile);
-                    $storedfile->delete();
-                }
-            }
-        }
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+        $this->move_files_in_answers($questionid, $oldcontextid, $newcontextid, true);
+
+        $fs->move_area_files_to_new_context($oldcontextid,
+                $newcontextid, 'qtype_multichoice', 'correctfeedback', $questionid);
+        $fs->move_area_files_to_new_context($oldcontextid,
+                $newcontextid, 'qtype_multichoice', 'partiallycorrectfeedback', $questionid);
+        $fs->move_area_files_to_new_context($oldcontextid,
+                $newcontextid, 'qtype_multichoice', 'incorrectfeedback', $questionid);
+    }
+
+    protected function delete_files($questionid, $contextid) {
+        $fs = get_file_storage();
+
+        parent::delete_files($questionid, $contextid);
+        $this->delete_files_in_answers($questionid, $contextid, true);
+        $fs->delete_area_files($contextid, 'qtype_multichoice', 'correctfeedback', $questionid);
+        $fs->delete_area_files($contextid, 'qtype_multichoice', 'partiallycorrectfeedback', $questionid);
+        $fs->delete_area_files($contextid, 'qtype_multichoice', 'incorrectfeedback', $questionid);
     }
 
     function check_file_access($question, $state, $options, $contextid, $component,

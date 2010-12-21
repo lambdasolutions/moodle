@@ -806,13 +806,18 @@ class quiz_attempt extends quiz {
      * @param string $thispageurl the URL of the page this question is being printed on.
      */
     public function print_question($id, $reviewing, $thispageurl = '') {
+        global $CFG;
+
         if ($reviewing) {
             $options = $this->get_review_options();
         } else {
             $options = $this->get_render_options($id);
         }
+        if ($thispageurl instanceof moodle_url) {
+            $thispageurl = $thispageurl->out(false);
+        }
         if ($thispageurl) {
-            $this->quiz->thispageurl = $thispageurl;
+            $this->quiz->thispageurl = str_replace($CFG->wwwroot, '', $thispageurl);
         } else {
             unset($thispageurl);
         }
@@ -890,7 +895,7 @@ class quiz_attempt extends quiz {
      * @return mixed true on success, a string error message if a problem is detected
      *         (for example score out of range).
      */
-    public function process_comment($questionid, $comment, $grade) {
+    public function process_comment($questionid, $comment, $commentformat, $grade) {
         // I am not sure it is a good idea to have update methods here - this
         // class is only about getting data out of the question engine, and
         // helping to display it, apart from this.
@@ -899,7 +904,7 @@ class quiz_attempt extends quiz {
         $state = $this->states[$questionid];
 
         $error = question_process_comment($this->questions[$questionid],
-                $state, $this->attempt, $comment, $grade);
+                $state, $this->attempt, $comment, $commentformat, $grade);
 
         // If the state was update (successfully), save the changes.
         if (!is_string($error) && $state->changed) {
@@ -992,7 +997,7 @@ class quiz_attempt extends quiz {
             }
         }
 
-        // Add a fragment to scroll down ot the question.
+        // Add a fragment to scroll down to the question.
         if ($questionid) {
             if ($questionid == reset($this->pagequestionids[$page])) {
                 // First question on page, go to top.
@@ -1188,7 +1193,7 @@ class quiz_attempt_nav_panel extends quiz_nav_panel_base {
     protected function get_end_bits() {
         global $PAGE;
         $output = '';
-        $output .= '<a href="' . s($this->attemptobj->summary_url()) . '" class="endtestlink">' . get_string('endtest', 'quiz') . '</a>';
+        $output .= '<a href="' . s($this->attemptobj->summary_url()) . '" class="endtestlink">' . get_string('finishattemptdots', 'quiz') . '</a>';
         $output .= $this->attemptobj->get_timer_html();
         return $output;
     }

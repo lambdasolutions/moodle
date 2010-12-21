@@ -8,6 +8,8 @@ require_once($CFG->dirroot . '/mod/assignment/lib.php');
  */
 class assignment_online extends assignment_base {
 
+    var $filearea = 'submission';
+
     function assignment_online($cmid='staticonly', $assignment=NULL, $cm=NULL, $course=NULL) {
         parent::assignment_base($cmid, $assignment, $cm, $course);
         $this->type = 'online';
@@ -49,7 +51,7 @@ class assignment_online extends assignment_base {
                 $data->textformat = NULL;
             }
 
-            $data = file_prepare_standard_editor($data, 'text', $editoroptions, $this->context, 'mod_assignment', 'online_submission', $data->sid);
+            $data = file_prepare_standard_editor($data, 'text', $editoroptions, $this->context, 'mod_assignment', $this->filearea, $data->sid);
 
             $mform = new mod_assignment_online_edit_form(null, array($data, $editoroptions));
 
@@ -60,7 +62,7 @@ class assignment_online extends assignment_base {
             if ($data = $mform->get_data()) {
                 $submission = $this->get_submission($USER->id, true); //create the submission if needed & its id
 
-                $data = file_postupdate_standard_editor($data, 'text', $editoroptions, $this->context, 'mod_assignment', 'online_submission', $submission->id);
+                $data = file_postupdate_standard_editor($data, 'text', $editoroptions, $this->context, 'mod_assignment', $this->filearea, $submission->id);
 
                 $submission = $this->update_submission($data);
 
@@ -97,14 +99,14 @@ class assignment_online extends assignment_base {
             } else {
                 echo $OUTPUT->box_start('generalbox boxwidthwide boxaligncenter', 'online');
                 if ($submission && has_capability('mod/assignment:exportownsubmission', $this->context)) {
-                    $text = file_rewrite_pluginfile_urls($submission->data1, 'pluginfile.php', $this->context->id, 'mod_assignment', 'online_submission', $submission->id);
-                    echo format_text($text, $submission->data2);
+                    $text = file_rewrite_pluginfile_urls($submission->data1, 'pluginfile.php', $this->context->id, 'mod_assignment', $this->filearea, $submission->id);
+                    echo format_text($text, $submission->data2, array('overflowdiv'=>true));
                     if ($CFG->enableportfolios) {
                         require_once($CFG->libdir . '/portfoliolib.php');
                         $button = new portfolio_add_button();
                         $button->set_callback_options('assignment_portfolio_caller', array('id' => $this->cm->id), '/mod/assignment/locallib.php');
                         $fs = get_file_storage();
-                        if ($files = $fs->get_area_files($this->context->id, 'mod_assignment', 'online_submission', $submission->id, "timemodified", false)) {
+                        if ($files = $fs->get_area_files($this->context->id, 'mod_assignment', $this->filearea, $submission->id, "timemodified", false)) {
                             $button->set_formats(PORTFOLIO_FORMAT_RICHHTML);
                         } else {
                             $button->set_formats(PORTFOLIO_FORMAT_PLAINHTML);
@@ -230,8 +232,8 @@ class assignment_online extends assignment_base {
         }
         $wordcount .= '</p>';
 
-        $text = file_rewrite_pluginfile_urls($submission->data1, 'pluginfile.php', $this->context->id, 'mod_assignment', 'online_submission', $submission->id);
-        return $wordcount . format_text($text, $submission->data2);
+        $text = file_rewrite_pluginfile_urls($submission->data1, 'pluginfile.php', $this->context->id, 'mod_assignment', $this->filearea, $submission->id);
+        return $wordcount . format_text($text, $submission->data2, array('overflowdiv'=>true));
 
 
         }
@@ -270,13 +272,13 @@ class assignment_online extends assignment_base {
     }
 
     function portfolio_exportable() {
-        return false; // not until MDL-22001 is fixed :(
+        return true;
     }
 
     function portfolio_load_data($caller) {
         $submission = $this->get_submission();
         $fs = get_file_storage();
-        if ($files = $fs->get_area_files($this->context->id, 'mod_assignment', 'online_submission', $submission->id, "timemodified", false)) {
+        if ($files = $fs->get_area_files($this->context->id, 'mod_assignment', $this->filearea, $submission->id, "timemodified", false)) {
             $caller->set('multifiles', $files);
         }
     }
@@ -293,8 +295,9 @@ class assignment_online extends assignment_base {
 
     function portfolio_prepare_package($exporter, $user) {
         $submission = $this->get_submission($user->id);
-        $html = format_text($submission->data1, $submission->data2);
-        $html = portfolio_rewrite_pluginfile_urls($html, $this->context->id, 'mod_assignment', 'online_submission', $submission->id, $exporter->get('format'));
+        $options = portfolio_format_text_options();
+        $html = format_text($submission->data1, $submission->data2, $options);
+        $html = portfolio_rewrite_pluginfile_urls($html, $this->context->id, 'mod_assignment', $this->filearea, $submission->id, $exporter->get('format'));
         if (in_array($exporter->get('formatclass'), array(PORTFOLIO_FORMAT_PLAINHTML, PORTFOLIO_FORMAT_RICHHTML))) {
             if ($files = $exporter->get('caller')->get('multifiles')) {
                 foreach ($files as $f) {
@@ -383,11 +386,11 @@ class assignment_online extends assignment_base {
     public function download_submissions() {
         global $CFG, $DB;
 
-        @raise_memory_limit('256M');
+        raise_memory_limit(MEMORY_EXTRA);
 
         $submissions = $this->get_submissions('','');
         if (empty($submissions)) {
-            error("there are no submissions to download");
+            print_error('errornosubmissions', 'assignment');
         }
         $filesforzipping = array();
 
@@ -396,13 +399,12 @@ class assignment_online extends assignment_base {
         //online assignment can use html
         $filextn=".html";
 
-        $groupmode = groupmode($this->course,$this->cm);
+        $groupmode = groups_get_activity_groupmode($this->cm);
         $groupid = 0;   // All users
         $groupname = '';
-        if($groupmode) {
-            $group = get_current_group($this->course->id, true);
-            $groupid = $group->id;
-            $groupname = $group->name.'-';
+        if ($groupmode) {
+            $groupid = groups_get_activity_group($this->cm, true);
+            $groupname = groups_get_group_name($groupid).'-';
         }
         $filename = str_replace(' ', '_', clean_filename($this->course->shortname.'-'.$this->assignment->name.'-'.$groupname.$this->assignment->id.".zip")); //name of new zip file.
         foreach ($submissions as $submission) {

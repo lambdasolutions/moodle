@@ -4,7 +4,8 @@
  * @package SimpleTestEx
  */
 
-/** */
+define('NO_OUTPUT_BUFFERING', true);
+
 require_once(dirname(__FILE__).'/../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->libdir.'/simpletestcoveragelib.php');
@@ -68,9 +69,6 @@ for ($i=1; $i<=10; $i++) {
 }
 
 if (!empty($tests)) {
-    @ob_implicit_flush(true);
-    while(@ob_end_flush());
-
     $covreporter = new moodle_coverage_reporter('Functional DB Tests Code Coverage Report', 'dbtest');
     $covrecorder = new moodle_coverage_recorder($covreporter);
 

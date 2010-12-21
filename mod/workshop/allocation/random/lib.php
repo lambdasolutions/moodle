@@ -18,9 +18,10 @@
 /**
  * Allocates the submissions randomly
  *
- * @package   mod-workshop
- * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    workshopallocation
+ * @subpackage random
+ * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -89,9 +90,6 @@ class workshop_random_allocator implements workshop_allocator {
             $newallocations     = array();      // array of array(reviewer => reviewee)
 
             if ($numofreviews) {
-                // TODO MDL-19870 rewrite this part to make it easier to maintain and extend.
-                // $removecurrent -> remove it at the beginning and stop doing the magic with unkept allocation
-                // (leading to possible bugs)
                 if ($removecurrent) {
                     // behave as if there were no current assessments
                     $curassessments = array();
@@ -99,7 +97,6 @@ class workshop_random_allocator implements workshop_allocator {
                     $curassessments = $assessments;
                 }
                 $randomallocations  = $this->random_allocation($authors, $reviewers, $curassessments, $numofreviews, $numper, $o);
-                $this->filter_current_assessments($randomallocations, $assessments);
                 $newallocations     = array_merge($newallocations, $randomallocations);
                 $o[] = 'ok::' . get_string('numofrandomlyallocatedsubmissions', 'workshopallocation_random', count($randomallocations));
                 unset($randomallocations);
@@ -113,13 +110,19 @@ class workshop_random_allocator implements workshop_allocator {
             if (empty($newallocations)) {
                 $o[] = 'info::' . get_string('noallocationtoadd', 'workshopallocation_random');
             } else {
-                $this->add_new_allocations($newallocations, $authors, $reviewers);
+                $newnonexistingallocations = $newallocations;
+                $this->filter_current_assessments($newnonexistingallocations, $assessments);
+                $this->add_new_allocations($newnonexistingallocations, $authors, $reviewers);
                 foreach ($newallocations as $newallocation) {
                     list($reviewerid, $authorid) = each($newallocation);
                     $a                  = new stdclass();
                     $a->reviewername    = fullname($reviewers[0][$reviewerid]);
                     $a->authorname      = fullname($authors[0][$authorid]);
-                    $o[] = 'ok::indent::' . get_string('allocationaddeddetail', 'workshopallocation_random', $a);
+                    if (in_array($newallocation, $newnonexistingallocations)) {
+                        $o[] = 'ok::indent::' . get_string('allocationaddeddetail', 'workshopallocation_random', $a);
+                    } else {
+                        $o[] = 'ok::indent::' . get_string('allocationreuseddetail', 'workshopallocation_random', $a);
+                    }
                 }
             }
             if ($removecurrent) {
@@ -156,28 +159,29 @@ class workshop_random_allocator implements workshop_allocator {
      * Returns the HTML code to print the user interface
      */
     public function ui() {
-        global $OUTPUT, $PAGE;
+        global $PAGE;
+
+        $output = $PAGE->get_renderer('mod_workshop');
 
         $m = optional_param('m', null, PARAM_INT);  // status message code
-        $msg = new stdclass();
+        $message = new workshop_message();
         if ($m == self::MSG_SUCCESS) {
-            $msg = (object)array('text' => get_string('randomallocationdone', 'workshopallocation_random'), 'sty' => 'ok');
+            $message->set_text(get_string('randomallocationdone', 'workshopallocation_random'));
+            $message->set_type(workshop_message::TYPE_OK);
         }
 
-        $out = '';
-        $out .= $OUTPUT->container_start('random-allocator');
-        $wsoutput = $PAGE->get_renderer('mod_workshop');
-        $out .= $wsoutput->status_message($msg);
+        $out  = $output->container_start('random-allocator');
+        $out .= $output->render($message);
         // the nasty hack follows to bypass the sad fact that moodle quickforms do not allow to actually
         // return the HTML content, just to display it
         ob_start();
         $this->mform->display();
         $out .= ob_get_contents();
         ob_end_clean();
-        $out .= $OUTPUT->container_end();
+        $out .= $output->container_end();
 
-        $out .= $OUTPUT->heading(get_string('stats', 'workshopallocation_random'));
-        // TODO
+        // TODO $out .= $output->heading(get_string('stats', 'workshopallocation_random'));
+
         return $out;
     }
 

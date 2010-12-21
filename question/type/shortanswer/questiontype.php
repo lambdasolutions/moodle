@@ -49,33 +49,14 @@ class question_shortanswer_qtype extends default_questiontype {
         return 'question';
     }
 
-    /**
-     * When move the category of questions, the belonging files should be moved as well
-     * @param object $question, question information
-     * @param object $newcategory, target category information
-     */
-    function move_files($question, $newcategory) {
-        global $DB;
-        parent::move_files($question, $newcategory);
+    function move_files($questionid, $oldcontextid, $newcontextid) {
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+        $this->move_files_in_answers($questionid, $oldcontextid, $newcontextid);
+    }
 
-        $fs = get_file_storage();
-        // process files in answer
-        if (!$oldanswers = $DB->get_records('question_answers', array('question' =>  $question->id), 'id ASC')) {
-            $oldanswers = array();
-        }
-        $component = 'question';
-        $filearea = 'answerfeedback';
-        foreach ($oldanswers as $answer) {
-            $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
-            foreach ($files as $storedfile) {
-                if (!$storedfile->is_directory()) {
-                    $newfile = new stdClass();
-                    $newfile->contextid = (int)$newcategory->contextid;
-                    $fs->create_file_from_storedfile($newfile, $storedfile);
-                    $storedfile->delete();
-                }
-            }
-        }
+    protected function delete_files($questionid, $contextid) {
+        parent::delete_files($questionid, $contextid);
+        $this->delete_files_in_answers($questionid, $contextid);
     }
 
     function save_question_options($question) {
@@ -84,75 +65,63 @@ class question_shortanswer_qtype extends default_questiontype {
 
         $context = $question->context;
 
-        if (!$oldanswers = $DB->get_records('question_answers', array('question' =>  $question->id), 'id ASC')) {
-            $oldanswers = array();
-        }
-
-        $answers = array();
-        $maxfraction = -1;
+        $oldanswers = $DB->get_records('question_answers',
+                array('question' => $question->id), 'id ASC');
 
         // Insert all the new answers
-        foreach ($question->answer as $key => $dataanswer) {
-            // Check for, and ingore, completely blank answer from the form.
-            if (trim($dataanswer) == '' && $question->fraction[$key] == 0 &&
+        $answers = array();
+        $maxfraction = -1;
+        foreach ($question->answer as $key => $answerdata) {
+            // Check for, and ignore, completely blank answer from the form.
+            if (trim($answerdata) == '' && $question->fraction[$key] == 0 &&
                     html_is_blank($question->feedback[$key]['text'])) {
                 continue;
             }
 
-            $feedbackformat = $question->feedback[$key]['format'];
-
-            if ($oldanswer = array_shift($oldanswers)) {  // Existing answer, so reuse it
-                $answer = $oldanswer;
-                $answer->answer   = trim($dataanswer);
-                $answer->fraction = $question->fraction[$key];
-
-                // save draft file and rewrite text in feedback
-                $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $oldanswer->id, self::$fileoptions, $question->feedback[$key]['text']);
-                $answer->feedbackformat = $feedbackformat;
-
-                $DB->update_record("question_answers", $answer);
-            } else {    // This is a completely new answer
-                $answer = new stdClass;
-                $answer->answer   = trim($dataanswer);
+            // Update an existing answer if possible.
+            $answer = array_shift($oldanswers);
+            if (!$answer) {
+                $answer = new stdClass();
                 $answer->question = $question->id;
-                $answer->fraction = $question->fraction[$key];
-                // feedback content needs to be rewriten
+                $answer->answer = '';
                 $answer->feedback = '';
-                $answer->feedbackformat = $feedbackformat;
-                $answer->id = $DB->insert_record("question_answers", $answer);
-
-                // save draft file and rewrite text in feedback
-                $answer->feedback = file_save_draft_area_files($question->feedback[$key]['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, self::$fileoptions, $question->feedback[$key]['text']);
-                // update feedback content
-                $DB->set_field('question_answers', 'feedback', $answer->feedback, array('id'=>$answer->id));
+                $answer->id = $DB->insert_record('question_answers', $answer);
             }
+
+            $answer->answer   = trim($answerdata);
+            $answer->fraction = $question->fraction[$key];
+            $answer->feedback = $this->import_or_save_files($question->feedback[$key],
+                    $context, 'question', 'answerfeedback', $answer->id);
+            $answer->feedbackformat = $question->feedback[$key]['format'];
+            $DB->update_record('question_answers', $answer);
+
             $answers[] = $answer->id;
             if ($question->fraction[$key] > $maxfraction) {
                 $maxfraction = $question->fraction[$key];
             }
         }
 
+        // Delete any left over old answer records.
+        $fs = get_file_storage();
+        foreach($oldanswers as $oldanswer) {
+            $fs->delete_area_files($context->id, 'question', 'answerfeedback', $oldanswer->id);
+            $DB->delete_records('question_answers', array('id' => $oldanswer->id));
+        }
+
         $question->answers = implode(',', $answers);
         $parentresult = parent::save_question_options($question);
-        if($parentresult !== null) { // Parent function returns null if all is OK
+        if ($parentresult !== null) {
+            // Parent function returns null if all is OK
             return $parentresult;
         }
 
-        // delete old answer records
-        if (!empty($oldanswers)) {
-            foreach($oldanswers as $oa) {
-                $DB->delete_records('question_answers', array('id' => $oa->id));
-            }
+        // Perform sanity checks on fractional grades
+        if ($maxfraction != 1) {
+            $result->noticeyesno = get_string('fractionsnomax', 'quiz', $maxfraction * 100);
+            return $result;
         }
 
-        /// Perform sanity checks on fractional grades
-        if ($maxfraction != 1) {
-            $maxfraction = $maxfraction * 100;
-            $result->noticeyesno = get_string("fractionsnomax", "quiz", $maxfraction);
-            return $result;
-        } else {
-            return true;
-        }
+        return true;
     }
 
     function print_question_formulation_and_controls(&$question, &$state, $cmoptions, $options) {
@@ -196,7 +165,7 @@ class question_shortanswer_qtype extends default_questiontype {
                     $feedbackimg = question_get_feedback_image($answer->fraction);
                     if ($answer->feedback) {
                         $answer->feedback = quiz_rewrite_question_urls($answer->feedback, 'pluginfile.php', $context->id, 'question', 'answerfeedback', array($state->attempt, $state->question), $answer->id);
-                        $feedback = format_text($answer->feedback, true, $formatoptions, $cmoptions->course);
+                        $feedback = format_text($answer->feedback, $answer->feedbackformat, $formatoptions, $cmoptions->course);
                     }
                     break;
                 }
@@ -278,52 +247,6 @@ class question_shortanswer_qtype extends default_questiontype {
             }
         }
         return 0;
-    }
-
-/// RESTORE FUNCTIONS /////////////////
-
-    /*
-     * Restores the data in the question
-     *
-     * This is used in question/restorelib.php
-     */
-    function restore($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-
-        $status = parent::restore($old_question_id, $new_question_id, $info, $restore);
-
-        if ($status) {
-            $extraquestionfields = $this->extra_question_fields();
-            $questionextensiontable = array_shift($extraquestionfields);
-
-            //We have to recode the answers field (a list of answers id)
-            $questionextradata = $DB->get_record($questionextensiontable, array($this->questionid_column_name() => $new_question_id));
-            if (isset($questionextradata->answers)) {
-                $answers_field = "";
-                $in_first = true;
-                $tok = strtok($questionextradata->answers, ",");
-                while ($tok) {
-                    // Get the answer from backup_ids
-                    $answer = backup_getid($restore->backup_unique_code,"question_answers",$tok);
-                    if ($answer) {
-                        if ($in_first) {
-                            $answers_field .= $answer->new_id;
-                            $in_first = false;
-                        } else {
-                            $answers_field .= ",".$answer->new_id;
-                        }
-                    }
-                    // Check for next
-                    $tok = strtok(",");
-                }
-                // We have the answers field recoded to its new ids
-                $questionextradata->answers = $answers_field;
-                // Update the question
-                $DB->update_record($questionextensiontable, $questionextradata);
-            }
-        }
-
-        return $status;
     }
 
     /**
@@ -449,7 +372,7 @@ class question_shortanswer_qtype extends default_questiontype {
             $course = $DB->get_record('course', array('id' => $courseid));
         }
 
-        return $this->save_question($question, $form, $course);
+        return $this->save_question($question, $form);
     }
 
     function check_file_access($question, $state, $options, $contextid, $component,

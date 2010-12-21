@@ -194,6 +194,7 @@ function glossary_delete_instance($id) {
     $category_select = "SELECT id FROM {glossary_categories} WHERE glossaryid = ?";
     $DB->delete_records_select('glossary_entries_categories', "categoryid IN ($category_select)", array($id));
     $DB->delete_records('glossary_categories', array('glossaryid'=>$id));
+    $DB->delete_records('glossary_entries', array('glossaryid'=>$id));
 
     // delete all files
     $fs->delete_area_files($context->id);
@@ -414,20 +415,6 @@ function glossary_cron () {
  * @return array array of grades, false if none
  */
 function glossary_get_user_grades($glossary, $userid=0) {
-    /*global $DB;
-
-    $params = array('userid'=>$userid, 'gid'=>$glossary->id);
-
-    $user = $userid ? "AND u.id = :userid" : "";
-
-    $sql = "SELECT u.id, u.id AS userid, avg(gr.rating) AS rawgrade
-              FROM {user} u, {glossary_entries} ge, {glossary_ratings} gr
-             WHERE u.id = ge.userid AND ge.id = gr.entryid
-                   AND gr.userid != u.id AND ge.glossaryid = :gid
-                   $user
-          GROUP BY u.id";
-
-    return $DB->get_records_sql($sql, $params);*/
     global $CFG;
 
     require_once($CFG->dirroot.'/rating/lib.php');
@@ -845,6 +832,8 @@ function glossary_print_entry_default ($entry, $glossary, $cm) {
     $options = new stdClass();
     $options->para = false;
     $options->trusted = $entry->definitiontrust;
+    $options->context = $context;
+    $options->overflowdiv = true;
     $definition = format_text($definition, $entry->definitionformat, $options);
     echo ($definition);
     echo '<br /><br />';
@@ -872,22 +861,19 @@ function  glossary_print_entry_concept($entry, $return=false) {
 
 /**
  *
- * @global object
- * @global array
+ * @global moodle_database DB
  * @param object $entry
  * @param object $glossary
  * @param object $cm
  */
 function glossary_print_entry_definition($entry, $glossary, $cm) {
-    global $DB;
+    global $DB, $GLOSSARY_EXCLUDECONCEPTS;
 
     $definition = $entry->definition;
 
-    global $GLOSSARY_EXCLUDECONCEPTS;
-
     //Calculate all the strings to be no-linked
     //First, the concept
-    $GLOSSARY_EXCLUDECONCEPTS=array($entry->concept);
+    $GLOSSARY_EXCLUDECONCEPTS = array($entry->concept);
     //Now the aliases
     if ( $aliases = $DB->get_records('glossary_alias', array('entryid'=>$entry->id))) {
         foreach ($aliases as $alias) {
@@ -895,13 +881,14 @@ function glossary_print_entry_definition($entry, $glossary, $cm) {
         }
     }
 
-    $options = new stdClass();
-    $options->para = false;
-    $options->trusted = $entry->definitiontrust;
-
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
     $definition = file_rewrite_pluginfile_urls($definition, 'pluginfile.php', $context->id, 'mod_glossary', 'entry', $entry->id);
 
+    $options = new stdClass();
+    $options->para = false;
+    $options->trusted = $entry->definitiontrust;
+    $options->context = $context;
+    $options->overflowdiv = true;
     $text = format_text($definition, $entry->definitionformat, $options);
 
     // Stop excluding concepts from autolinking

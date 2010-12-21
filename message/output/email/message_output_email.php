@@ -35,27 +35,28 @@ require_once($CFG->dirroot.'/message/output/lib.php');
 class message_output_email extends message_output {
     /**
      * Processes the message (sends by email).
-     * @param object $message the message to be sent
+     * @param object $eventdata the event data submitted by the message sender plus $eventdata->savedmessageid
      */
-    function send_message($message) {
-        global $DB;
+    function send_message($eventdata) {
+        global $SITE;
 
-        $userto = $DB->get_record('user', array('id' => $message->useridto));
-        $userfrom = $DB->get_record('user', array('id' => $message->useridfrom));
+        //hold onto email preference because /admin/cron.php sends a lot of messages at once
+        static $useremailaddresses = array();
 
         //check user preference for where user wants email sent
-        $usertoemailaddress = get_user_preferences('message_processor_email_email', '', $message->useridto);
+        if (!array_key_exists($eventdata->userto->id, $useremailaddresses)) {
+            $useremailaddresses[$eventdata->userto->id] = get_user_preferences('message_processor_email_email', $eventdata->userto->email, $eventdata->userto->id);
+        }
+        $usertoemailaddress = $useremailaddresses[$eventdata->userto->id];
 
         if ( !empty($usertoemailaddress)) {
             $userto->email = $usertoemailaddress;
         }
 
-        $result = email_to_user($userto, $userfrom,
-            $message->subject, $message->fullmessage,
-            $message->fullmessagehtml);
+        $result = email_to_user($eventdata->userto, $eventdata->userfrom,
+            $eventdata->subject, $eventdata->fullmessage, $eventdata->fullmessagehtml);
 
-        //return $result===true; //email_to_user() can return true, false or "emailstop"
-        return true;//do we want to report an error if email sending fails?
+        return $result;
     }
 
     /**
@@ -64,9 +65,10 @@ class message_output_email extends message_output {
      */
     function config_form($preferences){
         global $USER;
-        $string = get_string('email').': <input size="30" name="email_email" value="'.$preferences->email_email.'" />';
-        if (empty($preferences->email_email)) {
-            $string .= ' ('.get_string('default').': '.$USER->email.')';
+        $string = get_string('email','message_email').': <input size="30" name="email_email" value="'.$preferences->email_email.'" />';
+
+        if (empty($preferences->email_email) && !empty($preferences->userdefaultemail)) {
+            $string .= ' ('.get_string('default').': '.$preferences->userdefaultemail.')';
         }
         return $string;
     }

@@ -201,7 +201,7 @@
         if (!empty($ln)) {
             $search_array[DATA_LASTNAME] = new stdClass();
             $search_array[DATA_LASTNAME]->sql     = '';
-            $search_array[DATA_FIRSTNAME]->params = array();
+            $search_array[DATA_LASTNAME]->params = array();
             $search_array[DATA_LASTNAME]->field   = 'u.lastname';
             $search_array[DATA_LASTNAME]->data    = $ln;
             $vals[] = $ln;
@@ -256,8 +256,21 @@
     add_to_log($course->id, 'data', 'view', "view.php?id=$cm->id", $data->id, $cm->id);
 
 
+    $urlparams = array('d' => $data->id);
+    if ($record) {
+        $urlparams['rid'] = $record->id;
+    }
+    if ($page) {
+        $urlparams['page'] = $page;
+    }
+    if ($mode) {
+        $urlparams['mode'] = $mode;
+    }
+    if ($filter) {
+        $urlparams['filter'] = $filter;
+    }
 // Initialize $PAGE, compute blocks
-    $PAGE->set_url('/mod/data/view.php', array('id' => $cm->id));
+    $PAGE->set_url('/mod/data/view.php', $urlparams);
 
     if (($edit != -1) and $PAGE->user_allowed_editing()) {
         $USER->editing = $edit;
@@ -520,10 +533,10 @@ if ($showactivity) {
 
         } else {
 
-            $sortcontent = $sortfield->get_sort_field();
-            $sortcontentfull = $sortfield->get_sort_sql('c.'.$sortcontent);
+            $sortcontent = $DB->sql_compare_text('c.' . $sortfield->get_sort_field());
+            $sortcontentfull = $sortfield->get_sort_sql($sortcontent);
 
-            $what = ' DISTINCT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, '.$DB->sql_compare_text($sortcontentfull).' AS _order ';
+            $what = ' DISTINCT r.id, r.approved, r.timecreated, r.timemodified, r.userid, u.firstname, u.lastname, ' . $sortcontentfull . ' AS _order ';
             $count = ' COUNT(DISTINCT c.recordid) ';
             $tables = '{data_content} c, {data_records} r, {data_content} cs, {user} u ';
             $where =  'WHERE c.recordid = r.id
@@ -570,7 +583,6 @@ if ($showactivity) {
         $fromsql    = "FROM $tables $advtables $where $advwhere $groupselect $approveselect $searchselect $advsearchselect";
         $sqlselect  = "SELECT $what $fromsql $sortorder";
         $sqlcount   = "SELECT $count $fromsql";   // Total number of records when searching
-        $sqlrids    = "SELECT tmp.id FROM ($sqlselect) tmp";
         $sqlmax     = "SELECT $count FROM $tables $where $groupselect $approveselect"; // number of all recoirds user may see
         $allparams  = array_merge($params, $advparams);
 
@@ -588,8 +600,8 @@ if ($showactivity) {
             $mode = 'single';
 
             $page = 0;
-            if ($allrecordids = $DB->get_records_sql($sqlrids, $allparams)) {
-                $allrecordids = array_keys($allrecordids);
+            // TODO: Improve this because we are executing $sqlselect twice (here and some lines below)!
+            if ($allrecordids = $DB->get_fieldset_sql($sqlselect, $allparams)) {
                 $page = (int)array_search($record->id, $allrecordids);
                 unset($allrecordids);
             }

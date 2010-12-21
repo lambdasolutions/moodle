@@ -18,9 +18,10 @@
 /**
  * Assess an example submission
  *
- * @package   mod-workshop
- * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    mod
+ * @subpackage workshop
+ * @copyright  2009 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
@@ -69,6 +70,19 @@ $mform = $strategy->get_assessment_form($PAGE->url, 'assessment', $assessment, $
 if ($mform->is_cancelled()) {
     redirect($workshop->view_url());
 } elseif ($assessmenteditable and ($data = $mform->get_data())) {
+    if ($canmanage) {
+        if (is_null($assessment->grade)) {
+            $workshop->log('add reference assessment', $workshop->exassess_url($assessment->id), $assessment->submissionid);
+        } else {
+            $workshop->log('update reference assessment', $workshop->exassess_url($assessment->id), $assessment->submissionid);
+        }
+    } else {
+        if (is_null($assessment->grade)) {
+            $workshop->log('add example assessment', $workshop->exassess_url($assessment->id), $assessment->submissionid);
+        } else {
+            $workshop->log('update example assessment', $workshop->exassess_url($assessment->id), $assessment->submissionid);
+        }
+    }
     $rawgrade = $strategy->save_assessment($assessment, $data);
     if ($canmanage) {
         // remember the last one who edited the reference assessment
@@ -88,12 +102,12 @@ if ($mform->is_cancelled()) {
 }
 
 // output starts here
-echo $OUTPUT->header();
-echo $OUTPUT->heading(get_string('assessedexample', 'workshop'), 2);
+$output = $PAGE->get_renderer('mod_workshop');      // workshop renderer
+echo $output->header();
+echo $output->heading(get_string('assessedexample', 'workshop'), 2);
 
-$wsoutput = $PAGE->get_renderer('mod_workshop');      // workshop renderer
 $example = $workshop->get_example_by_id($example->id);     // reload so can be passed to the renderer
-echo $wsoutput->example_full($example);
+echo $output->render($workshop->prepare_example_submission(($example)));
 
 // show instructions for assessing as thay may contain important information
 // for evaluating the assessment
@@ -101,21 +115,21 @@ if (trim($workshop->instructreviewers)) {
     $instructions = file_rewrite_pluginfile_urls($workshop->instructreviewers, 'pluginfile.php', $PAGE->context->id,
         'mod_workshop', 'instructreviewers', 0, workshop::instruction_editors_options($PAGE->context));
     print_collapsible_region_start('', 'workshop-viewlet-instructreviewers', get_string('instructreviewers', 'workshop'));
-    echo $OUTPUT->box(format_text($instructions, $workshop->instructreviewersformat), array('generalbox', 'instructions'));
+    echo $output->box(format_text($instructions, $workshop->instructreviewersformat, array('overflowdiv'=>true)), array('generalbox', 'instructions'));
     print_collapsible_region_end();
 }
 
 if ($canmanage) {
-    echo $OUTPUT->heading(get_string('assessmentreference', 'workshop'), 2);
+    echo $output->heading(get_string('assessmentreference', 'workshop'), 2);
 } elseif ($isreviewer) {
-    echo $OUTPUT->heading(get_string('assessmentbyyourself', 'workshop'), 2);
+    echo $output->heading(get_string('assessmentbyyourself', 'workshop'), 2);
 } else {
     $assessment = $workshop->get_assessment_by_id($assessment->id); // extend the current record with user details
     $reviewer   = new stdclass();
     $reviewer->firstname = $assessment->reviewerfirstname;
     $reviewer->lastname = $assessment->reviewerlastname;
-    echo $OUTPUT->heading(get_string('assessmentbyknown', 'workshop', fullname($reviewer)), 2);
+    echo $output->heading(get_string('assessmentbyknown', 'workshop', fullname($reviewer)), 2);
 }
 
 $mform->display();
-echo $OUTPUT->footer();
+echo $output->footer();

@@ -173,8 +173,12 @@ class auth_plugin_cas extends auth_plugin_ldap {
             }
         }
 
-        // Don't try to validate the server SSL credentials
-        phpCAS::setNoCasServerValidation();
+        if($this->config->certificate_check && $this->config->certificate_path){
+            phpCAS::setCasServerCACert($this->config->certificate_path);
+        }else{
+            // Don't try to validate the server SSL credentials
+            phpCAS::setNoCasServerValidation();
+        }
     }
 
     /**
@@ -203,6 +207,19 @@ class auth_plugin_cas extends auth_plugin_ldap {
         }
 
         include($CFG->dirroot.'/auth/cas/config.html');
+    }
+
+    /**
+     * A chance to validate form data, and last chance to
+     * do stuff before it is inserted in config_plugin
+     * @param object object with submitted configuration settings (without system magic quotes)
+     * @param array $err array of error messages
+     */
+    function validate_form(&$form, &$err) {
+        $certificate_path = trim($form->certificate_path);
+        if ($form->certificate_check && empty($certificate_path)) {
+            $err['certificate_path'] = get_string('auth_cas_certificate_path_empty', 'auth_cas');
+        }
     }
 
     /**
@@ -244,6 +261,12 @@ class auth_plugin_cas extends auth_plugin_ldap {
         }
         if (!isset($config->multiauth)) {
             $config->multiauth = '';
+        }
+        if (!isset($config->certificate_check)) {
+            $config->certificate_check = '';
+        }
+        if (!isset($config->certificate_path)) {
+            $config->certificate_path = '';
         }
 
         // LDAP settings
@@ -306,6 +329,8 @@ class auth_plugin_cas extends auth_plugin_ldap {
         set_config('proxycas', $config->proxycas, $this->pluginconfig);
         set_config('logoutcas', $config->logoutcas, $this->pluginconfig);
         set_config('multiauth', $config->multiauth, $this->pluginconfig);
+        set_config('certificate_check', $config->certificate_check, $this->pluginconfig);
+        set_config('certificate_path', $config->certificate_path, $this->pluginconfig);
 
         // save LDAP settings
         set_config('host_url', trim($config->host_url), $this->pluginconfig);

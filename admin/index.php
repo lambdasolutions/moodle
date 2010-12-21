@@ -38,11 +38,7 @@ if (version_compare(phpversion(), '5.2.0') < 0) {
     die;
 }
 
-// try to flush everything all the time
-@ob_implicit_flush(true);
-while(ob_get_level()) {
-    ob_end_clean(); // ob_end_flush prevents sending of headers
-}
+define('NO_OUTPUT_BUFFERING', true);
 
 require('../config.php');
 require_once($CFG->libdir.'/adminlib.php');    // various admin-only functions
@@ -57,6 +53,7 @@ $agreelicense   = optional_param('agreelicense', 0, PARAM_BOOL);
 // Check some PHP server settings
 
 $PAGE->set_url('/admin/index.php');
+$PAGE->set_pagelayout('admin'); // Set a default pagelayout
 
 $documentationlink = '<a href="http://docs.moodle.org/en/Installation">Installation docs</a>';
 
@@ -102,6 +99,7 @@ $CFG->xmlstrictheaders = false;
 
 if (!core_tables_exist()) {
     $PAGE->set_pagelayout('maintenance');
+    $PAGE->set_popup_notification_allowed(false);
 
     // fake some settings
     $CFG->docroot = 'http://docs.moodle.org';
@@ -184,6 +182,7 @@ if (empty($CFG->version)) {
 
 if ($version > $CFG->version) {  // upgrade
     $PAGE->set_pagelayout('maintenance');
+    $PAGE->set_popup_notification_allowed(false);
 
     $a->oldversion = "$CFG->release ($CFG->version)";
     $a->newversion = "$release ($version)";
@@ -267,6 +266,7 @@ if (moodle_needs_upgrading()) {
         // means core upgrade or installation was not already done
         if (!$confirmplugins) {
             $PAGE->set_pagelayout('maintenance');
+            $PAGE->set_popup_notification_allowed(false);
             $strplugincheck = get_string('plugincheck');
             $PAGE->navbar->add($strplugincheck);
             $PAGE->set_title($strplugincheck);

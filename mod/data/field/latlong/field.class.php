@@ -66,17 +66,22 @@ class data_field_latlong extends data_field_base {
     }
 
     function display_search_field($value = '') {
-        global $CFG, $DB, $OUTPUT;
-        $lats = $DB->get_records_sql_menu('SELECT id, content FROM {data_content} WHERE fieldid=? GROUP BY content ORDER BY content', array($this->field->id));
-        $longs = $DB->get_records_sql_menu('SELECT id, content1 FROM {data_content} WHERE fieldid=? GROUP BY content ORDER BY content', array($this->field->id));
+        global $CFG, $DB;
+
+        $varcharlat = $DB->sql_compare_text('content');
+        $varcharlong= $DB->sql_compare_text('content1');
+        $latlongsrs = $DB->get_recordset_sql(
+            "SELECT DISTINCT $varcharlat AS la, $varcharlong AS lo
+               FROM {data_content}
+              WHERE fieldid = ?
+             ORDER BY $varcharlat, $varcharlong", array($this->field->id));
+
         $options = array();
-        if(!empty($lats) && !empty($longs)) {
-            $options[''] = '';
-            // Make first index blank.
-            foreach($lats as $key => $temp) {
-                $options[$temp.','.$longs[$key]] = $temp.','.$longs[$key];
-            }
+        foreach ($latlongsrs as $latlong) {
+            $options[$latlong->la . ',' . $latlong->lo] = $latlong->la . ',' . $latlong->lo;
         }
+        $latlongsrs->close();
+
        return html_writer::select($options, 'f_'.$this->field->id, $value);
     }
 
@@ -85,15 +90,20 @@ class data_field_latlong extends data_field_base {
     }
 
     function generate_sql($tablealias, $value) {
+        global $DB;
+
         static $i=0;
         $i++;
         $name1 = "df_latlong1_$i";
         $name2 = "df_latlong2_$i";
+        $varcharlat = $DB->sql_compare_text("{$tablealias}.content");
+        $varcharlong= $DB->sql_compare_text("{$tablealias}.content1");
+
 
         $latlong[0] = '';
         $latlong[1] = '';
         $latlong = explode (',', $value, 2);
-        return array(" ({$tablealias}.fieldid = {$this->field->id} AND {$tablealias}.content = :$name1 AND {$tablealias}.content1 = :$name2) ",
+        return array(" ({$tablealias}.fieldid = {$this->field->id} AND $varcharlat = :$name1 AND $varcharlong = :$name2) ",
                      array($name1=>$latlong[0], $name2=>$latlong[1]));
     }
 
@@ -194,17 +204,7 @@ class data_field_latlong extends data_field_base {
 
     function get_sort_sql($fieldname) {
         global $DB;
-        switch ($DB->get_db_family()) {
-            case 'mysql':
-                // string in an arithmetic operation is converted to a floating-point number
-                return '('.$fieldname.'+0.0)';
-            case 'postgres':
-                //cast is for PG
-                return 'CAST('.$fieldname.' AS REAL)';
-            default:
-                //Return just the fieldname. TODO: Look behaviour under MSSQL and Oracle
-                return $fieldname;
-        }
+        return $DB->sql_cast_char2real($fieldname, true);
     }
 
     function export_text_value($record) {

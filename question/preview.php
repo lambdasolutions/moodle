@@ -219,6 +219,8 @@
     }
     $number = 1;
     echo '<form method="post" action="'.$url->out_omit_querystring().'" enctype="multipart/form-data" id="responseform">', "\n";
+    $PAGE->requires->js_init_call('M.core_question_engine.init_form', array('#responseform'));
+
     print_question($questions[$id], $curstate, $number, $quiz, $options, $context);
 
     echo '<div class="controls">';
@@ -228,7 +230,7 @@
     echo '<input name="markall" type="submit" value="' . get_string('markall',
      'quiz') . "\" />\n";
     echo '<input name="finishattempt" type="submit" value="' .
-     get_string('finishattempt', 'quiz') . "\" />\n";
+     get_string('submitallandfinish', 'quiz') . "\" />\n";
     echo '<br />';
     echo '<br />';
     // Print the fill correct button (unless the question is in readonly mode)

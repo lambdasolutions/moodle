@@ -178,7 +178,7 @@ YUI.add('moodle-enrol-enrolmentmanager', function(Y) {
             var index = 0, count = 0;
             for (var i = 1; i <= 365; i++) {
                 count++;
-                var option = Y.Node.create('<option value="'+i+'">'+M.str.enrol.durationdays.replace(/\%d/, i)+'</option>');
+                var option = Y.Node.create('<option value="'+i+'">'+M.util.get_string('durationdays', 'enrol', i)+'</option>');
                 if (i == defaultvalue) {
                     index = count;
                 }
@@ -334,7 +334,7 @@ YUI.add('moodle-enrol-enrolmentmanager', function(Y) {
             }
             this.set(UEP.USERCOUNT, count);
             if (!args.append) {
-                var usersstr = (result.response.totalusers == '1')?M.str.enrol.ajaxoneuserfound:M.str.enrol.ajaxxusersfound.replace(/\[users\]/, result.response.totalusers);
+                var usersstr = (result.response.totalusers == '1')?M.str.enrol.ajaxoneuserfound:M.util.get_string('ajaxxusersfound','enrol', result.response.totalusers);
                 var content = Y.Node.create('<div class="'+CSS.SEARCHRESULTS+'"></div>')
                     .append(Y.Node.create('<div class="'+CSS.TOTALUSERS+'">'+usersstr+'</div>'))
                     .append(users);

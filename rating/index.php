@@ -62,13 +62,11 @@ switch ($sort) {
 
 $scalemenu = make_grades_menu($scaleid);
 
-$strratings = get_string('ratings', 'rating');
 $strrating  = get_string('rating', 'rating');
 $strname    = get_string('name');
 $strtime    = get_string('time');
 
-//Is there something more meaningful we can put in the title? It used to be forum post title
-$PAGE->set_title("$strratings: ".format_string($itemid));
+$PAGE->set_title(get_string('allratingsforitem','rating'));
 echo $OUTPUT->header();
 
 $ratingoptions = new stdclass();
@@ -79,7 +77,8 @@ $ratingoptions->sort = $sqlsort;
 $rm = new rating_manager();
 $ratings = $rm->get_all_ratings_for_item($ratingoptions);
 if (!$ratings) {
-    print_error('noresult', 'forum', '', format_string($itemid));
+    $msg = get_string('noratings','rating');
+    echo html_writer::tag('div', $msg, array('class'=>'mdl-align'));
 } else {
     $sortargs = "contextid=$contextid&amp;itemid=$itemid&amp;scaleid=$scaleid";
     if($popup) {

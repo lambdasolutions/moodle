@@ -778,8 +778,8 @@ class sqlsrv_native_moodle_database extends moodle_database {
         $offset = max(0, $offset);
 
         if ($limit > 0 && $offset == 0) {
-            $sql1 = preg_replace('/^([\s(])*SELECT( DISTINCT | ALL)?(?!\s*TOP\s*\()/i',
-                "\\1SELECT\\2 TOP $limit", $sql);
+            $sql1 = preg_replace('/^([\s(])*SELECT([\s]+(DISTINCT|ALL))?(?!\s*TOP\s*\()/i',
+                                 "\\1SELECT\\2 TOP $limit", $sql);
         } else {
             // Only apply TOP clause if we have any limitnum (limitfrom offset is handled later)
             if ($limit < 1) {
@@ -1152,7 +1152,19 @@ class sqlsrv_native_moodle_database extends moodle_database {
     /// SQL helper functions
 
     public function sql_cast_char2int($fieldname, $text = false) {
-        return ' CAST('.$fieldname.' AS INT) ';
+        if (!$text) {
+            return ' CAST(' . $fieldname . ' AS INT) ';
+        } else {
+            return ' CAST(' . $this->sql_compare_text($fieldname) . ' AS INT) ';
+        }
+    }
+
+    public function sql_cast_char2real($fieldname, $text=false) {
+        if (!$text) {
+            return ' CAST(' . $fieldname . ' AS REAL) ';
+        } else {
+            return ' CAST(' . $this->sql_compare_text($fieldname) . ' AS REAL) ';
+        }
     }
 
     public function sql_ceil($fieldname) {

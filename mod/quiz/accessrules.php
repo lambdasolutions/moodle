@@ -731,7 +731,8 @@ class time_limit_access_rule extends quiz_access_rule_base {
 }
 
 /**
- * A rule implementing the ipaddress check against the ->submet setting.
+ * A rule for ensuring that the quiz is opened in a popup, with some JavaScript
+ * to prevent copying and pasting, etc.
  */
 class securewindow_access_rule extends quiz_access_rule_base {
     /**
@@ -775,8 +776,7 @@ class securewindow_access_rule extends quiz_access_rule_base {
      */
     public function setup_secure_page($title, $headtags=null) {
         global $OUTPUT, $PAGE;
-    /// This prevents the message window coming up.
-        define('MESSAGE_WINDOW', true);
+        $PAGE->set_popup_notification_allowed(false);//prevent message notifications
         $PAGE->set_title($title);
         $PAGE->set_cacheable(false);
         $PAGE->set_pagelayout('popup');

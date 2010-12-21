@@ -61,9 +61,7 @@
     }
     $dbcontrol = new IndexDBControl();
     $addition_count = 0;
-    $startindextime = time();
-
-    $indexdate = @$CFG->search_indexer_run_date;
+    $mainstartindextime = time();
 
     mtrace('Starting index update (additions)...');
     mtrace('Index size before: '.$CFG->search_index_size."\n");
@@ -74,6 +72,14 @@
 /// append virtual modules onto array
 
         foreach ($mods as $mod) {
+
+            $indexdate = 0;
+            $indexdatestring = 'search_indexer_run_date_'.$mod->name;
+            $startrundate = time();
+            if (isset($CFG->$indexdatestring)) {
+                $indexdate = $CFG->$indexdatestring;
+            }
+
             //build include file and function names
             $class_file = $CFG->dirroot.'/search/documents/'.$mod->name.'_document.php';
             $db_names_function = $mod->name.'_db_names';
@@ -90,7 +96,7 @@
                     $valuesArray = $db_names_function();
                     if ($valuesArray){
                         foreach($valuesArray as $values){
-                            $where = (isset($values[5])) ? 'AND ('.$values[5].')' : '';
+                            $where = (isset($values[5]) and $values[5]!='') ? 'AND ('.$values[5].')' : '';
                             $itemtypes = ($values[4] != '*' && $values[4] != 'any') ? " AND itemtype = '{$values[4]}' " : '' ;
 
                             //select records in MODULE table, but not in SEARCH_DATABASE_TABLE
@@ -108,14 +114,14 @@
                             $docIds = $DB->get_records_sql_menu($query, array($mod->name));
 
                             if (!empty($docIds)){
-                                list($usql, $params) = $DB->get_in_or_equal(array_keys('$docIds'), SQL_PARAMS_QM, 'param0000', false); // negative IN
+                                list($usql, $params) = $DB->get_in_or_equal(array_keys($docIds), SQL_PARAMS_QM, 'param0000', false); // negative IN
                                 $query =  "
                                     SELECT id,
                                         $values[0] as docid
                                     FROM
                                         {{$values[1]}}
                                     WHERE
-                                        id $uslq AND
+                                        id $usql AND
                                         $values[2] > $indexdate
                                         $where
                                 ";
@@ -138,21 +144,37 @@
                         // foreach document, add it to the index and database table
                         foreach ($additions as $add) {
                             ++$addition_count;
+                            // try the addDocument() so possible dml_write_exception don't block other modules running.
+                            // also we can list all the new documents that are failing.
+                            try {
+                                // object to insert into db
+                                $dbid = $dbcontrol->addDocument($add);
 
-                            // object to insert into db
-                            $dbid = $dbcontrol->addDocument($add);
+                                // synchronise db with index
+                                $add->addField(Zend_Search_Lucene_Field::Keyword('dbid', $dbid));
 
-                            // synchronise db with index
-                            $add->addField(Zend_Search_Lucene_Field::Keyword('dbid', $dbid));
+                                $index->addDocument($add);
 
-                            mtrace("  Add: $add->title (database id = $add->dbid, moodle instance id = $add->docid)");
+                                mtrace("  Add: $add->title (database id = $add->dbid, moodle instance id = $add->docid)");
+                            }
 
-                            $index->addDocument($add);
+                            catch (dml_write_exception $e) {
+                                mtrace(" Add: FAILED adding '$add->title' ,  moodle instance id = $add->docid , Error: $e->error ");
+                                mtrace($e);
+                            }
+
                         }
                     }
                     else{
                         mtrace("No types to add.\n");
                     }
+
+                    //commit changes
+                    $index->commit();
+
+                    //update index date
+                    set_config($indexdatestring, $startrundate);
+
                     mtrace("Finished $mod->name.\n");
                 }
             }
@@ -165,7 +187,7 @@
 
 /// update index date and size
 
-    set_config('search_indexer_run_date', $startindextime);
+    set_config('search_indexer_run_date', $mainstartindextime);
     set_config('search_index_size', (int)$CFG->search_index_size + (int)$addition_count);
 
 /// print some additional info

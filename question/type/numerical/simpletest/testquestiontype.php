@@ -31,42 +31,6 @@ class question_numerical_qtype_test extends UnitTestCase {
         $this->assertEqual($this->qtype->name(), 'numerical');
     }
 
-//    function test_get_question_options() {
-//    }
-//
-//    function test_get_numerical_units() {
-//    }
-//
-//    function test_get_default_numerical_unit() {
-//    }
-//
-//    function test_save_question_options() {
-//    }
-//
-//    function test_save_numerical_units() {
-//    }
-//
-//    function test_delete_question() {
-//    }
-//
-//    function test_compare_responses() {
-//    }
-//
-//    function test_test_response() {
-//    }
-//
-//    function test_check_response(){
-//    }
-//
-//    function test_grade_responses() {
-//    }
-//
-//    function test_get_correct_responses() {
-//    }
-//
-//    function test_get_all_responses() {
-//    }
-
     function test_get_tolerance_interval() {
         $answer = new stdClass;
         $answer->tolerance = 0.01;
@@ -131,14 +95,14 @@ class question_numerical_qtype_test extends UnitTestCase {
             (object) array('unit' => 'inch', 'multiplier' => 1.0/0.0254)
         );
 
-        $this->assertWithinMargin($this->qtype->apply_unit_old('1', $units), 1, $this->tolerance);
-        $this->assertWithinMargin($this->qtype->apply_unit_old('1.0', $units), 1, $this->tolerance);
-        $this->assertWithinMargin($this->qtype->apply_unit_old('-1e0', $units), -1, $this->tolerance);
-        $this->assertWithinMargin($this->qtype->apply_unit_old('100m', $units), 100, $this->tolerance);
-        $this->assertWithinMargin($this->qtype->apply_unit_old('1cm', $units), 0.01, $this->tolerance);
-        $this->assertWithinMargin($this->qtype->apply_unit_old('12inch', $units), .3048, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('1', $units), 1, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('1.0', $units), 1, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('-1e0', $units), -1, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('100m', $units), 100, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('1cm', $units), 0.01, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('12inch', $units), .3048, $this->tolerance);
     //    $this->assertIdentical($this->qtype->apply_unit('1km', $units), false);
-        $this->assertWithinMargin($this->qtype->apply_unit_old('-100', array()), -100, $this->tolerance);
+        $this->assertWithinMargin($this->qtype->apply_unit('-100', array()), -100, $this->tolerance);
     //    $this->assertIdentical($this->qtype->apply_unit('1000 miles', array()), false);
     }
 

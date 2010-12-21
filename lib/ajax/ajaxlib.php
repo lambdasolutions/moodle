@@ -71,8 +71,9 @@ function ajaxenabled(array $browsers = null) {
     $ff = check_browser_version('Gecko', 20051106);
     $op = check_browser_version('Opera', 9.0);
     $sa = check_browser_version('Safari', 412);
+    $ch = check_browser_version('Chrome', 6);
 
-    if (!$ie && !$ff && !$op && !$sa) {
+    if (!$ie && !$ff && !$op && !$sa && !$ch) {
         /** @see http://en.wikipedia.org/wiki/User_agent */
         // Gecko build 20051107 is what is in Firefox 1.5.
         // We still have issues with AJAX in other browsers.
@@ -118,7 +119,7 @@ class jsportal {
      * Prints the JavaScript code needed to set up AJAX for the course.
      */
     function print_javascript($courseid, $return=false) {
-        global $CFG, $USER, $OUTPUT, $COURSE;
+        global $CFG, $USER, $OUTPUT, $COURSE, $DB;
 
         $blocksoutput = $output = '';
         for ($i=0; $i<count($this->blocks); $i++) {
@@ -138,6 +139,7 @@ class jsportal {
         $output .= "    main.portal.strings['marker']='".get_string('markthistopic', '', '_var_')."';\n";
         $output .= "    main.portal.strings['marked']='".get_string('markedthistopic', '', '_var_')."';\n";
         $output .= "    main.portal.numsections = ".$COURSE->numsections.";\n";
+        $output .= "    main.portal.lastsection = ".$DB->get_field_sql("SELECT MAX(section) FROM {course_sections} WHERE course = ?", array($courseid)).";\n"; // needed for orphaned activities in unavailable sections
         $output .= "    main.portal.strings['hide']='".get_string('hide')."';\n";
         $output .= "    main.portal.strings['hidesection']='".get_string('hidesection', '', '_var_')."';\n";
         $output .= "    main.portal.strings['show']='".get_string('show')."';\n";
@@ -151,10 +153,13 @@ class jsportal {
         $output .= "    main.portal.strings['groupsseparate']='".get_string('groupsseparate')."';\n";
         $output .= "    main.portal.strings['groupsvisible']='".get_string('groupsvisible')."';\n";
         $output .= "    main.portal.strings['clicktochange']='".get_string('clicktochange')."';\n";
-        $output .= "    main.portal.strings['deletecheck']='".get_string('deletecheck','','_var_')."';\n";
+        $output .= "    main.portal.strings['deletecheck']='".get_string('deletecheckfull','','_var_')."';\n";
         $output .= "    main.portal.strings['resource']='".get_string('resource')."';\n";
         $output .= "    main.portal.strings['activity']='".get_string('activity')."';\n";
         $output .= "    main.portal.strings['sesskey']='".sesskey()."';\n";
+        foreach (array_keys(get_plugin_list('mod')) as $modtype) {
+            $output .= "    main.portal.strings['modtype_".$modtype."']='".get_string('pluginname', 'mod_'.$modtype)."';\n";
+        }
         $output .= "    main.portal.icons['spacerimg']='".$OUTPUT->pix_url('spacer')."';\n";
         $output .= "    main.portal.icons['marker']='".$OUTPUT->pix_url('i/marker')."';\n";
         $output .= "    main.portal.icons['ihide']='".$OUTPUT->pix_url('i/hide')."';\n";

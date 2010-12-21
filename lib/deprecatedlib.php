@@ -75,6 +75,19 @@ function filter_text($text, $courseid = NULL) {
 }
 
 /**
+ * This function indicates that current page requires the https
+ * when $CFG->loginhttps enabled.
+ *
+ * By using this function properly, we can ensure 100% https-ized pages
+ * at our entire discretion (login, forgot_password, change_password)
+ * @deprecated use $PAGE->https_required() instead
+ */
+function httpsrequired() {
+    global $PAGE;
+    $PAGE->https_required();
+}
+
+/**
  * Given a physical path to a file, returns the URL through which it can be reached in Moodle.
  *
  * @deprecated use moodle_url factory methods instead
@@ -85,7 +98,7 @@ function filter_text($text, $courseid = NULL) {
  * @return string URL to file
  */
 function get_file_url($path, $options=null, $type='coursefile') {
-    global $CFG, $HTTPSPAGEREQUIRED;
+    global $CFG;
 
     $path = str_replace('//', '/', $path);
     $path = trim($path, '/'); // no leading and trailing slashes
@@ -508,6 +521,37 @@ function print_simple_box_end($return=false) {
     } else {
         echo $output;
     }
+}
+
+/**
+ * Given some text this function converted any URLs it found into HTML links
+ *
+ * This core function has been replaced with filter_urltolink since Moodle 2.0
+ *
+ * @param string $text Passed in by reference. The string to be searched for urls.
+ */
+function convert_urls_into_links($text) {
+    debugging('convert_urls_into_links() has been deprecated and replaced by a new filter');
+}
+
+/**
+ * Used to be called from help.php to inject a list of smilies into the
+ * emoticons help file.
+ *
+ * @return string HTML
+ */
+function get_emoticons_list_for_help_file() {
+    debugging('get_emoticons_list_for_help_file() has been deprecated, see the new emoticon_manager API');
+    return '';
+}
+
+/**
+ * Was used to replace all known smileys in the text with image equivalents
+ *
+ * This core function has been replaced with filter_emoticon since Moodle 2.0
+ */
+function replace_smilies(&$text) {
+    debugging('replace_smilies() has been deprecated and replaced with the new filter_emoticon');
 }
 
 /**
@@ -3281,7 +3325,7 @@ function choose_from_menu_yesno($name, $selected, $script = '', $return = false,
 function choose_from_menu_nested($options,$name,$selected='',$nothing='choose',$script = '',
                                  $nothingvalue=0,$return=false,$disabled=false,$tabindex=0) {
 
-    debugging('choose_from_menu_nested() has been removed. Please change your code to use html_writer:.select().');
+    debugging('choose_from_menu_nested() has been removed. Please change your code to use html_writer::select().');
     global $OUTPUT;
 }
 

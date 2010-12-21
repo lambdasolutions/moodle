@@ -59,7 +59,7 @@ require_capability('moodle/backup:backuptargetimport', $importcontext);
 $backupid = optional_param('backup', false, PARAM_ALPHANUM);
 if (!($bc = backup_ui::load_controller($backupid))) {
     $bc = new backup_controller(backup::TYPE_1COURSE, $importcourse->id, backup::FORMAT_MOODLE,
-                            backup::INTERACTIVE_YES, backup::MODE_GENERAL, $USER->id);
+                            backup::INTERACTIVE_YES, backup::MODE_IMPORT, $USER->id);
     $bc->get_plan()->get_setting('users')->set_status(backup_setting::LOCKED_BY_CONFIG);
     $settings = $bc->get_plan()->get_settings();
 
@@ -90,21 +90,20 @@ if ($backup->get_stage() == backup_ui::STAGE_CONFIRMATION) {
 if ($backup->get_stage() == backup_ui::STAGE_FINAL) {
     // First execute the backup
     $backup->execute();
+    $backup->destroy();
+    unset($backup);
 
-    // Check whether the backup directory still exists and if it doesn't extract the
-    // backup file so that we have it
+    // Check whether the backup directory still exists. If missing, something
+    // went really wrong in backup, throw error. Note that backup::MODE_IMPORT
+    // backups don't store resulting files ever
     $tempdestination = $CFG->dataroot . '/temp/backup/' . $backupid;
     if (!file_exists($tempdestination) || !is_dir($tempdestination)) {
-        $results = $backup->get_controller()->get_results();
-        $file = $results['backup_destination'];
-        $file->extract_to_pathname(get_file_packer('application/zip'), $tempdestination);
+        print_error('unknownbackupexporterror'); // shouldn't happen ever
     }
-    // Delete the backup file, we only want the directory
-    $results['backup_destination']->delete();
 
     // Prepare the restore controller. We don't need a UI here as we will just use what
     // ever the restore has (the user has just chosen).
-    $rc = new restore_controller($backupid, $course->id, backup::INTERACTIVE_YES, backup::MODE_GENERAL, $USER->id, $restoretarget);
+    $rc = new restore_controller($backupid, $course->id, backup::INTERACTIVE_YES, backup::MODE_IMPORT, $USER->id, $restoretarget);
     // Convert the backup if required.... it should NEVER happed
     if ($rc->get_status() == backup::STATUS_REQUIRE_CONV) {
         $rc->convert();
@@ -124,6 +123,9 @@ if ($backup->get_stage() == backup_ui::STAGE_FINAL) {
             die();
         }
     } else {
+        if ($restoretarget == backup::TARGET_CURRENT_DELETING || $restoretarget == backup::TARGET_EXISTING_DELETING) {
+            restore_dbops::delete_course_content($course->id);
+        }
         // Execute the restore
         $rc->execute_plan();
     }
@@ -156,4 +158,6 @@ if ($backup->enforce_changed_dependencies()) {
 }
 echo $renderer->progress_bar($backup->get_progress_bar());
 echo $backup->display();
+$backup->destroy();
+unset($backup);
 echo $OUTPUT->footer();

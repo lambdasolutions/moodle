@@ -34,33 +34,26 @@ $mode    = optional_param('mode', 'posts', PARAM_ALPHA);
 $page    = optional_param('page', 0, PARAM_INT);
 $perpage = optional_param('perpage', 5, PARAM_INT);
 
-$url = new moodle_url('/mod/forum/user.php', array('course'=>$course));
+$url = new moodle_url('/mod/forum/user.php');
+if ($course !== SITEID) {
+    $url->param('course', $course);
+}
 if ($id !== 0) {
     $url->param('id', $id);
 }
 if ($mode !== 'posts') {
     $url->param('mode', $mode);
 }
-if ($page !== 0) {
-    $url->param('page', $page);
-}
-if ($perpage !== 5) {
-    $url->param('perpage', $perpage);
-}
 $PAGE->set_url($url);
+$PAGE->set_pagelayout('standard');
 
 if (empty($id)) {         // See your own profile by default
     require_login();
     $id = $USER->id;
 }
 
-if (! $user = $DB->get_record("user", array("id" => $id))) {
-    print_error('invaliduserid');
-}
-
-if (! $course = $DB->get_record("course", array("id" => $course))) {
-    print_error('invalidcourseid');
-}
+$user = $DB->get_record("user", array("id" => $id), '*', MUST_EXIST);
+$course = $DB->get_record("course", array("id" => $course), '*', MUST_EXIST);
 
 $syscontext = get_context_instance(CONTEXT_SYSTEM);
 $usercontext   = get_context_instance(CONTEXT_USER, $id);
@@ -68,6 +61,8 @@ $usercontext   = get_context_instance(CONTEXT_USER, $id);
 // do not force parents to enrol
 if (!$DB->get_record('role_assignments', array('userid' => $USER->id, 'contextid' => $usercontext->id))) {
     require_course_login($course);
+} else {
+    $PAGE->set_course($course);
 }
 
 if ($user->deleted) {
@@ -123,8 +118,9 @@ if ($course->id == SITEID) {
 }
 
 // Get the posts.
-if ($posts = forum_search_posts($searchterms, $searchcourse, $page*$perpage, $perpage,
-            $totalcount, $extrasql)) {
+if ($posts = forum_search_posts($searchterms, $searchcourse, $page*$perpage, $perpage, $totalcount, $extrasql)) {
+
+    require_once($CFG->dirroot.'/rating/lib.php');
 
     $baseurl = new moodle_url('user.php', array('id' => $user->id, 'course' => $course->id, 'mode' => $mode, 'perpage' => $perpage));
     echo $OUTPUT->paging_bar($totalcount, $page, $perpage, $baseurl);
@@ -132,6 +128,14 @@ if ($posts = forum_search_posts($searchterms, $searchcourse, $page*$perpage, $pe
     $discussions = array();
     $forums      = array();
     $cms         = array();
+
+    //todo Rather than retrieving the ratings for each post individually it would be nice to do them in groups
+    //however this requires creating arrays of posts with each array containing all of the posts from a particular forum,
+    //retrieving the ratings then reassembling them all back into a single array sorted by post.modified (descending)
+    $rm = new rating_manager();
+    $ratingoptions = new stdclass();
+    $ratingoptions->plugintype = 'mod';
+    $ratingoptions->pluginname = 'forum';
 
     foreach ($posts as $post) {
 
@@ -148,26 +152,39 @@ if ($posts = forum_search_posts($searchterms, $searchcourse, $page*$perpage, $pe
             if (! $forum = $DB->get_record('forum', array('id' => $discussion->forum))) {
                 print_error('invalidforumid', 'forum');
             }
+            //hold onto forum cm and context for when we load ratings
+            if ($forumcm = get_coursemodule_from_instance('forum', $forum->id)) {
+                $forum->cm = $forumcm;
+                $forumcontext = get_context_instance(CONTEXT_MODULE, $forum->cm->id);
+                $forum->context = $forumcontext;
+            }
             $forums[$discussion->forum] = $forum;
         } else {
             $forum = $forums[$discussion->forum];
         }
 
-        $ratings = null;
-        if ($forum->assessed) {
-            if ($scale = make_grades_menu($forum->scale)) {
-                $ratings =new stdClass();
-                $ratings->scale = $scale;
-                $ratings->assesstimestart = $forum->assesstimestart;
-                $ratings->assesstimefinish = $forum->assesstimefinish;
-                $ratings->allow = false;
+        //load ratings
+        if ($forum->assessed!=RATING_AGGREGATE_NONE) {
+            $ratingoptions->context = $forum->context;
+            $ratingoptions->items = array($post);
+            $ratingoptions->aggregate = $forum->assessed;//the aggregation method
+            $ratingoptions->scaleid = $forum->scale;
+            $ratingoptions->userid = $user->id;
+            if ($forum->type == 'single' or !$discussion->id) {
+                $ratingoptions->returnurl = "$CFG->wwwroot/mod/forum/view.php?id={$forum->cm->id}";
+            } else {
+                $ratingoptions->returnurl = "$CFG->wwwroot/mod/forum/discuss.php?d=$discussion->id";
             }
+            $ratingoptions->assesstimestart = $forum->assesstimestart;
+            $ratingoptions->assesstimefinish = $forum->assesstimefinish;
+
+            $updatedpost = $rm->get_ratings($ratingoptions);
+            //updating the array this way because we're iterating over a collection and updating them one by one
+            $posts[$updatedpost[0]->id] = $updatedpost[0];
         }
 
         if (!isset($cms[$forum->id])) {
-            if (!$cm = get_coursemodule_from_instance('forum', $forum->id)) {
-                print_error('invalidcoursemodule');
-            }
+            $cm = get_coursemodule_from_instance('forum', $forum->id, 0, false, MUST_EXIST);
             $cms[$forum->id] = $cm;
             unset($cm); // do not use cm directly, it would break caching
         }
@@ -190,7 +207,7 @@ if ($posts = forum_search_posts($searchterms, $searchcourse, $page*$perpage, $pe
         $fulllink = "<a href=\"discuss.php?d=$post->discussion#p$post->id\">".
             get_string("postincontext", "forum")."</a>";
 
-        forum_print_post($post, $discussion, $forum, $cms[$forum->id], $course, false, false, false, $ratings, $fulllink);
+        forum_print_post($post, $discussion, $forum, $cms[$forum->id], $course, false, false, false, $fulllink);
         echo "<br />";
     }
 

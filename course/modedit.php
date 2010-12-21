@@ -290,13 +290,7 @@ if ($mform->is_cancelled()) {
 
         $completion = new completion_info($course);
         if ($completion->is_enabled()) {
-            // Handle completion settings. If necessary, wipe existing completion
-            // data first.
-            if (!empty($fromform->completionunlocked)) {
-                $completion = new completion_info($course);
-                $completion->reset_all_state($cm);
-            }
-
+            // Update completion settings
             $cm->completion                = $fromform->completion;
             $cm->completiongradeitemnumber = $fromform->completiongradeitemnumber;
             $cm->completionview            = $fromform->completionview;
@@ -338,6 +332,12 @@ if ($mform->is_cancelled()) {
         if (isset($fromform->cmidnumber)) { //label
             // set cm idnumber - uniqueness is already verified by form validation
             set_coursemodule_idnumber($fromform->coursemodule, $fromform->cmidnumber);
+        }
+
+        // Now that module is fully updated, also update completion data if 
+        // required (this will wipe all user completion data and recalculate it)
+        if ($completion->is_enabled() && !empty($fromform->completionunlocked)) {
+            $completion->reset_all_state($cm);
         }
 
         // Trigger mod_updated event with information about this module.
@@ -398,7 +398,7 @@ if ($mform->is_cancelled()) {
             print_error('cannotaddcoursemodule');
         }
 
-        if (plugin_supports('mod', $fromform->modulename, FEATURE_MOD_INTRO, false)) {
+        if (plugin_supports('mod', $fromform->modulename, FEATURE_MOD_INTRO, true)) {
             $introeditor = $fromform->introeditor;
             unset($fromform->introeditor);
             $fromform->intro       = $introeditor['text'];
@@ -426,7 +426,7 @@ if ($mform->is_cancelled()) {
 
         // update embedded links and save files
         $modcontext = get_context_instance(CONTEXT_MODULE, $fromform->coursemodule);
-        if (plugin_supports('mod', $fromform->modulename, FEATURE_MOD_INTRO, true)) {
+        if (!empty($introeditor)) {
             $fromform->intro = file_save_draft_area_files($introeditor['itemid'], $modcontext->id,
                                                           'mod_'.$fromform->modulename, 'intro', 0,
                                                           array('subdirs'=>true), $introeditor['text']);

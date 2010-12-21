@@ -26,8 +26,9 @@
 $string['addmorechoices'] = 'Add more choices';
 $string['allowupdate'] = 'Allow choice to be updated';
 $string['answered'] = 'Answered';
+$string['completionsubmit'] = 'Show as complete when user makes a choice';
 $string['displayhorizontal'] = 'Display horizontally';
-$string['displaymode'] = 'Display Mode';
+$string['displaymode'] = 'Display mode';
 $string['displayvertical'] = 'Display vertically';
 $string['expired'] = 'Sorry, this activity closed on {$a} and is no longer available';
 $string['fillinatleastoneoption'] = 'You need to provide at least two possible answers.';
@@ -51,6 +52,7 @@ If limits are disabled then any number of participants can select each of the op
 $string['choice:readresponses'] = 'Read responses';
 $string['choicesaved'] = 'Your choice has been saved';
 $string['choicetext'] = 'Choice text';
+$string['chooseaction'] = 'Choose an action ...';
 $string['limit'] = 'Limit';
 $string['limitanswers'] = 'Limit the number of responses allowed';
 $string['modulename'] = 'Choice';

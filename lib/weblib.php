@@ -65,11 +65,6 @@ define('FORMAT_WIKI',     '3');   // Wiki-formatted text
 define('FORMAT_MARKDOWN', '4');   // Markdown-formatted text http://daringfireball.net/projects/markdown/
 
 /**
- * TRUSTTEXT marker - if present in text, text cleaning should be bypassed
- */
-define('TRUSTTEXT', '#####TRUSTTEXT#####');
-
-/**
  * A moodle_url comparison using this flag will return true if the base URLs match, params are ignored
  */
 define('URL_MATCH_BASE', 0);
@@ -94,11 +89,12 @@ $ALLOWED_TAGS =
 /**
  * Allowed protocols - array of protocols that are safe to use in links and so on
  * @global string $ALLOWED_PROTOCOLS
- * @name $ALLOWED_PROTOCOLS
  */
 $ALLOWED_PROTOCOLS = array('http', 'https', 'ftp', 'news', 'mailto', 'rtsp', 'teamspeak', 'gopher', 'mms',
                            'color', 'callto', 'cursor', 'text-align', 'font-size', 'font-weight', 'font-style', 'font-family',
-                           'border', 'margin', 'padding', 'background', 'background-color', 'text-decoration');   // CSS as well to get through kses
+                           'border', 'border-bottom', 'border-left', 'border-top', 'border-right', 'margin', 'margin-bottom', 'margin-left', 'margin-top', 'margin-right',
+                           'padding', 'padding-bottom', 'padding-left', 'padding-top', 'padding-right', 'vertical-align',
+                           'background', 'background-color', 'text-decoration');   // CSS as well to get through kses
 
 
 /// Functions
@@ -121,7 +117,7 @@ function s($var, $obsolete = false) {
         return '0';
     }
 
-    return preg_replace("/&amp;#(\d+|x[0-7a-fA-F]+);/i", "&#$1;", htmlspecialchars($var, ENT_QUOTES, 'UTF-8', false));
+    return preg_replace("/&amp;#(\d+|x[0-7a-fA-F]+);/i", "&#$1;", htmlspecialchars($var, ENT_QUOTES, 'UTF-8', true));
 }
 
 /**
@@ -309,7 +305,9 @@ class moodle_url {
      * @param moodle_url|string $url - moodle_url means make a copy of another
      *      moodle_url and change parameters, string means full url or shortened
      *      form (ex.: '/course/view.php'). It is strongly encouraged to not include
-     *      query string because it may result in double encoded values
+     *      query string because it may result in double encoded values. Use the
+     *      $params instead. For admin URLs, just use /admin/script.php, this
+     *      class takes care of the $CFG->admin issue.
      * @param array $params these params override current params or add new
      */
     public function __construct($url, array $params = null) {
@@ -889,15 +887,34 @@ function get_file_argument() {
 
     $relativepath = optional_param('file', FALSE, PARAM_PATH);
 
-    // then try extract file from PATH_INFO (slasharguments method)
-    if ($relativepath === false and isset($_SERVER['PATH_INFO']) and $_SERVER['PATH_INFO'] !== '') {
-        // check that PATH_INFO works == must not contain the script name
-        if (strpos($_SERVER['PATH_INFO'], $SCRIPT) === false) {
-            $relativepath = clean_param(urldecode($_SERVER['PATH_INFO']), PARAM_PATH);
+    if ($relativepath !== false and $relativepath !== '') {
+        return $relativepath;
+    }
+    $relativepath = false;
+
+    // then try extract file from the slasharguments
+    if (stripos($_SERVER['SERVER_SOFTWARE'], 'iis') !== false) {
+        // NOTE: ISS tends to convert all file paths to single byte DOS encoding,
+        //       we can not use other methods because they break unicode chars,
+        //       the only way is to use URL rewriting
+        if (isset($_SERVER['PATH_INFO']) and $_SERVER['PATH_INFO'] !== '') {
+            // check that PATH_INFO works == must not contain the script name
+            if (strpos($_SERVER['PATH_INFO'], $SCRIPT) === false) {
+                $relativepath = clean_param(urldecode($_SERVER['PATH_INFO']), PARAM_PATH);
+            }
+        }
+    } else {
+        // all other apache-like servers depend on PATH_INFO
+        if (isset($_SERVER['PATH_INFO'])) {
+            if (isset($_SERVER['SCRIPT_NAME']) and strpos($_SERVER['PATH_INFO'], $_SERVER['SCRIPT_NAME']) === 0) {
+                $relativepath = substr($_SERVER['PATH_INFO'], strlen($_SERVER['SCRIPT_NAME']));
+            } else {
+                $relativepath = $_SERVER['PATH_INFO'];
+            }
+            $relativepath = clean_param($relativepath, PARAM_PATH);
         }
     }
 
-    // note: we are not using any other way because they are not compatible with unicode file names ;-)
 
     return $relativepath;
 }
@@ -925,6 +942,19 @@ function format_text_menu() {
  * This function should mainly be used for long strings like posts,
  * answers, glossary items etc. For short strings @see format_string().
  *
+ * <pre>
+ * Options:
+ *      trusted     :   If true the string won't be cleaned. Default false required noclean=true.
+ *      noclean     :   If true the string won't be cleaned. Default false required trusted=true.
+ *      nocache     :   If true the strign will not be cached and will be formatted every call. Default false.
+ *      filter      :   If true the string will be run through applicable filters as well. Default true.
+ *      para        :   If true then the returned string will be wrapped in div tags. Default true.
+ *      newlines    :   If true then lines newline breaks will be converted to HTML newline breaks. Default true.
+ *      context     :   The context that will be used for filtering.
+ *      overflowdiv :   If set to true the formatted text will be encased in a div
+ *                      with the class no-overflow before being returned. Default false.
+ * </pre>
+ *
  * @todo Finish documenting this function
  *
  * @staticvar array $croncache
@@ -937,7 +967,6 @@ function format_text_menu() {
  */
 function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_do_not_use = NULL) {
     global $CFG, $COURSE, $DB, $PAGE;
-
     static $croncache = array();
 
     if ($text === '') {
@@ -945,7 +974,6 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
     }
 
     $options = (array)$options; // detach object, we can not modify it
-
 
     if (!isset($options['trusted'])) {
         $options['trusted'] = false;
@@ -961,9 +989,6 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
     if (!isset($options['nocache'])) {
         $options['nocache'] = false;
     }
-    if (!isset($options['smiley'])) {
-        $options['smiley'] = true;
-    }
     if (!isset($options['filter'])) {
         $options['filter'] = true;
     }
@@ -972,6 +997,9 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
     }
     if (!isset($options['newlines'])) {
         $options['newlines'] = true;
+    }
+    if (!isset($options['overflowdiv'])) {
+        $options['overflowdiv'] = false;
     }
 
     // Calculate best context
@@ -1007,7 +1035,7 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
 
     if (!empty($CFG->cachetext) and empty($options['nocache'])) {
         $hashstr = $text.'-'.$filtermanager->text_filtering_hash($context).'-'.$context->id.'-'.current_language().'-'.
-                (int)$format.(int)$options['trusted'].(int)$options['noclean'].(int)$options['smiley'].
+                (int)$format.(int)$options['trusted'].(int)$options['noclean'].
                 (int)$options['para'].(int)$options['newlines'];
 
         $time = time() - $CFG->cachetext;
@@ -1035,13 +1063,10 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
 
     switch ($format) {
         case FORMAT_HTML:
-            if ($options['smiley']) {
-                replace_smilies($text);
-            }
             if (!$options['noclean']) {
                 $text = clean_text($text, FORMAT_HTML);
             }
-            $text = $filtermanager->filter_text($text, $context);
+            $text = $filtermanager->filter_text($text, $context, array('originalformat' => FORMAT_HTML));
             break;
 
         case FORMAT_PLAIN:
@@ -1061,21 +1086,18 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
 
         case FORMAT_MARKDOWN:
             $text = markdown_to_html($text);
-            if ($options['smiley']) {
-                replace_smilies($text);
-            }
             if (!$options['noclean']) {
                 $text = clean_text($text, FORMAT_HTML);
             }
-            $text = $filtermanager->filter_text($text, $context);
+            $text = $filtermanager->filter_text($text, $context, array('originalformat' => FORMAT_MARKDOWN));
             break;
 
         default:  // FORMAT_MOODLE or anything else
-            $text = text_to_html($text, $options['smiley'], $options['para'], $options['newlines']);
+            $text = text_to_html($text, null, $options['para'], $options['newlines']);
             if (!$options['noclean']) {
                 $text = clean_text($text, FORMAT_HTML);
             }
-            $text = $filtermanager->filter_text($text, $context);
+            $text = $filtermanager->filter_text($text, $context, array('originalformat' => $format));
             break;
     }
 
@@ -1086,6 +1108,10 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
                 'called $CFG->currenttextiscacheable. The good news is that this no ' .
                 'longer exists. The bad news is that you seem to be using a filter that '.
                 'relies on it. Please seek out and destroy that filter code.', DEBUG_DEVELOPER);
+    }
+
+    if (!empty($options['overflowdiv'])) {
+        $text = html_writer::tag('div', $text, array('class'=>'no-overflow'));
     }
 
     if (empty($options['nocache']) and !empty($CFG->cachetext)) {
@@ -1127,38 +1153,6 @@ function format_text($text, $format = FORMAT_MOODLE, $options = NULL, $courseid_
     }
 
     return $text;
-}
-
-/**
- * Converts the text format from the value to the 'internal'
- * name or vice versa.
- *
- * $key can either be the value or the name and you get the other back.
- *
- * @uses FORMAT_MOODLE
- * @uses FORMAT_HTML
- * @uses FORMAT_PLAIN
- * @uses FORMAT_MARKDOWN
- * @param mixed $key int 0-4 or string one of 'moodle','html','plain','markdown'
- * @return mixed as above but the other way around!
- */
-function text_format_name($key) {
-  $lookup = array();
-  $lookup[FORMAT_MOODLE] = 'moodle';
-  $lookup[FORMAT_HTML] = 'html';
-  $lookup[FORMAT_PLAIN] = 'plain';
-  $lookup[FORMAT_MARKDOWN] = 'markdown';
-  $value = "error";
-  if (!is_numeric($key)) {
-    $key = strtolower( $key );
-    $value = array_search( $key, $lookup );
-  }
-  else {
-    if (isset( $lookup[$key] )) {
-      $value =  $lookup[ $key ];
-    }
-  }
-  return $value;
 }
 
 /**
@@ -1303,6 +1297,7 @@ function wikify_links($string) {
 function fix_non_standard_entities($string) {
     $text = preg_replace('/&#0*([0-9]+);?/', '&#$1;', $string);
     $text = preg_replace('/&#x0*([0-9a-fA-F]+);?/', '&#x$1;', $text);
+    $text = preg_replace('[\x00-\x08\x0b-\x0c\x0e-\x1f]', '', $text);
     return $text;
 }
 
@@ -1362,7 +1357,7 @@ function format_module_intro($module, $activity, $cmid, $filter=true) {
     global $CFG;
     require_once("$CFG->libdir/filelib.php");
     $context = get_context_instance(CONTEXT_MODULE, $cmid);
-    $options = (object)array('noclean'=>true, 'para'=>false, 'filter'=>$filter, 'context'=>$context);
+    $options = array('noclean'=>true, 'para'=>false, 'filter'=>$filter, 'context'=>$context, 'overflowdiv'=>true);
     $intro = file_rewrite_pluginfile_urls($activity->intro, 'pluginfile.php', $context->id, 'mod_'.$module, 'intro', null);
     return trim(format_text($intro, $activity->introformat, $options, null));
 }
@@ -1371,12 +1366,10 @@ function format_module_intro($module, $activity, $cmid, $filter=true) {
  * Legacy function, used for cleaning of old forum and glossary text only.
  *
  * @global object
- * @param string $text text that may contain TRUSTTEXT marker
- * @return text without any TRUSTTEXT marker
+ * @param string $text text that may contain legacy TRUSTTEXT marker
+ * @return text without legacy TRUSTTEXT marker
  */
 function trusttext_strip($text) {
-    global $CFG;
-
     while (true) { //removing nested TRUSTTEXT
         $orig = $text;
         $text = str_replace('#####TRUSTTEXT#####', '', $text);
@@ -1436,50 +1429,50 @@ function trusttext_active() {
  * Given raw text (eg typed in by a user), this function cleans it up
  * and removes any nasty tags that could mess up Moodle pages.
  *
- * @global string
- * @global object
+ * NOTE: the format parameter was deprecated because we can safely clean only HTML.
+ *
  * @param string $text The text to be cleaned
- * @param int $format Identifier of the text format to be used
- *            [FORMAT_MOODLE, FORMAT_HTML, FORMAT_PLAIN, FORMAT_WIKI, FORMAT_MARKDOWN]
+ * @param int $format deprecated parameter, should always contain FORMAT_HTML or FORMAT_MOODLE
  * @return string The cleaned up text
  */
-function clean_text($text, $format = FORMAT_MOODLE) {
+function clean_text($text, $format = FORMAT_HTML) {
     global $ALLOWED_TAGS, $CFG;
 
     if (empty($text) or is_numeric($text)) {
        return (string)$text;
     }
 
-    switch ($format) {
-        case FORMAT_PLAIN:
-        case FORMAT_MARKDOWN:
-            return $text;
-
-        default:
-
-            if (!empty($CFG->enablehtmlpurifier)) {
-                $text = purify_html($text);
-            } else {
-            /// Fix non standard entity notations
-                $text = fix_non_standard_entities($text);
-
-            /// Remove tags that are not allowed
-                $text = strip_tags($text, $ALLOWED_TAGS);
-
-            /// Clean up embedded scripts and , using kses
-                $text = cleanAttributes($text);
-
-            /// Again remove tags that are not allowed
-                $text = strip_tags($text, $ALLOWED_TAGS);
-
-            }
-
-        /// Remove potential script events - some extra protection for undiscovered bugs in our code
-            $text = preg_replace("~([^a-z])language([[:space:]]*)=~i", "$1Xlanguage=", $text);
-            $text = preg_replace("~([^a-z])on([a-z]+)([[:space:]]*)=~i", "$1Xon$2=", $text);
-
-            return $text;
+    if ($format != FORMAT_HTML and $format != FORMAT_HTML) {
+        // TODO: we need to standardise cleanup of text when loading it into editor first
+        //debugging('clean_text() is designed to work only with html');
     }
+
+    if ($format == FORMAT_PLAIN) {
+        return $text;
+    }
+
+    if (!empty($CFG->enablehtmlpurifier)) {
+        $text = purify_html($text);
+    } else {
+    /// Fix non standard entity notations
+        $text = fix_non_standard_entities($text);
+
+    /// Remove tags that are not allowed
+        $text = strip_tags($text, $ALLOWED_TAGS);
+
+    /// Clean up embedded scripts and , using kses
+        $text = cleanAttributes($text);
+
+    /// Again remove tags that are not allowed
+        $text = strip_tags($text, $ALLOWED_TAGS);
+
+    }
+
+    // Remove potential script events - some extra protection for undiscovered bugs in our code
+    $text = preg_replace("~([^a-z])language([[:space:]]*)=~i", "$1Xlanguage=", $text);
+    $text = preg_replace("~([^a-z])on([a-z]+)([[:space:]]*)=~i", "$1Xon$2=", $text);
+
+    return $text;
 }
 
 /**
@@ -1624,129 +1617,22 @@ function cleanAttributes2($htmlArray){
 }
 
 /**
- * Replaces all known smileys in the text with image equivalents
- *
- * @global object
- * @staticvar array $e
- * @staticvar array $img
- * @staticvar array $emoticons
- * @param string $text Passed by reference. The string to search for smiley strings.
- * @return string
- */
-function replace_smilies(&$text) {
-    global $CFG, $OUTPUT;
-
-    if (empty($CFG->emoticons)) { /// No emoticons defined, nothing to process here
-        return;
-    }
-
-    $lang = current_language();
-    $emoticonstring = $CFG->emoticons;
-    static $e = array();
-    static $img = array();
-    static $emoticons = null;
-
-    if (is_null($emoticons)) {
-        $emoticons = array();
-        if ($emoticonstring) {
-            $items = explode('{;}', $CFG->emoticons);
-            foreach ($items as $item) {
-               $item = explode('{:}', $item);
-              $emoticons[$item[0]] = $item[1];
-            }
-        }
-    }
-
-    if (empty($img[$lang])) {  /// After the first time this is not run again
-        $e[$lang] = array();
-        $img[$lang] = array();
-        foreach ($emoticons as $emoticon => $image){
-            $alttext = get_string($image, 'pix');
-            if ($alttext === '') {
-                $alttext = $image;
-            }
-            $e[$lang][] = $emoticon;
-            $img[$lang][] = '<img alt="'. $alttext .'" width="15" height="15" src="'. $OUTPUT->pix_url('s/' . $image) . '" />';
-        }
-    }
-
-    // Exclude from transformations all the code inside <script> tags
-    // Needed to solve Bug 1185. Thanks to jouse 2001 detecting it. :-)
-    // Based on code from glossary filter by Williams Castillo.
-    //       - Eloy
-
-    // Detect all the <script> zones to take out
-    $excludes = array();
-    preg_match_all('/<script language(.+?)<\/script>/is',$text,$list_of_excludes);
-
-    // Take out all the <script> zones from text
-    foreach (array_unique($list_of_excludes[0]) as $key=>$value) {
-        $excludes['<+'.$key.'+>'] = $value;
-    }
-    if ($excludes) {
-        $text = str_replace($excludes,array_keys($excludes),$text);
-    }
-
-/// this is the meat of the code - this is run every time
-    $text = str_replace($e[$lang], $img[$lang], $text);
-
-    // Recover all the <script> zones to text
-    if ($excludes) {
-        $text = str_replace(array_keys($excludes),$excludes,$text);
-    }
-}
-
-/**
- * This code is called from help.php to inject a list of smilies into the
- * emoticons help file.
- *
- * @global object
- * @global object
- * @return string HTML for a list of smilies.
- */
-function get_emoticons_list_for_help_file() {
-    global $CFG, $SESSION, $PAGE, $OUTPUT;
-    if (empty($CFG->emoticons)) {
-        return '';
-    }
-
-    $items = explode('{;}', $CFG->emoticons);
-    $output = '<ul id="emoticonlist">';
-    foreach ($items as $item) {
-        $item = explode('{:}', $item);
-        $output .= '<li><img src="' . $OUTPUT->pix_url('s/' . $item[1]) . '" alt="' .
-                $item[0] . '" /><code>' . $item[0] . '</code></li>';
-    }
-    $output .= '</ul>';
-    if (!empty($SESSION->inserttextform)) {
-        $formname = $SESSION->inserttextform;
-        $fieldname = $SESSION->inserttextfield;
-    } else {
-        $formname = 'theform';
-        $fieldname = 'message';
-    }
-
-    $PAGE->requires->yui2_lib('event');
-    $PAGE->requires->js_function_call('emoticons_help.init', array($formname, $fieldname, 'emoticonlist'));
-    return $output;
-
-}
-
-/**
  * Given plain text, makes it into HTML as nicely as possible.
  * May contain HTML tags already
  *
+ * Do not abuse this function. It is intended as lower level formatting feature used
+ * by {@see format_text()} to convert FORMAT_MOODLE to HTML. You are supposed
+ * to call format_text() in most of cases.
+ *
  * @global object
  * @param string $text The string to convert.
- * @param boolean $smiley Convert any smiley characters to smiley images?
+ * @param boolean $smiley_ignored Was used to determine if smiley characters should convert to smiley images, ignored now
  * @param boolean $para If true then the returned string will be wrapped in div tags
  * @param boolean $newlines If true then lines newline breaks will be converted to HTML newline breaks.
  * @return string
  */
 
-function text_to_html($text, $smiley=true, $para=true, $newlines=true) {
-///
-
+function text_to_html($text, $smiley_ignored=null, $para=true, $newlines=true) {
     global $CFG;
 
 /// Remove any whitespace that may be between HTML tags
@@ -1756,16 +1642,9 @@ function text_to_html($text, $smiley=true, $para=true, $newlines=true) {
     $text = preg_replace("~([\n\r])<~i", " <", $text);
     $text = preg_replace("~>([\n\r])~i", "> ", $text);
 
-    convert_urls_into_links($text);
-
 /// Make returns into HTML newlines.
     if ($newlines) {
         $text = nl2br($text);
-    }
-
-/// Turn smileys into images.
-    if ($smiley) {
-        replace_smilies($text);
     }
 
 /// Wrap the whole thing in a div if required
@@ -1817,52 +1696,6 @@ function html_to_text($html, $width = 75, $dolinks = true) {
     $result = $h2t->get_text();
 
     return $result;
-}
-
-/**
- * Given some text this function converts any URLs it finds into HTML links
- *
- * @param string $text Passed in by reference. The string to be searched for urls.
- */
-function convert_urls_into_links(&$text) {
-    //I've added img tags to this list of tags to ignore.
-    //See MDL-21168 for more info. A better way to ignore tags whether or not
-    //they are escaped partially or completely would be desirable. For example:
-    //<a href="blah">
-    //&lt;a href="blah"&gt;
-    //&lt;a href="blah">
-    $filterignoretagsopen  = array('<a\s[^>]+?>');
-    $filterignoretagsclose = array('</a>');
-    filter_save_ignore_tags($text,$filterignoretagsopen,$filterignoretagsclose,$ignoretags);
-
-    // Check if we support unicode modifiers in regular expressions. Cache it.
-    // TODO: this check should be a environment requirement in Moodle 2.0, as far as unicode
-    // chars are going to arrive to URLs officially really soon (2010?)
-    // Original RFC regex from: http://www.bytemycode.com/snippets/snippet/796/
-    // Various ideas from: http://alanstorm.com/url_regex_explained
-    // Unicode check, negative assertion and other bits from Moodle.
-    static $unicoderegexp;
-    if (!isset($unicoderegexp)) {
-        $unicoderegexp = @preg_match('/\pL/u', 'a'); // This will fail silently, returning false,
-    }
-
-    //todo: MDL-21296 - use of unicode modifiers may cause a timeout
-    if ($unicoderegexp) { //We can use unicode modifiers
-        $text = preg_replace('#(?<!=["\'])(((http(s?))://)(((([\pLl0-9]([\pLl0-9]|-)*[\pLl0-9]|[\pLl0-9])\.)+([\pLl]([\pLl0-9]|-)*[\pLl0-9]|[\pLl]))|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[\pL0-9]*)?(/([\pLl0-9\.!$&\'\(\)*+,;=_~:@-]|%[a-fA-F0-9]{2})*)*(\?([\pLl0-9\.!$&\'\(\)*+,;=_~:@/?-]|%[a-fA-F0-9]{2})*)?(\#[\pLl0-9\.!$&\'\(\)*+,;=_~:@/?-]*)?)(?<![,.;])#iu',
-                             '<a href="\\1" class="_blanktarget">\\1</a>', $text);
-        $text = preg_replace('#(?<!=["\']|//)((www\.([\pLl0-9]([\pLl0-9]|-)*[\pLl0-9]|[\pLl0-9])\.)+([\pLl]([\pLl0-9]|-)*[\pLl0-9]|[\pLl])(:[\pL0-9]*)?(/([\pLl0-9\.!$&\'\(\)*+,;=_~:@-]|%[a-fA-F0-9]{2})*)*(\?([\pLl0-9\.!$&\'\(\)*+,;=_~:@/?-]|%[a-fA-F0-9]{2})*)?(\#[\pLl0-9\.!$&\'\(\)*+,;=_~:@/?-]*)?)(?<![,.;])#iu',
-                             '<a href="http://\\1" class="_blanktarget">\\1</a>', $text);
-    } else { //We cannot use unicode modifiers
-        $text = preg_replace('#(?<!=["\'])(((http(s?))://)(((([a-z0-9]([a-z0-9]|-)*[a-z0-9]|[a-z0-9])\.)+([a-z]([a-z0-9]|-)*[a-z0-9]|[a-z]))|(([0-9]{1,3}\.){3}[0-9]{1,3}))(:[a-zA-Z0-9]*)?(/([a-z0-9\.!$&\'\(\)*+,;=_~:@-]|%[a-f0-9]{2})*)*(\?([a-z0-9\.!$&\'\(\)*+,;=_~:@/?-]|%[a-fA-F0-9]{2})*)?(\#[a-z0-9\.!$&\'\(\)*+,;=_~:@/?-]*)?)(?<![,.;])#i',
-                             '<a href="\\1" class="_blanktarget">\\1</a>', $text);
-        $text = preg_replace('#(?<!=["\']|//)((www\.([a-z0-9]([a-z0-9]|-)*[a-z0-9]|[a-z0-9])\.)+([a-z]([a-z0-9]|-)*[a-z0-9]|[a-z])(:[a-zA-Z0-9]*)?(/([a-z0-9\.!$&\'\(\)*+,;=_~:@-]|%[a-f0-9]{2})*)*(\?([a-z0-9\.!$&\'\(\)*+,;=_~:@/?-]|%[a-fA-F0-9]{2})*)?(\#[a-z0-9\.!$&\'\(\)*+,;=_~:@/?-]*)?)(?<![,.;])#i',
-                             '<a href="http://\\1" class="_blanktarget">\\1</a>', $text);
-    }
-
-    if (!empty($ignoretags)) {
-        $ignoretags = array_reverse($ignoretags); /// Reversed so "progressive" str_replace() will solve some nesting problems.
-        $text = str_replace(array_keys($ignoretags),$ignoretags,$text);
-    }
 }
 
 /**
@@ -2436,7 +2269,7 @@ function print_grade_menu($courseid, $name, $current, $includenograde=true, $ret
 
     $linkobject = '<span class="helplink"><img class="iconhelp" alt="'.$strscales.'" src="'.$OUTPUT->pix_url('help') . '" /></span>';
     $link = new moodle_url('/course/scales.php', array('id'=>$courseid, 'list'=>1));
-    $action = new popup_action('click', $link->url, 'ratingscales', array('height' => 400, 'width' => 500));
+    $action = new popup_action('click', $link, 'ratingscales', array('height' => 400, 'width' => 500));
     $output .= $OUTPUT->action_link($link, $linkobject, $action, array('title'=>$strscales));
 
     if ($return) {
@@ -2518,6 +2351,11 @@ function redirect($url, $message='', $delay=-1) {
         throw new moodle_exception('redirecterrordetected', 'error');
     }
 
+    // prevent debug errors - make sure context is properly initialised
+    if ($PAGE) {
+        $PAGE->set_context(null);
+    }
+
     if ($url instanceof moodle_url) {
         $url = $url->out(false);
     }
@@ -2526,12 +2364,42 @@ function redirect($url, $message='', $delay=-1) {
        $url = $SESSION->sid_process_url($url);
     }
 
-    if (function_exists('error_get_last')) {
-        $lasterror = error_get_last();
-        //NOTE: problem here is that this contains error even if error hidden with @do();
-    }
-    $debugdisableredirect = defined('DEBUGGING_PRINTED') ||
-            (!empty($CFG->debugdisplay) && !empty($lasterror) && ($lasterror['type'] & DEBUG_DEVELOPER));
+    $debugdisableredirect = false;
+    do {
+        if (defined('DEBUGGING_PRINTED')) {
+            // some debugging already printed, no need to look more
+            $debugdisableredirect = true;
+            break;
+        }
+
+        if (empty($CFG->debugdisplay) or empty($CFG->debug)) {
+            // no errors should be displayed
+            break;
+        }
+
+        if (!function_exists('error_get_last') or !$lasterror = error_get_last()) {
+            break;
+        }
+
+        if (!($lasterror['type'] & $CFG->debug)) {
+            //last error not interesting
+            break;
+        }
+
+        // watch out here, @hidden() errors are returned from error_get_last() too
+        if (headers_sent()) {
+            //we already started printing something - that means errors likely printed
+            $debugdisableredirect = true;
+            break;
+        }
+
+        if (ob_get_level() and ob_get_contents()) {
+            // there is something waiting to be printed, hopefully it is the errors,
+            // but it might be some error hidden by @ too - such as the timezone mess from setup.php
+            $debugdisableredirect = true;
+            break;
+        }
+    } while (false);
 
     if (!empty($message)) {
         if ($delay === -1 || !is_numeric($delay)) {
@@ -2582,7 +2450,7 @@ function redirect($url, $message='', $delay=-1) {
     }
 
     // Include a redirect message, even with a HTTP redirect, because that is recommended practice.
-    $PAGE->set_pagelayout('embedded');  // No header and footer needed
+    $PAGE->set_pagelayout('redirect');  // No header and footer needed
     $CFG->docroot = false; // to prevent the link to moodle docs from being displayed on redirect page.
     echo $OUTPUT->redirect_message($encodedurl, $message, $delay, $debugdisableredirect);
     exit;
@@ -2908,7 +2776,11 @@ function convert_tabrows_to_tree($tabrows, $selected, $inactive, $activated) {
  */
 function get_docs_url($path) {
     global $CFG;
-    return $CFG->docroot . '/' . current_language() . '/' . $path;
+    if (!empty($CFG->docroot)) {
+        return $CFG->docroot . '/' . current_language() . '/' . $path;
+    } else {
+        return 'http://docs.moodle.org/en/'.$path;
+    }
 }
 
 
@@ -2939,9 +2811,15 @@ function get_docs_url($path) {
  * @return bool
  */
 function debugging($message = '', $level = DEBUG_NORMAL, $backtrace = null) {
-    global $CFG, $UNITTEST;
+    global $CFG, $USER, $UNITTEST;
 
-    if (empty($CFG->debug) || $CFG->debug < $level) {
+    $forcedebug = false;
+    if (!empty($CFG->debugusers)) {
+        $debugusers = explode(',', $CFG->debugusers);
+        $forcedebug = in_array($USER->id, $debugusers);
+    }
+
+    if (!$forcedebug and (empty($CFG->debug) || $CFG->debug < $level)) {
         return false;
     }
 
@@ -2967,11 +2845,15 @@ function debugging($message = '', $level = DEBUG_NORMAL, $backtrace = null) {
             // we send the info to error log instead
             error_log('Debugging: ' . $message . $from);
 
-        } else if ($CFG->debugdisplay) {
+        } else if ($forcedebug or $CFG->debugdisplay) {
             if (!defined('DEBUGGING_PRINTED')) {
                 define('DEBUGGING_PRINTED', 1); // indicates we have printed something
             }
-            echo '<div class="notifytiny">' . $message . $from . '</div>';
+            if (CLI_SCRIPT) {
+                echo "++ $message ++\n$from";
+            } else {
+                echo '<div class="notifytiny">' . $message . $from . '</div>';
+            }
 
         } else {
             trigger_error($message . $from, E_USER_NOTICE);
@@ -3045,7 +2927,7 @@ function is_in_popup() {
  * To use this class.
  * - construct
  * - call create (or use the 3rd param to the constructor)
- * - call update or update_full repeatedly
+ * - call update or update_full() or update() repeatedly
  *
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package moodlecore
@@ -3053,123 +2935,138 @@ function is_in_popup() {
 class progress_bar {
     /** @var string html id */
     private $html_id;
-    /** @var int */
-    private $percent;
-    /** @var int */
+    /** @var int total width */
     private $width;
-    /** @var int */
-    private $lastcall;
-    /** @var int */
-    private $time_start;
-    private $minimum_time = 2; //min time between updates.
+    /** @var int last percentage printed */
+    private $percent = 0;
+    /** @var int time when last printed */
+    private $lastupdate = 0;
+    /** @var int when did we start printing this */
+    private $time_start = 0;
+
     /**
      * Constructor
      *
      * @param string $html_id
      * @param int $width
      * @param bool $autostart Default to false
+     * @return void, prints JS code if $autostart true
      */
-    public function __construct($html_id = '', $width = 500, $autostart = false){
+    public function __construct($html_id = '', $width = 500, $autostart = false) {
         if (!empty($html_id)) {
             $this->html_id  = $html_id;
         } else {
-            $this->html_id  = uniqid();
+            $this->html_id  = 'pbar_'.uniqid();
         }
+
         $this->width = $width;
-        $this->restart();
-        if($autostart){
+
+        if ($autostart){
             $this->create();
         }
     }
+
     /**
       * Create a new progress bar, this function will output html.
       *
       * @return void Echo's output
       */
-    public function create(){
-            flush();
-            $this->lastcall->pt = 0;
-            $this->lastcall->time = microtime(true);
-            if (CLI_SCRIPT) {
-                return; // temporary solution for cli scripts
-            }
-            $htmlcode = <<<EOT
-            <div style="text-align:center;width:{$this->width}px;clear:both;padding:0;margin:0 auto;">
-                <h2 id="status_{$this->html_id}" style="text-align: center;margin:0 auto"></h2>
-                <p id="time_{$this->html_id}"></p>
-                <div id="bar_{$this->html_id}" style="border-style:solid;border-width:1px;width:500px;height:50px;">
-                    <div id="progress_{$this->html_id}"
-                    style="text-align:center;background:#FFCC66;width:4px;border:1px
-                    solid gray;height:38px; padding-top:10px;">&nbsp;<span id="pt_{$this->html_id}"></span>
-                    </div>
+    public function create() {
+        $this->time_start = microtime(true);
+        if (CLI_SCRIPT) {
+            return; // temporary solution for cli scripts
+        }
+        $htmlcode = <<<EOT
+        <div style="text-align:center;width:{$this->width}px;clear:both;padding:0;margin:0 auto;">
+            <h2 id="status_{$this->html_id}" style="text-align: center;margin:0 auto"></h2>
+            <p id="time_{$this->html_id}"></p>
+            <div id="bar_{$this->html_id}" style="border-style:solid;border-width:1px;width:500px;height:50px;">
+                <div id="progress_{$this->html_id}"
+                style="text-align:center;background:#FFCC66;width:4px;border:1px
+                solid gray;height:38px; padding-top:10px;">&nbsp;<span id="pt_{$this->html_id}"></span>
                 </div>
             </div>
+        </div>
 EOT;
-            echo $htmlcode;
-            flush();
+        flush();
+        echo $htmlcode;
+        flush();
     }
+
     /**
      * Update the progress bar
      *
      * @param int $percent from 1-100
      * @param string $msg
-     * @param mixed $es
      * @return void Echo's output
      */
-    private function _update($percent, $msg, $es){
-        global $PAGE;
-        if(empty($this->time_start)){
+    private function _update($percent, $msg) {
+        if (empty($this->time_start)){
             $this->time_start = microtime(true);
         }
-        $this->percent = $percent;
-        $this->lastcall->time = microtime(true);
-        $this->lastcall->pt   = $percent;
-        $w = $this->percent * $this->width;
+
         if (CLI_SCRIPT) {
             return; // temporary solution for cli scripts
         }
-        if ($es === null){
-            $es = "Infinity";
+
+        $es = $this->estimate($percent);
+
+        if ($es === null) {
+            // always do the first and last updates
+            $es = "?";
+        } else if ($es == 0) {
+            // always do the last updates
+        } else if ($this->lastupdate + 20 < time()) {
+            // we must update otherwise browser would time out
+        } else if (round($this->percent, 2) === round($percent, 2)) {
+            // no significant change, no need to update anything
+            return;
         }
-        echo html_writer::script(js_writer::function_call('update_progress_bar', Array($this->html_id, $w, $this->percent, $msg, $es)));
+
+        $this->percent = $percent;
+        $this->lastupdate = microtime(true);
+
+        $w = ($this->percent/100) * $this->width;
+        echo html_writer::script(js_writer::function_call('update_progress_bar', array($this->html_id, $w, $this->percent, $msg, $es)));
         flush();
     }
+
     /**
-      * estimate time
+      * Estimate how much time it is going to take.
       *
       * @param int $curtime the time call this function
       * @param int $percent from 1-100
-      * @return mixed Null, or int
+      * @return mixed Null (unknown), or int
       */
-    private function estimate($curtime, $pt){
-        $consume = $curtime - $this->time_start;
-        $one = $curtime - $this->lastcall->time;
-        $this->percent = $pt;
-        $percent = $pt - $this->lastcall->pt;
-        if ($percent != 0) {
-            $left = ($one / $percent) - $consume;
-        } else {
+    private function estimate($pt) {
+        if ($this->lastupdate == 0) {
             return null;
         }
-        if($left < 0) {
-            return 0;
-        } else {
-            return $left;
+        if ($pt < 0.00001) {
+            return null; // we do not know yet how long it will take
         }
+        if ($pt > 99.99999) {
+            return 0; // nearly done, right?
+        }
+        $consumed = microtime(true) - $this->time_start;
+        if ($consumed < 0.001) {
+            return null;
+        }
+
+        return (100 - $pt) * ($consumed / $pt);
     }
+
     /**
       * Update progress bar according percent
       *
       * @param int $percent from 1-100
       * @param string $msg the message needed to be shown
       */
-    public function update_full($percent, $msg){
+    public function update_full($percent, $msg) {
         $percent = max(min($percent, 100), 0);
-        if ($percent != 100 && ($this->lastcall->time + $this->minimum_time) > microtime(true)){
-            return;
-        }
-        $this->_update($percent, 100, $msg);
+        $this->_update($percent, $msg);
     }
+
     /**
       * Update progress bar according the number of tasks
       *
@@ -3177,30 +3074,18 @@ EOT;
       * @param int $total total task number
       * @param string $msg message
       */
-    public function update($cur, $total, $msg){
-        $cur = max($cur, 0);
-        if ($cur >= $total){
-            $percent = 1;
-        } else {
-            $percent = $cur / $total;
-        }
-        /**
-        if ($percent != 1 && ($this->lastcall->time + $this->minimum_time) > microtime(true)){
-            return;
-        }
-        */
-        $es = $this->estimate(microtime(true), $percent);
-        $this->_update($percent, $msg, $es);
+    public function update($cur, $total, $msg) {
+        $percent = ($cur / $total) * 100;
+        $this->update_full($percent, $msg);
     }
+
     /**
      * Restart the progress bar.
      */
-    public function restart(){
-        $this->percent  = 0;
-        $this->lastcall = new stdClass;
-        $this->lastcall->pt = 0;
-        $this->lastcall->time = microtime(true);
-        $this->time_start  = 0;
+    public function restart() {
+        $this->percent    = 0;
+        $this->lastupdate = 0;
+        $this->time_start = 0;
     }
 }
 

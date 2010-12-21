@@ -229,7 +229,7 @@ class ContainsTagWithAttribute extends XMLStructureExpectation {
         $list = $parser->getElementsByTagName($this->tag);
 
         foreach ($list as $node) {
-            if ($node->attributes->getNamedItem($this->attribute)->nodeValue == $this->value) {
+            if ($node->attributes->getNamedItem($this->attribute)->nodeValue === (string) $this->value) {
                 return true;
             }
         }
@@ -291,11 +291,11 @@ class ContainsTagWithAttributes extends XMLStructureExpectation {
             $allattributesmatch = true;
 
             foreach ($this->expectedvalues as $expectedattribute => $expectedvalue) {
-                if (!$node->getAttribute($expectedattribute) && $expectedvalue != '') {
+                if ($node->getAttribute($expectedattribute) === '' && $expectedvalue !== '') {
                     $this->failurereason = 'nomatch';
                     continue 2; // Skip this tag, it doesn't have all the expected attributes
                 }
-                if ($node->getAttribute($expectedattribute) != $expectedvalue) {
+                if ($node->getAttribute($expectedattribute) !== (string) $expectedvalue) {
                     $allattributesmatch = false;
                     $this->failurereason = 'nomatch';
                 }
@@ -308,7 +308,7 @@ class ContainsTagWithAttributes extends XMLStructureExpectation {
                 $nodeattrlist = $node->attributes;
 
                 foreach ($nodeattrlist as $domattrname => $domattr) {
-                    if (array_key_exists($domattrname, $this->forbiddenvalues) && $node->getAttribute($domattrname) == $this->forbiddenvalues[$domattrname]) {
+                    if (array_key_exists($domattrname, $this->forbiddenvalues) && $node->getAttribute($domattrname) === (string) $this->forbiddenvalues[$domattrname]) {
                         $this->failurereason = "forbiddenmatch:$domattrname:" . $node->getAttribute($domattrname);
                         $foundamatch = false;
                     }
@@ -427,6 +427,9 @@ class UnitTestCaseUsingDatabase extends UnitTestCase {
     private $realuserid = null;
     private $tables = array();
 
+    private $realcfg;
+    protected $testcfg;
+
     public function __construct($label = false) {
         global $DB, $CFG;
 
@@ -442,6 +445,19 @@ class UnitTestCaseUsingDatabase extends UnitTestCase {
         $this->realdb = $DB;
         $this->testdb = moodle_database::get_driver_instance($CFG->dbtype, $CFG->dblibrary);
         $this->testdb->connect($CFG->dbhost, $CFG->dbuser, $CFG->dbpass, $CFG->dbname, $CFG->unittestprefix);
+
+        // Set up test config
+        $this->testcfg = (object)array(
+                'testcfg' => true, // Marker that this is a test config
+                'libdir' => $CFG->libdir, // Must use real one so require_once works
+                'dirroot' => $CFG->dirroot, // Must use real one
+                'dataroot' => $CFG->dataroot, // Use real one for now (maybe this should change?)
+                'ostype' => $CFG->ostype, // Real one
+                'wwwroot' => 'http://www.example.org', // Use fixed url
+                'siteadmins' => '0', // No admins
+                'siteguest' => '0' // No guest
+        );
+        $this->realcfg = $CFG;
     }
 
     /**
@@ -464,6 +480,28 @@ class UnitTestCaseUsingDatabase extends UnitTestCase {
             debugging('revert_to_real_db called when the test DB was not already selected. This suggest you are doing something wrong and dangerous. Please review your code immediately.', DEBUG_DEVELOPER);
         }
         $DB = $this->realdb;
+    }
+
+    /**
+     * Switch to using the test $CFG for all queries until further notice.
+     */
+    protected function switch_to_test_cfg() {
+        global $CFG;
+        if (isset($CFG->testcfg)) {
+            debugging('switch_to_test_cfg called when the test CFG was already selected. This suggest you are doing something wrong and dangerous. Please review your code immediately.', DEBUG_DEVELOPER);
+        }
+        $CFG = $this->testcfg;
+    }
+
+    /**
+     * Revert to using the real $CFG for all future queries.
+     */
+    protected function revert_to_real_cfg() {
+        global $CFG;
+        if (!isset($CFG->testcfg)) {
+            debugging('revert_to_real_cfg called when the test CFG was not already selected. This suggest you are doing something wrong and dangerous. Please review your code immediately.', DEBUG_DEVELOPER);
+        }
+        $CFG = $this->realcfg;
     }
 
     /**
@@ -500,7 +538,7 @@ class UnitTestCaseUsingDatabase extends UnitTestCase {
      * have, display a rude message and clean it up for them.
      */
     private function automatic_clean_up() {
-        global $DB;
+        global $DB, $CFG;
         $cleanmore = false;
 
         // Drop any test tables that were created.
@@ -511,6 +549,12 @@ class UnitTestCaseUsingDatabase extends UnitTestCase {
         // Switch back to the real DB if necessary.
         if ($DB !== $this->realdb) {
             $this->revert_to_real_db();
+            $cleanmore = true;
+        }
+
+        // Switch back to the real CFG if necessary.
+        if (isset($CFG->testcfg)) {
+            $this->revert_to_real_cfg();
             $cleanmore = true;
         }
 

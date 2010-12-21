@@ -167,6 +167,11 @@ $THEME->layouts = array(
         'regions' => array(),
         'options' => array('nofooter'=>true, 'noblocks'=>true, 'nonavbar'=>false, 'nocustommenu'=>true),
     ),
+    'report' => array(
+        'file' => 'report.php',
+        'regions' => array('side-post'),
+        'defaultregion' => 'side-post',
+    ),
 );
 
 ///////////////////////////////////////////////////////////////
@@ -258,3 +263,5 @@ $THEME->rarrow	= '&rang;';
 ////////////////////////////////////////////////////
 // Controls the colours for the MP3 player
 ////////////////////////////////////////////////////
+
+$THEME->editor_sheets = array('editor');

@@ -23,6 +23,8 @@
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
 
+define('NO_OUTPUT_BUFFERING', true);
+
 require_once('../../../config.php');
 require_once($CFG->dirroot.'/'.$CFG->admin.'/report/security/lib.php');
 require_once($CFG->libdir.'/adminlib.php');
@@ -39,7 +41,7 @@ if (array_search($issue, $issues, true) === false) {
 }
 
 // we may need a bit more memory and this may take a long time to process
-@raise_memory_limit('128M');
+raise_memory_limit(MEMORY_EXTRA);
 @set_time_limit(0);
 
 // Print the header.
@@ -49,8 +51,6 @@ echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('pluginname', 'report_security'));
 
 echo '<div id="timewarning">'.get_string('timewarning', 'report_security').'</div>';
-while(@ob_end_flush());
-@flush();
 
 $strok       = '<span class="statusok">'.get_string('statusok', 'report_security').'</span>';
 $strinfo     = '<span class="statusinfo">'.get_string('statusinfo', 'report_security').'</span>';

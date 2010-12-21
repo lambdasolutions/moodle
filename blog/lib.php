@@ -196,8 +196,25 @@ function blog_sync_external_entries($externalblog) {
         $newentry->format = FORMAT_HTML;
         $newentry->subject = $entry->get_title();
         $newentry->summary = $entry->get_description();
-        $newentry->created = $entry->get_date('U');
-        $newentry->lastmodified = $entry->get_date('U');
+
+        //our DB doesnt allow null creation or modified timestamps so check the external blog didnt supply one
+        $entrydate = $entry->get_date('U');
+        if (empty($entrydate)) {
+            $newentry->created = time();
+            $newentry->lastmodified = time();
+        } else {
+            $newentry->created = $entrydate;
+            $newentry->lastmodified = $entrydate;
+        }
+
+        $textlib = textlib_get_instance();
+        if ($textlib->strlen($newentry->uniquehash) > 255) {
+            // The URL for this item is too long for the field. Rather than add
+            // the entry without the link we will skip straight over it.
+            // RSS spec says recommended length 500, we use 255.
+            debugging('External blog entry skipped because of oversized URL', DEBUG_DEVELOPER);
+            continue;
+        }
 
         $id = $DB->insert_record('post', $newentry);
 
@@ -218,7 +235,9 @@ function blog_sync_external_entries($externalblog) {
 function blog_delete_external_entries($externalblog) {
     global $DB;
     require_capability('moodle/blog:manageexternal', get_context_instance(CONTEXT_SYSTEM));
-    $DB->delete_records('post', array('content' => $externalblog->id, 'module' => 'blog_external'));
+    $DB->delete_records_select('post',
+                               "module='blog_external' AND " . $DB->sql_compare_text('content') . " = ?",
+                               array($externalblog->id));
 }
 
 /**
@@ -472,7 +491,7 @@ function blog_get_options_for_course(stdClass $course, stdClass $user=null) {
     if (has_capability('moodle/blog:create', $sitecontext)) {
         // We can blog about this course
         $options['courseadd'] = array(
-            'string' => get_string('blogaboutthiscourse', 'blog', get_string('course')),
+            'string' => get_string('blogaboutthiscourse', 'blog'),
             'link' => new moodle_url('/blog/edit.php', array('action'=>'add', 'courseid'=>$course->id))
         );
     }

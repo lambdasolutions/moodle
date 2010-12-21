@@ -42,64 +42,63 @@ class question_match_qtype extends default_questiontype {
         $context = $question->context;
         $result = new stdClass;
 
-        if (!$oldsubquestions = $DB->get_records("question_match_sub", array("question" => $question->id), "id ASC")) {
-            $oldsubquestions = array();
-        }
+        $oldsubquestions = $DB->get_records('question_match_sub',
+                array('question' => $question->id), 'id ASC');
 
         // $subquestions will be an array with subquestion ids
         $subquestions = array();
 
         // Insert all the new question+answer pairs
         foreach ($question->subquestions as $key => $questiontext) {
-            $itemid = $questiontext['itemid'];
-            $format = $questiontext['format'];
-            $questiontext = trim($questiontext['text']);
-            $answertext = trim($question->subanswers[$key]);
-            if ($questiontext != '' || $answertext != '') {
-                if ($subquestion = array_shift($oldsubquestions)) {  // Existing answer, so reuse it
-                    $subquestion->answertext   = $answertext;
-                    $subquestion->questiontext = file_save_draft_area_files($itemid, $context->id, 'qtype_match', 'subquestion', $subquestion->id, self::$fileoptions, $questiontext);
-                    $subquestion->questiontextformat = $format;
-                    $DB->update_record("question_match_sub", $subquestion);
-                } else {
-                    $subquestion = new stdClass;
-                    // Determine a unique random code
-                    $subquestion->code = rand(1, 999999999);
-                    while ($DB->record_exists('question_match_sub', array('code' => $subquestion->code, 'question' => $question->id))) {
-                        $subquestion->code = rand();
-                    }
-                    $subquestion->question = $question->id;
-                    $subquestion->questiontext = $questiontext;
-                    $subquestion->questiontextformat = $format;
-                    $subquestion->answertext = $answertext;
-                    $subquestion->id = $DB->insert_record("question_match_sub", $subquestion);
-                    $questiontext = file_save_draft_area_files($itemid, $context->id, 'qtype_match', 'subquestion', $subquestion->id, self::$fileoptions, $questiontext);
-                    $DB->set_field('question_match_sub', 'questiontext', $questiontext, array('id'=>$subquestion->id));
-                }
-                $subquestions[] = $subquestion->id;
+            if ($questiontext['text'] == '' && trim($question->subanswers[$key]) == '') {
+                continue;
             }
-            if ($questiontext != '' && $answertext == '') {
+            if ($questiontext['text'] != '' && trim($question->subanswers[$key]) == '') {
                 $result->notice = get_string('nomatchinganswer', 'quiz', $questiontext);
             }
-        }
 
-        // delete old subquestions records
-        if (!empty($oldsubquestions)) {
-            foreach($oldsubquestions as $os) {
-                $DB->delete_records('question_match_sub', array('id' => $os->id));
+            // Update an existing subquestion if possible.
+            $subquestion = array_shift($oldsubquestions);
+            if (!$subquestion) {
+                $subquestion = new stdClass;
+                // Determine a unique random code
+                $subquestion->code = rand(1, 999999999);
+                while ($DB->record_exists('question_match_sub', array('code' => $subquestion->code, 'question' => $question->id))) {
+                    $subquestion->code = rand(1, 999999999);
+                }
+                $subquestion->question = $question->id;
+                $subquestion->questiontext = '';
+                $subquestion->answertext = '';
+                $subquestion->id = $DB->insert_record('question_match_sub', $subquestion);
             }
+
+            $subquestion->questiontext = $this->import_or_save_files($questiontext,
+                    $context, 'qtype_match', 'subquestion', $subquestion->id);
+            $subquestion->questiontextformat = $questiontext['format'];
+            $subquestion->answertext = trim($question->subanswers[$key]);
+
+            $DB->update_record('question_match_sub', $subquestion);
+
+            $subquestions[] = $subquestion->id;
         }
 
-        if ($options = $DB->get_record("question_match", array("question" => $question->id))) {
-            $options->subquestions = implode(",",$subquestions);
+        // Delete old subquestions records
+        $fs = get_file_storage();
+        foreach($oldsubquestions as $oldsub) {
+            $fs->delete_area_files($context->id, 'qtype_match', 'subquestion', $oldsub->id);
+            $DB->delete_records('question_match_sub', array('id' => $oldsub->id));
+        }
+
+        if ($options = $DB->get_record('question_match', array('question' => $question->id))) {
+            $options->subquestions = implode(',', $subquestions);
             $options->shuffleanswers = $question->shuffleanswers;
-            $DB->update_record("question_match", $options);
+            $DB->update_record('question_match', $options);
         } else {
             unset($options);
             $options->question = $question->id;
-            $options->subquestions = implode(",",$subquestions);
+            $options->subquestions = implode(',', $subquestions);
             $options->shuffleanswers = $question->shuffleanswers;
-            $DB->insert_record("question_match", $options);
+            $DB->insert_record('question_match', $options);
         }
 
         if (!empty($result->notice)) {
@@ -114,17 +113,12 @@ class question_match_qtype extends default_questiontype {
         return true;
     }
 
-    /**
-    * Deletes question from the question-type specific tables
-    *
-    * @return boolean Success/Failure
-    * @param integer $question->id
-    */
-    function delete_question($questionid) {
+    function delete_question($questionid, $contextid) {
         global $DB;
-        $DB->delete_records("question_match", array("question" => $questionid));
-        $DB->delete_records("question_match_sub", array("question" => $questionid));
-        return true;
+        $DB->delete_records('question_match', array('question' => $questionid));
+        $DB->delete_records('question_match_sub', array('question' => $questionid));
+
+        parent::delete_question($questionid, $contextid);
     }
 
     function create_session_and_responses(&$question, &$state, $cmoptions, $attempt) {
@@ -483,243 +477,6 @@ class question_match_qtype extends default_questiontype {
         return 1 / count($question->options->subquestions);
     }
 
-/// RESTORE FUNCTIONS /////////////////
-
-    /*
-     * Restores the data in the question
-     *
-     * This is used in question/restorelib.php
-     */
-    function restore($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-        $status = true;
-
-        //Get the matchs array
-        $matchs = $info['#']['MATCHS']['0']['#']['MATCH'];
-
-        //We have to build the subquestions field (a list of match_sub id)
-        $subquestions_field = "";
-        $in_first = true;
-
-        //Iterate over matchs
-        for($i = 0; $i < sizeof($matchs); $i++) {
-            $mat_info = $matchs[$i];
-
-            //We'll need this later!!
-            $oldid = backup_todb($mat_info['#']['ID']['0']['#']);
-
-            //Now, build the question_match_SUB record structure
-            $match_sub = new stdClass;
-            $match_sub->question = $new_question_id;
-            $match_sub->code = isset($mat_info['#']['CODE']['0']['#'])?backup_todb($mat_info['#']['CODE']['0']['#']):'';
-            if (!$match_sub->code) {
-                $match_sub->code = $oldid;
-            }
-            $match_sub->questiontext = backup_todb($mat_info['#']['QUESTIONTEXT']['0']['#']);
-            $match_sub->answertext = backup_todb($mat_info['#']['ANSWERTEXT']['0']['#']);
-
-            //The structure is equal to the db, so insert the question_match_sub
-            $newid = $DB->insert_record ("question_match_sub",$match_sub);
-
-            //Do some output
-            if (($i+1) % 50 == 0) {
-                if (!defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if (($i+1) % 1000 == 0) {
-                        echo "<br />";
-                    }
-                }
-                backup_flush(300);
-            }
-
-            if ($newid) {
-                //We have the newid, update backup_ids
-                backup_putid($restore->backup_unique_code,"question_match_sub",$oldid,
-                             $newid);
-                //We have a new match_sub, append it to subquestions_field
-                if ($in_first) {
-                    $subquestions_field .= $newid;
-                    $in_first = false;
-                } else {
-                    $subquestions_field .= ",".$newid;
-                }
-            } else {
-                $status = false;
-            }
-        }
-
-        //We have created every match_sub, now create the match
-        $match = new stdClass;
-        $match->question = $new_question_id;
-        $match->subquestions = $subquestions_field;
-
-        // Get the shuffleanswers option, if it is there.
-        if (!empty($info['#']['MATCHOPTIONS']['0']['#']['SHUFFLEANSWERS'])) {
-            $match->shuffleanswers = backup_todb($info['#']['MATCHOPTIONS']['0']['#']['SHUFFLEANSWERS']['0']['#']);
-        } else {
-            $match->shuffleanswers = 1;
-        }
-
-        //The structure is equal to the db, so insert the question_match_sub
-        $newid = $DB->insert_record ("question_match",$match);
-
-        if (!$newid) {
-            $status = false;
-        }
-
-        return $status;
-    }
-
-    function restore_map($old_question_id,$new_question_id,$info,$restore) {
-        global $DB;
-        $status = true;
-
-        //Get the matchs array
-        $matchs = $info['#']['MATCHS']['0']['#']['MATCH'];
-
-        //We have to build the subquestions field (a list of match_sub id)
-        $subquestions_field = "";
-        $in_first = true;
-
-        //Iterate over matchs
-        for($i = 0; $i < sizeof($matchs); $i++) {
-            $mat_info = $matchs[$i];
-
-            //We'll need this later!!
-            $oldid = backup_todb($mat_info['#']['ID']['0']['#']);
-
-            //Now, build the question_match_SUB record structure
-            $match_sub->question = $new_question_id;
-            $match_sub->questiontext = backup_todb($mat_info['#']['QUESTIONTEXT']['0']['#']);
-            $match_sub->answertext = backup_todb($mat_info['#']['ANSWERTEXT']['0']['#']);
-
-            //If we are in this method is because the question exists in DB, so its
-            //match_sub must exist too.
-            //Now, we are going to look for that match_sub in DB and to create the
-            //mappings in backup_ids to use them later where restoring states (user level).
-
-            //Get the match_sub from DB (by question, questiontext and answertext)
-            $db_match_sub = $DB->get_record ("question_match_sub",array("question"=>$new_question_id,
-                                                      "questiontext"=>$match_sub->questiontext,
-                                                      "answertext"=>$match_sub->answertext));
-            //Do some output
-            if (($i+1) % 50 == 0) {
-                if (!defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if (($i+1) % 1000 == 0) {
-                        echo "<br />";
-                    }
-                }
-                backup_flush(300);
-            }
-
-            //We have the database match_sub, so update backup_ids
-            if ($db_match_sub) {
-                //We have the newid, update backup_ids
-                backup_putid($restore->backup_unique_code,"question_match_sub",$oldid,
-                             $db_match_sub->id);
-            } else {
-                $status = false;
-            }
-        }
-
-        return $status;
-    }
-
-    function restore_recode_answer($state, $restore) {
-
-        //The answer is a comma separated list of hypen separated math_subs (for question and answer)
-        $answer_field = "";
-        $in_first = true;
-        $tok = strtok($state->answer,",");
-        while ($tok) {
-            //Extract the match_sub for the question and the answer
-            $exploded = explode("-",$tok);
-            $match_question_id = $exploded[0];
-            $match_answer_id = $exploded[1];
-            //Get the match_sub from backup_ids (for the question)
-            if (!$match_que = backup_getid($restore->backup_unique_code,"question_match_sub",$match_question_id)) {
-                echo 'Could not recode question in question_match_sub '.$match_question_id.'<br />';
-            } else {
-                if ($in_first) {
-                    $in_first = false;
-                } else {
-                    $answer_field .= ',';
-                }
-                $answer_field .= $match_que->new_id.'-'.$match_answer_id;
-            }
-            //check for next
-            $tok = strtok(",");
-        }
-        return $answer_field;
-    }
-
-    /**
-     * Decode links in question type specific tables.
-     * @return bool success or failure.
-     */
-    function decode_content_links_caller($questionids, $restore, &$i) {
-        global $DB;
-
-        $status = true;
-
-        // Decode links in the question_match_sub table.
-        if ($subquestions = $DB->get_records_list('question_match_sub', 'question', $questionids, '', 'id, questiontext')) {
-
-            foreach ($subquestions as $subquestion) {
-                $questiontext = restore_decode_content_links_worker($subquestion->questiontext, $restore);
-                if ($questiontext != $subquestion->questiontext) {
-                    $subquestion->questiontext = $questiontext;
-                    $DB->update_record('question_match_sub', $subquestion);
-                }
-
-                // Do some output.
-                if (++$i % 5 == 0 && !defined('RESTORE_SILENTLY')) {
-                    echo ".";
-                    if ($i % 100 == 0) {
-                        echo "<br />";
-                    }
-                    backup_flush(300);
-                }
-            }
-        }
-
-        return $status;
-    }
-
-    function find_file_links($question, $courseid){
-        // find links in the question_match_sub table.
-        $urls = array();
-        if (isset($question->options->subquestions)){
-            foreach ($question->options->subquestions as $subquestion) {
-                $urls += question_find_file_links_from_html($subquestion->questiontext, $courseid);
-            }
-
-            //set all the values of the array to the question object
-            if ($urls){
-                $urls = array_combine(array_keys($urls), array_fill(0, count($urls), array($question->id)));
-            }
-        }
-        $urls = array_merge_recursive($urls, parent::find_file_links($question, $courseid));
-
-        return $urls;
-    }
-
-    function replace_file_links($question, $fromcourseid, $tocourseid, $url, $destination){
-        global $DB;
-        parent::replace_file_links($question, $fromcourseid, $tocourseid, $url, $destination);
-        // replace links in the question_match_sub table.
-        if (isset($question->options->subquestions)){
-            foreach ($question->options->subquestions as $subquestion) {
-                $subquestionchanged = false;
-                $subquestion->questiontext = question_replace_file_links_in_html($subquestion->questiontext, $fromcourseid, $tocourseid, $url, $destination, $subquestionchanged);
-                if ($subquestionchanged){//need to update rec in db
-                    $DB->update_record('question_match_sub', $subquestion);
-                }
-            }
-        }
-    }
-
     /**
      * Runs all the code required to set up and save an essay question for testing purposes.
      * Alternate DB table prefix may be used to facilitate data deletion.
@@ -736,39 +493,36 @@ class question_match_qtype extends default_questiontype {
             $course = $DB->get_record('course', array('id' => $courseid));
         }
 
-        return $this->save_question($question, $form, $course);
+        return $this->save_question($question, $form);
     }
 
-    function move_files($question, $newcategory) {
+    function move_files($questionid, $oldcontextid, $newcontextid) {
         global $DB;
-        // move files belonging to question component
-        parent::move_files($question, $newcategory);
-
-        // move files belonging to qtype_multichoice
         $fs = get_file_storage();
-        // process files in answer
-        if (!$oldanswers = $DB->get_records('question_answers', array('question' => $question->id), 'id ASC')) {
-            $oldanswers = array();
-        }
 
-        // process files in sub questions
-        if (!$subquestions = $DB->get_records('question_match_sub', array('question' => $question->id), 'id ASC')) {
-            $subquestions = array();
-        }
-        $component = 'qtype_match';
-        $filearea = 'subquestion';
-        foreach ($subquestions as $sub) {
-            $files = $fs->get_area_files($question->contextid, $component, $filearea, $sub->id);
-            foreach ($files as $storedfile) {
-                if (!$storedfile->is_directory()) {
-                    $newfile = new stdClass();
-                    $newfile->contextid = (int)$newcategory->contextid;
-                    $fs->create_file_from_storedfile($newfile, $storedfile);
-                    $storedfile->delete();
-                }
-            }
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+
+        $subquestionids = $DB->get_records_menu('question_match_sub',
+                array('question' => $questionid), 'id', 'id,1');
+        foreach ($subquestionids as $subquestionid => $notused) {
+            $fs->move_area_files_to_new_context($oldcontextid,
+                    $newcontextid, 'qtype_match', 'subquestion', $subquestionid);
         }
     }
+
+    protected function delete_files($questionid, $contextid) {
+        global $DB;
+        $fs = get_file_storage();
+
+        parent::delete_files($questionid, $contextid);
+
+        $subquestionids = $DB->get_records_menu('question_match_sub',
+                array('question' => $questionid), 'id', 'id,1');
+        foreach ($subquestionids as $subquestionid => $notused) {
+            $fs->delete_area_files($contextid, 'qtype_match', 'subquestion', $subquestionid);
+        }
+    }
+
     function check_file_access($question, $state, $options, $contextid, $component,
             $filearea, $args) {
 

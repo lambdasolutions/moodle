@@ -63,10 +63,6 @@
         }
     }
 
-    if (get_moodle_cookie() == '') {
-        set_moodle_cookie('nobody');   // To help search for cookies on login page
-    }
-
     if (isloggedin()) {
         add_to_log(SITEID, 'course', 'view', 'view.php?id='.SITEID, SITEID);
     }
@@ -75,8 +71,12 @@
     if (get_config('local_hub', 'hubenabled') && file_exists($CFG->dirroot.'/local/hub/lib.php')) {
         require_once($CFG->dirroot.'/local/hub/lib.php');
         $hub = new local_hub();
-        $hub->display_homepage();
-        exit;
+        $continue = $hub->display_homepage();
+        //display_homepage() return true if the hub home page is not displayed
+        //mostly when search form is not displayed for not logged users
+        if (empty($continue)) {
+            exit;
+        }
     }
 
     $PAGE->set_pagetype('site-index');
@@ -117,6 +117,7 @@
             $summarytext = file_rewrite_pluginfile_urls($section->summary, 'pluginfile.php', $context->id, 'course', 'section', $section->id);
             $summaryformatoptions = new stdClass();
             $summaryformatoptions->noclean = true;
+            $summaryformatoptions->overflowdiv = true;
 
             echo format_text($summarytext, $section->summaryformat, $summaryformatoptions);
 

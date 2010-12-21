@@ -1,4 +1,4 @@
-/* @override http://www.stabinger.us/moodle2/theme/brick/style/core.css */
+
 
 /* Global
 ---------------------------*/
@@ -81,7 +81,7 @@ html, body {
 	font-size: 10px;
 }
 
-#loginas a {
+#loggedinas a {
 	color: #fff;
 }
 
@@ -531,8 +531,12 @@ div.yui3-menu.custom_menu_submenu div.yui3-menu-content {
 
 div.yui3-menu.custom_menu_submenu div.yui3-menu-content div.yui3-menu.custom_menu_submenu div.yui3-menu-content {
 	background-image: none !important;
-	width: 200px;
+	min-width: 200px;
 	position: relative;
 	margin-top: -50px;
 	border-top: 1px solid #dadada !important;
+}
+
+.logininfo a {
+	color: #fff;
 }

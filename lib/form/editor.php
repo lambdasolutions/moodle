@@ -114,7 +114,7 @@ class MoodleQuickForm_editor extends HTML_QuickForm_element {
     }
 
     function toHtml() {
-        global $CFG, $COURSE, $PAGE;
+        global $CFG, $PAGE;
         require_once($CFG->dirroot.'/repository/lib.php');
 
         if ($this->_flagFrozen) {
@@ -237,7 +237,7 @@ class MoodleQuickForm_editor extends HTML_QuickForm_element {
                     'sesskey'=>sesskey(),
                     ));
                 $str .= '<noscript>';
-                $str .= "<object type='text/html' data='$editorurl' height='160' width='600' style='border:1px solid #000'></object>";
+                $str .= "<div><object type='text/html' data='$editorurl' height='160' width='600' style='border:1px solid #000'></object></div>";
                 $str .= '</noscript>';
             }
         }

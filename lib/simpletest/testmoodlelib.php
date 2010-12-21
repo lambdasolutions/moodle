@@ -47,10 +47,12 @@ class moodlelib_test extends UnitTestCase {
 
     var $user_agents = array(
             'MSIE' => array(
+                '5.0' => array('Windows 98' => 'Mozilla/4.0 (compatible; MSIE 5.00; Windows 98)'),
                 '5.5' => array('Windows 2000' => 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT 5.0)'),
                 '6.0' => array('Windows XP SP2' => 'Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)'),
                 '7.0' => array('Windows XP SP2' => 'Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; YPC 3.0.1; .NET CLR 1.1.4322; .NET CLR 2.0.50727)'),
                 '8.0' => array('Windows Vista' => 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; .NET CLR 2.0.50727; .NET CLR 1.1.4322; .NET CLR 3.0.04506.30; .NET CLR 3.0.04506.648)'),
+                '9.0' => array('Windows 7' => 'Mozilla/5.0 (Windows; U; MSIE 9.0; WIndows NT 9.0; en-US))'),
 
             ),
             'Firefox' => array(
@@ -63,7 +65,18 @@ class moodlelib_test extends UnitTestCase {
             ),
             'Safari' => array(
                 '312' => array('Mac OS X' => 'Mozilla/5.0 (Macintosh; U; PPC Mac OS X; en-us) AppleWebKit/312.1 (KHTML, like Gecko) Safari/312'),
-                '2.0' => array('Mac OS X' => 'Mozilla/5.0 (Macintosh; U; PPC Mac OS X; en) AppleWebKit/412 (KHTML, like Gecko) Safari/412')
+                '412' => array('Mac OS X' => 'Mozilla/5.0 (Macintosh; U; PPC Mac OS X; en) AppleWebKit/412 (KHTML, like Gecko) Safari/412')
+            ),
+            'Safari iOS' => array(
+                '528' => array('iPhone' => 'Mozilla/5.0 (iPhone; U; CPU iPhone OS 3_1_2 like Mac OS X; cs-cz) AppleWebKit/528.18 (KHTML, like Gecko) Version/4.0 Mobile/7D11 Safari/528.16'),
+                '533' => array('iPad' => 'Mozilla/5.0 (iPad; U; CPU OS 4_2_1 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C148 Safari/6533.18.5'),
+            ),
+            'WebKit Android' => array(
+                '525' => array('G1 Phone' => 'Mozilla/5.0 (Linux; U; Android 1.1; en-gb; dream) AppleWebKit/525.10+ (KHTML, like Gecko) Version/3.0.4 Mobile Safari/523.12.2 – G1 Phone'),
+                '530' => array('Nexus' => 'Mozilla/5.0 (Linux; U; Android 2.1; en-us; Nexus One Build/ERD62) AppleWebKit/530.17 (KHTML, like Gecko) Version/4.0 Mobile Safari/530.17 –Nexus'),
+            ),
+            'Chrome' => array(
+                '8' => array('Mac OS X' => 'Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10_6_5; en-US) AppleWebKit/534.10 (KHTML, like Gecko) Chrome/8.0.552.215 Safari/534.10'),
             ),
             'Opera' => array(
                 '8.51' => array('Windows XP' => 'Opera/8.51 (Windows NT 5.1; U; en)'),
@@ -188,25 +201,80 @@ class moodlelib_test extends UnitTestCase {
     {
         global $CFG;
 
-        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Safari']['2.0']['Mac OS X'];
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Safari']['412']['Mac OS X'];
+        $this->assertTrue(check_browser_version('Safari'));
+        $this->assertTrue(check_browser_version('WebKit'));
         $this->assertTrue(check_browser_version('Safari', '312'));
         $this->assertFalse(check_browser_version('Safari', '500'));
+        $this->assertFalse(check_browser_version('Chrome'));
+        $this->assertFalse(check_browser_version('Safari iOS'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Safari iOS']['528']['iPhone'];
+        $this->assertTrue(check_browser_version('Safari iOS'));
+        $this->assertTrue(check_browser_version('WebKit'));
+        $this->assertTrue(check_browser_version('Safari iOS', '527'));
+        $this->assertFalse(check_browser_version('Safari iOS', 590));
+        $this->assertFalse(check_browser_version('Safari', '312'));
+        $this->assertFalse(check_browser_version('Safari', '500'));
+        $this->assertFalse(check_browser_version('Chrome'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['WebKit Android']['530']['Nexus'];
+        $this->assertTrue(check_browser_version('WebKit'));
+        $this->assertTrue(check_browser_version('WebKit Android', '527'));
+        $this->assertFalse(check_browser_version('WebKit Android', 590));
+        $this->assertFalse(check_browser_version('Safari'));
+        $this->assertFalse(check_browser_version('Chrome'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Chrome']['8']['Mac OS X'];
+        $this->assertTrue(check_browser_version('Chrome'));
+        $this->assertTrue(check_browser_version('WebKit'));
+        $this->assertTrue(check_browser_version('Chrome', 8));
+        $this->assertFalse(check_browser_version('Chrome', 10));
+        $this->assertFalse(check_browser_version('Safari', '1'));
 
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Opera']['9.0']['Windows XP'];
+        $this->assertTrue(check_browser_version('Opera'));
         $this->assertTrue(check_browser_version('Opera', '8.0'));
         $this->assertFalse(check_browser_version('Opera', '10.0'));
 
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['6.0']['Windows XP SP2'];
+        $this->assertTrue(check_browser_version('MSIE'));
         $this->assertTrue(check_browser_version('MSIE', '5.0'));
         $this->assertFalse(check_browser_version('MSIE', '7.0'));
 
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['5.0']['Windows 98'];
+        $this->assertFalse(check_browser_version('MSIE'));
+        $this->assertTrue(check_browser_version('MSIE', 0));
+        $this->assertTrue(check_browser_version('MSIE', '5.0'));
+        $this->assertFalse(check_browser_version('MSIE', '7.0'));
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['MSIE']['9.0']['Windows 7'];
+        $this->assertTrue(check_browser_version('MSIE'));
+        $this->assertTrue(check_browser_version('MSIE', 0));
+        $this->assertTrue(check_browser_version('MSIE', '5.0'));
+        $this->assertTrue(check_browser_version('MSIE', '9.0'));
+        $this->assertFalse(check_browser_version('MSIE', '10'));
+
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Firefox']['2.0']['Windows XP'];
+        $this->assertTrue(check_browser_version('Firefox'));
         $this->assertTrue(check_browser_version('Firefox', '1.5'));
         $this->assertFalse(check_browser_version('Firefox', '3.0'));
     }
 
     function test_get_browser_version_classes() {
-        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Safari']['2.0']['Mac OS X'];
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Safari']['412']['Mac OS X'];
+        $this->assertEqual(array('safari'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Chrome']['8']['Mac OS X'];
+        $this->assertEqual(array('safari'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Safari iOS']['528']['iPhone'];
+        $this->assertEqual(array('safari', 'ios'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['WebKit Android']['530']['Nexus'];
+        $this->assertEqual(array('safari', 'android'), get_browser_version_classes());
+
+        $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Chrome']['8']['Mac OS X'];
         $this->assertEqual(array('safari'), get_browser_version_classes());
 
         $_SERVER['HTTP_USER_AGENT'] = $this->user_agents['Opera']['9.0']['Windows XP'];
@@ -448,6 +516,11 @@ class moodlelib_test extends UnitTestCase {
         $userstimezone = $USER->timezone;
         $USER->timezone = 2;//set the timezone to a known state
 
+        // The string version of date comes from server locale setting and does
+        // not respect user language, so it is necessary to reset that.
+        $oldlocale = setlocale(LC_TIME, '0');
+        setlocale(LC_TIME, 'en_AU.UTF-8');
+
         $ts = 1261540267; //the time this function was created
 
         $arr = usergetdate($ts,1);//specify the timezone as an argument
@@ -462,8 +535,8 @@ class moodlelib_test extends UnitTestCase {
         $this->assertEqual($mon,12);
         $this->assertEqual($year,2009);
         $this->assertEqual($yday,357);
-        $this->assertEqual($weekday,'Wednesday');
-        $this->assertEqual($month,'December');
+        $this->assertEqual($weekday, 'Wednesday');
+        $this->assertEqual($month, 'December');
 
         $arr = usergetdate($ts);//gets the timezone from the $USER object
         $arr = array_values($arr);
@@ -477,10 +550,207 @@ class moodlelib_test extends UnitTestCase {
         $this->assertEqual($mon,12);
         $this->assertEqual($year,2009);
         $this->assertEqual($yday,357);
-        $this->assertEqual($weekday,'Wednesday');
-        $this->assertEqual($month,'December');
+        $this->assertEqual($weekday, 'Wednesday');
+        $this->assertEqual($month, 'December');
 
         //set the timezone back to what it was
         $USER->timezone = $userstimezone;
+        setlocale(LC_TIME, $oldlocale);
+    }
+
+    public function test_normalize_component() {
+
+        // moodle core
+        $this->assertEqual(normalize_component('moodle'), array('core', null));
+        $this->assertEqual(normalize_component('core'), array('core', null));
+
+        // moodle core subsystems
+        $this->assertEqual(normalize_component('admin'), array('core', 'admin'));
+        $this->assertEqual(normalize_component('core_admin'), array('core', 'admin'));
+
+        // activity modules and their subplugins
+        $this->assertEqual(normalize_component('workshop'), array('mod', 'workshop'));
+        $this->assertEqual(normalize_component('mod_workshop'), array('mod', 'workshop'));
+        $this->assertEqual(normalize_component('workshopform_accumulative'), array('workshopform', 'accumulative'));
+        $this->assertEqual(normalize_component('quiz'), array('mod', 'quiz'));
+        $this->assertEqual(normalize_component('quiz_grading'), array('quiz', 'grading'));
+        $this->assertEqual(normalize_component('data'), array('mod', 'data'));
+        $this->assertEqual(normalize_component('datafield_checkbox'), array('datafield', 'checkbox'));
+
+        // other plugin types
+        $this->assertEqual(normalize_component('auth_mnet'), array('auth', 'mnet'));
+        $this->assertEqual(normalize_component('enrol_self'), array('enrol', 'self'));
+        $this->assertEqual(normalize_component('block_html'), array('block', 'html'));
+        $this->assertEqual(normalize_component('block_mnet_hosts'), array('block', 'mnet_hosts'));
+        $this->assertEqual(normalize_component('local_amos'), array('local', 'amos'));
+
+        // unknown components are supposed to be activity modules
+        $this->assertEqual(normalize_component('whothefuckwouldcomewithsuchastupidnameofcomponent'),
+                array('mod', 'whothefuckwouldcomewithsuchastupidnameofcomponent'));
+        $this->assertEqual(normalize_component('whothefuck_wouldcomewithsuchastupidnameofcomponent'),
+                array('mod', 'whothefuck_wouldcomewithsuchastupidnameofcomponent'));
+        $this->assertEqual(normalize_component('whothefuck_would_come_withsuchastupidnameofcomponent'),
+                array('mod', 'whothefuck_would_come_withsuchastupidnameofcomponent'));
+    }
+
+    protected function get_fake_preference_test_userid() {
+        global $DB;
+
+        // we need some nonexistent user id
+        $id = 2147483647 - 666;
+        if ($DB->get_records('user', array('id'=>$id))) {
+            //weird!
+            return false;
+        }
+        return $id;
+    }
+
+    public function test_mark_user_preferences_changed() {
+        if (!$otheruserid = $this->get_fake_preference_test_userid()) {
+            $this->fail('Can not find unused user id for the preferences test');
+            return;
+        }
+
+        set_cache_flag('userpreferenceschanged', $otheruserid, NULL);
+        mark_user_preferences_changed($otheruserid);
+
+        $this->assertEqual(get_cache_flag('userpreferenceschanged', $otheruserid, time()-10), 1);
+        set_cache_flag('userpreferenceschanged', $otheruserid, NULL);
+    }
+
+    public function test_check_user_preferences_loaded() {
+        global $DB;
+
+        if (!$otheruserid = $this->get_fake_preference_test_userid()) {
+            $this->fail('Can not find unused user id for the preferences test');
+            return;
+        }
+
+        $DB->delete_records('user_preferences', array('userid'=>$otheruserid));
+        set_cache_flag('userpreferenceschanged', $otheruserid, NULL);
+
+        $user = new stdClass();
+        $user->id = $otheruserid;
+
+        // load
+        check_user_preferences_loaded($user);
+        $this->assertTrue(isset($user->preference));
+        $this->assertTrue(is_array($user->preference));
+        $this->assertTrue(isset($user->preference['_lastloaded']));
+        $this->assertEqual(count($user->preference), 1);
+
+        // add preference via direct call
+        $DB->insert_record('user_preferences', array('name'=>'xxx', 'value'=>'yyy', 'userid'=>$user->id));
+
+        // no cache reload yet
+        check_user_preferences_loaded($user);
+        $this->assertEqual(count($user->preference), 1);
+
+        // forced reloading of cache
+        unset($user->preference);
+        check_user_preferences_loaded($user);
+        $this->assertEqual(count($user->preference), 2);
+        $this->assertEqual($user->preference['xxx'], 'yyy');
+
+        // add preference via direct call
+        $DB->insert_record('user_preferences', array('name'=>'aaa', 'value'=>'bbb', 'userid'=>$user->id));
+
+        // test timeouts and modifications from different session
+        set_cache_flag('userpreferenceschanged', $user->id, 1, time() + 1000);
+        $user->preference['_lastloaded'] = $user->preference['_lastloaded'] - 20;
+        check_user_preferences_loaded($user);
+        $this->assertEqual(count($user->preference), 2);
+        check_user_preferences_loaded($user, 10);
+        $this->assertEqual(count($user->preference), 3);
+        $this->assertEqual($user->preference['aaa'], 'bbb');
+        set_cache_flag('userpreferenceschanged', $user->id, null);
+    }
+
+    public function test_set_user_preference() {
+        global $DB, $USER;
+
+        if (!$otheruserid = $this->get_fake_preference_test_userid()) {
+            $this->fail('Can not find unused user id for the preferences test');
+            return;
+        }
+
+        $DB->delete_records('user_preferences', array('userid'=>$otheruserid));
+        set_cache_flag('userpreferenceschanged', $otheruserid, null);
+
+        $user = new stdClass();
+        $user->id = $otheruserid;
+
+        set_user_preference('aaa', 'bbb', $otheruserid);
+        $this->assertEqual('bbb', $DB->get_field('user_preferences', 'value', array('userid'=>$otheruserid, 'name'=>'aaa')));
+        $this->assertEqual('bbb', get_user_preferences('aaa', null, $otheruserid));
+
+        set_user_preference('xxx', 'yyy', $user);
+        $this->assertEqual('yyy', $DB->get_field('user_preferences', 'value', array('userid'=>$otheruserid, 'name'=>'xxx')));
+        $this->assertEqual('yyy', get_user_preferences('xxx', null, $otheruserid));
+        $this->assertTrue(is_array($user->preference));
+        $this->assertEqual($user->preference['aaa'], 'bbb');
+        $this->assertEqual($user->preference['xxx'], 'yyy');
+
+        set_user_preference('xxx', NULL, $user);
+        $this->assertIdentical(false, $DB->get_field('user_preferences', 'value', array('userid'=>$otheruserid, 'name'=>'xxx')));
+        $this->assertIdentical(null, get_user_preferences('xxx', null, $otheruserid));
+
+        set_user_preference('ooo', true, $user);
+        $prefs = get_user_preferences(null, null, $otheruserid);
+        $this->assertIdentical($prefs['aaa'], $user->preference['aaa']);
+        $this->assertIdentical($prefs['ooo'], $user->preference['ooo']);
+        $this->assertIdentical($prefs['ooo'], '1');
+
+        set_user_preference('null', 0, $user);
+        $this->assertIdentical('0', get_user_preferences('null', null, $otheruserid));
+
+        $this->assertIdentical('lala', get_user_preferences('undefined', 'lala', $otheruserid));
+
+        $DB->delete_records('user_preferences', array('userid'=>$otheruserid));
+        set_cache_flag('userpreferenceschanged', $otheruserid, null);
+
+        // test $USER default
+        set_user_preference('_test_user_preferences_pref', 'ok');
+        $this->assertIdentical('ok', $USER->preference['_test_user_preferences_pref']);
+        unset_user_preference('_test_user_preferences_pref');
+        $this->assertTrue(!isset($USER->preference['_test_user_preferences_pref']));
+
+        //test invalid params
+        try {
+            set_user_preference('_test_user_preferences_pref', array());
+            $this->assertFail('Exception expected - array not valid preference value');
+        } catch (Exception $ex) {
+            $this->assertTrue(true);
+        }
+        try {
+            set_user_preference('_test_user_preferences_pref', new stdClass);
+            $this->assertFail('Exception expected - class not valid preference value');
+        } catch (Exception $ex) {
+            $this->assertTrue(true);
+        }
+        try {
+            set_user_preference('_test_user_preferences_pref', 1, array('xx'=>1));
+            $this->assertFail('Exception expected - user instance expected');
+        } catch (Exception $ex) {
+            $this->assertTrue(true);
+        }
+        try {
+            set_user_preference('_test_user_preferences_pref', 1, 'abc');
+            $this->assertFail('Exception expected - user instance expected');
+        } catch (Exception $ex) {
+            $this->assertTrue(true);
+        }
+        try {
+            set_user_preference('', 1);
+            $this->assertFail('Exception expected - invalid name accepted');
+        } catch (Exception $ex) {
+            $this->assertTrue(true);
+        }
+        try {
+            set_user_preference('1', 1);
+            $this->assertFail('Exception expected - invalid name accepted');
+        } catch (Exception $ex) {
+            $this->assertTrue(true);
+        }
     }
 }

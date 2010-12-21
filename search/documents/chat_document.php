@@ -100,7 +100,7 @@ function chat_get_session_tracks($chat_id, $fromtime = 0, $totime = 0) {
     $fromtimeclause = ($fromtime) ? "AND timestamp >= {$fromtime}" : '';
     $totimeclause = ($totime) ? "AND timestamp <= {$totime}" : '';
     $tracks = array();
-    $messages = $DB->get_records_select('chat_messages', "chatid = ':chatid' :from :to", array('chatid' => $chat_id, 'from' => $fromtimeclause, 'to' => $totimeclause), 'timestamp DESC');
+    $messages = $DB->get_records_select('chat_messages', "chatid = :chatid :from :to", array('chatid' => $chat_id, 'from' => $fromtimeclause, 'to' => $totimeclause), 'timestamp DESC');
     if ($messages){
         // splits discussions against groups
         $groupedMessages = array();
@@ -246,7 +246,7 @@ function chat_delete($info, $itemtype) {
 * // TODO chat indexable records are virtual. Should proceed in a special way
 */
 function chat_db_names() {
-    //[primary id], [table name], [time created field name], [time modified field name]
+    //[primary id], [table name], [time created field name], [time modified field name], [docsubtype], [additional where conditions for sql]
     return null;
 }
 

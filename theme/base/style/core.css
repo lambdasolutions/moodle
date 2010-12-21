@@ -22,7 +22,9 @@ abbr {cursor: help;}
 a.dimmed,
 a.dimmed_text,
 .dimmed_text,
-.dimmed_text a {color:#AAAAAA;}
+.dimmed_text a,
+.dimmed_category,
+.dimmed_category a {color:#AAAAAA;}
 
 .unlist,
 .unlist li,
@@ -96,6 +98,12 @@ form.popupform,
 form.popupform div {display: inline;}
 .arrow_button input {overflow:hidden;}
 
+/** The 1-pixel padding is there to avoid phantom scroll bars on OS X (FF, Safari and Chrome)**/
+.no-overflow {overflow:auto;padding-bottom:1px;}
+.pagelayout-report .no-overflow {overflow:visible;}
+.no-overflow > .generaltable {margin-bottom:0;}
+.ie6 .no-overflow {width:100%;}
+
 /** IE6 float + background bug solution **/
 .ie6 li.section {line-height:1.2em;width:100%;}
 
@@ -103,7 +111,8 @@ form.popupform div {display: inline;}
  * Accessibility features
  */
 /*Accessibility: text 'seen' by screen readers but not visual users. */
-.accesshide {position:absolute;top:-100000px;left:10px;font-weight:normal;font-size:1em;}
+.accesshide {position:absolute;left:-10000px;font-weight:normal;font-size:1em;}
+.dir-rtl .accesshide {right:-10000px;left:auto;}
 span.hide,
 div.hide {display:none;}
 .invisiblefieldset {display:inline;border-width:0;padding:0;margin:0;}
@@ -118,6 +127,8 @@ a.skip:active {position: static;display: block;}
 /* Accessibility: only certain fonts support Unicode chars like &#x25BA; in IE6 */
 .arrow,
 .arrow_button input {font-family: Arial,Helvetica,Courier,sans-serif;}
+
+#yui-module-debug {display:none;}
 
 /**
  * Header
@@ -314,7 +325,8 @@ table.mod_index {width:100%;}
 .comment-area .fd {text-align:right;}
 .comment-meta span {color:gray;}
 .comment-list {font-size: 11px;overflow:auto;list-style:none;padding:0;margin:0;}
-.comment-list li {margin: 2px;margin-bottom:5px;clear:both;}
+.comment-list li {margin: 2px;list-style:none;margin-bottom:5px;clear:both;}
+.comment-list li.first {display:none}
 .comment-paging{text-align:center;}
 .comment-paging .pageno{padding:2px;}
 .comment-paging .curpage{border:1px solid #CCC;}
@@ -328,6 +340,7 @@ table.mod_index {width:100%;}
 .comment-report-selectall{display:none}
 .comment-link {display:none}
 .jsenabled .comment-link {display:block}
+.jsenabled .showcommentsnonjs{display:none}
 .jsenabled .comment-report-selectall{display:inline}
 
 /**
@@ -530,7 +543,7 @@ body.tag .managelink {padding: 5px;}
 /**
  * Help Content (pop-up)
  */
-#helppopupbox {background-color: #eee; border: 1px solid #848484;}
+#helppopupbox {background-color: #eee; border: 1px solid #848484;z-index: 10000 !important;}
 #helppopupbox .yui3-widget-hd {float:right;margin:3px 3px 0 0;}
 #helppopupbox .yui3-widget-bd {margin:0 1em 1em 1em;border-top:1px solid #eee;}
 #helppopupbox .helpheading {font-size: 1em;}
@@ -540,6 +553,7 @@ body.tag .managelink {padding: 5px;}
  * Custom menu
  */
 #custommenu {clear:both;}
+#custommenu .yui3-menu .yui3-menu {z-index:500;}
 #custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu-content,
 #custommenu .yui3-menu-horizontal.javascript-disabled .yui3-menu-content .ul {border:1px solid #000;}
 #custommenu .yui3-menu-horizontal.javascript-disabled ul {margin:0;padding:0;}
@@ -580,10 +594,6 @@ body.tag .managelink {padding: 5px;}
 .smartselect.compactmenu .smartselect_menu {z-index: 1000;overflow:hidden;}
 .smartselect.compactmenu .smartselect_submenu .smartselect_submenu {z-index: 1020;}
 .smartselect.compactmenu .smartselect_submenuitem:hover > .smartselect_menuitem_label {font-weight:bold;}
-
-.image_gallery.oneimageonly a.imagelink {display:none;}
-.image_gallery.oneimageonly a#imagelink1 {display:inline;}
-.mform .image_gallery.oneimageonly a.imagelink {float:left;}
 
 /**
  * Registration
@@ -648,10 +658,12 @@ body.tag .managelink {padding: 5px;}
 
 .restore-course-search .rcs-results {width:70%;min-width:400px;border:1px solid #ddd;margin:5px 0;}
 .restore-course-search .rcs-results table {width:100%;margin:0;border-width:0;}
+.restore-course-search .rcs-results table .no-overflow {max-width:600px;}
 .restore-course-search .rcs-results .paging {text-align:left;margin:0;background-color:#eee;padding:3px;}
 
 .restore-course-category .rcs-results {width:70%;min-width:400px;border:1px solid #ddd;margin:5px 0;}
 .restore-course-category .rcs-results table {width:100%;margin:0;border-width:0;}
+.restore-course-category .rcs-results table .no-overflow {max-width:600px;}
 .restore-course-category .rcs-results .paging {text-align:left;margin:0;background-color:#eee;padding:3px;}
 
 .corelightbox {background-color:#CCC;position:absolute;top:0;left:0;width:100%;height:100%;text-align:center;}
@@ -675,3 +687,20 @@ body.tag .managelink {padding: 5px;}
  */
 .yui3-skin-sam .yui3-menu-horizontal .yui3-menu-label,
 .yui3-skin-sam .yui3-menu-horizontal .yui3-menu-content {background-image:none;}
+
+.mod-indent-1 {margin-left:20px;}
+.mod-indent-2 {margin-left:40px;}
+.mod-indent-3 {margin-left:60px;}
+.mod-indent-4 {margin-left:80px;}
+.mod-indent-5 {margin-left:100px;}
+.mod-indent-6 {margin-left:120px;}
+.mod-indent-7 {margin-left:140px;}
+.mod-indent-8 {margin-left:160px;}
+.mod-indent-9 {margin-left:180px;}
+.mod-indent-10 {margin-left:200px;}
+.mod-indent-11 {margin-left:220px;}
+.mod-indent-12 {margin-left:240px;}
+.mod-indent-13 {margin-left:260px;}
+.mod-indent-14 {margin-left:280px;}
+.mod-indent-15,
+.mod-indent-huge {margin-left:300px;}

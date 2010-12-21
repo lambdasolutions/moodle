@@ -722,7 +722,7 @@ class assignment_base {
 
                         //add to log only if updating
                         add_to_log($this->course->id, 'assignment', 'update grades',
-                                   'submissions.php?id='.$this->assignment->id.'&user='.$submission->userid,
+                                   'submissions.php?id='.$this->cm->id.'&user='.$submission->userid,
                                    $submission->userid, $this->cm->id);
                     }
 
@@ -948,7 +948,6 @@ class assignment_base {
         /// Get all ppl that can submit assignments
 
         $currentgroup = groups_get_activity_group($cm);
-        $gradebookroles = explode(",", $CFG->gradebookroles);
         $users = get_enrolled_users($context, 'mod/assignment:view', $currentgroup, 'u.id');
         if ($users) {
             $users = array_keys($users);
@@ -1097,7 +1096,6 @@ class assignment_base {
                         self::FILTER_REQUIRE_GRADING => get_string('requiregrading', 'assignment'));
 
         $updatepref = optional_param('updatepref', 0, PARAM_INT);
-        plagiarism_update_status($this->course, $this->cm);
 
         if (isset($_POST['updatepref'])){
             $perpage = optional_param('perpage', 10, PARAM_INT);
@@ -1139,6 +1137,9 @@ class assignment_base {
         echo $OUTPUT->header();
 
         echo '<div class="usersubmissions">';
+
+        //hook to allow plagiarism plugins to update status/print links.
+        plagiarism_update_status($this->course, $this->cm);
 
         /// Print quickgrade form around the table
         if ($quickgrade) {
@@ -1572,7 +1573,7 @@ class assignment_base {
             $this->update_grade($submission);
 
             add_to_log($this->course->id, 'assignment', 'update grades',
-                       'submissions.php?id='.$this->assignment->id.'&user='.$feedback->userid, $feedback->userid, $this->cm->id);
+                       'submissions.php?id='.$this->cm->id.'&user='.$feedback->userid, $feedback->userid, $this->cm->id);
              if (!is_null($formdata)) {
                     if ($this->type == 'upload' || $this->type == 'uploadsingle') {
                         $mformdata = $formdata->mform->get_data();
@@ -1728,6 +1729,7 @@ class assignment_base {
                 $info->username = fullname($user, true);
                 $info->assignment = format_string($this->assignment->name,true);
                 $info->url = $CFG->wwwroot.'/mod/assignment/submissions.php?id='.$this->cm->id;
+                $info->timeupdated = strftime('%c',$submission->timemodified);
 
                 $postsubject = $strsubmitted.': '.$info->username.' -> '.$this->assignment->name;
                 $posttext = $this->email_teachers_text($info);
@@ -1742,6 +1744,13 @@ class assignment_base {
                 $eventdata->fullmessageformat = FORMAT_PLAIN;
                 $eventdata->fullmessagehtml  = $posthtml;
                 $eventdata->smallmessage     = '';
+
+                $eventdata->name            = 'assignment_updates';
+                $eventdata->component       = 'mod_assignment';
+                $eventdata->notification    = 1;
+                $eventdata->contexturl      = $info->url;
+                $eventdata->contexturlname  = $info->assignment;
+                
                 message_send($eventdata);
             }
         }

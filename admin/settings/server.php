@@ -72,6 +72,16 @@ $temp->add(new admin_setting_configtext('supportpage', get_string('supportpage',
 $ADMIN->add('server', $temp);
 
 
+// Jabber settingpage
+$temp = new admin_settingpage('jabber', get_string('jabber', 'admin'));
+$temp->add(new admin_setting_configtext('jabberhost', get_string('jabberhost', 'admin'), get_string('configjabberhost', 'admin'), '', PARAM_RAW));
+$temp->add(new admin_setting_configtext('jabberserver', get_string('jabberserver', 'admin'), get_string('configjabberserver', 'admin'), '', PARAM_RAW));
+$temp->add(new admin_setting_configtext('jabberusername', get_string('jabberusername', 'admin'), get_string('configjabberusername', 'admin'), '', PARAM_RAW));
+$temp->add(new admin_setting_configpasswordunmask('jabberpassword', get_string('jabberpassword', 'admin'), get_string('configjabberpassword', 'admin'), ''));
+$temp->add(new admin_setting_configtext('jabberport', get_string('jabberport', 'admin'), get_string('configjabberport', 'admin'), 5222, PARAM_INT));
+$ADMIN->add('server', $temp);
+
+
 
 // "sessionhandling" settingpage
 $temp = new admin_settingpage('sessionhandling', get_string('sessionhandling', 'admin'));
@@ -175,6 +185,8 @@ $temp->add(new admin_setting_configselect('deleteincompleteusers', get_string('d
                                                                                                                                                                     48 => get_string('numdays', '', 2),
                                                                                                                                                                     24 => get_string('numdays', '', 1))));
 
+$temp->add(new admin_setting_configcheckbox('logguests', get_string('logguests', 'admin'),
+                                            get_string('logguests_help', 'admin'), 1));
 $temp->add(new admin_setting_configselect('loglifetime', get_string('loglifetime', 'admin'), get_string('configloglifetime', 'admin'), 0, array(0 => get_string('neverdeletelogs'),
                                                                                                                                                 1000 => get_string('numdays', '', 1000),
                                                                                                                                                 365 => get_string('numdays', '', 365),
@@ -190,7 +202,7 @@ $temp->add(new admin_setting_configselect('loglifetime', get_string('loglifetime
 
 
 $temp->add(new admin_setting_configcheckbox('disablegradehistory', get_string('disablegradehistory', 'grades'),
-                                            get_string('disablegradehistory_help', 'grades'), 0, PARAM_INT));
+                                            get_string('disablegradehistory_help', 'grades'), 0));
 
 $temp->add(new admin_setting_configselect('gradehistorylifetime', get_string('gradehistorylifetime', 'grades'),
                                           get_string('gradehistorylifetime_help', 'grades'), 0, array(0 => get_string('neverdeletehistory', 'grades'),
@@ -253,17 +265,5 @@ $ADMIN->add('server', $temp);
 
 
 $ADMIN->add('server', new admin_externalpage('adminregistration', get_string('registration','admin'), "$CFG->wwwroot/$CFG->admin/registration/index.php"));
-
-$dbfamily = $DB->get_dbfamily();
-
-if ($dbfamily === 'mysql') {
-    if (file_exists("$CFG->dirroot/$CFG->admin/mysql/frame.php")) {
-        $ADMIN->add('server', new admin_externalpage('database', get_string('managedatabase'), "$CFG->wwwroot/$CFG->admin/mysql/frame.php"));
-    }
-} else if ($dbfamily === 'postgres') {
-    if (file_exists("$CFG->dirroot/$CFG->admin/pgsql/frame.php")) {
-        $ADMIN->add('server', new admin_externalpage('database', get_string('managedatabase'), "$CFG->wwwroot/$CFG->admin/pgsql/frame.php"));
-    }
-}
 
 } // end of speedup

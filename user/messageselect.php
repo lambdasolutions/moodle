@@ -58,6 +58,7 @@ if ($deluser !== 0) {
     $url->param('deluser', $deluser);
 }
 $PAGE->set_url($url);
+$PAGE->set_context(get_context_instance(CONTEXT_SYSTEM));
 
 if (!$course = $DB->get_record('course', array('id'=>$id))) {
     print_error('invalidcourseid');
@@ -93,7 +94,7 @@ $count = 0;
 foreach ($_POST as $k => $v) {
     if (preg_match('/^(user|teacher)(\d+)$/',$k,$m)) {
         if (!array_key_exists($m[2],$SESSION->emailto[$id])) {
-            if ($user = $DB->get_record_select('user', "id = ?", array($m[2]), 'id,firstname,lastname,idnumber,email,emailstop,mailformat,lastaccess')) {
+            if ($user = $DB->get_record_select('user', "id = ?", array($m[2]), 'id,firstname,lastname,idnumber,email,mailformat,lastaccess, lang')) {
                 $SESSION->emailto[$id][$m[2]] = $user;
                 $count++;
             }

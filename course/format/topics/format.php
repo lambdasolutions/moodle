@@ -25,7 +25,10 @@
  * @package
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->libdir.'/filelib.php');
+require_once($CFG->libdir.'/completionlib.php');
 
 $topic = optional_param('topic', -1, PARAM_INT);
 
@@ -70,7 +73,6 @@ $completioninfo->print_help_icon();
 
 echo $OUTPUT->heading(get_string('topicoutline'), 2, 'headingblock header outline');
 
-echo "<span id='maincontent'></span>";
 // Note, an ordered list would confuse - "1" could be the clipboard or summary.
 echo "<ul class='topics'>\n";
 
@@ -87,6 +89,7 @@ if (ismoving($course->id)) {
 
 $section = 0;
 $thissection = $sections[$section];
+unset($sections[0]);
 
 if ($thissection->summary or $thissection->sequence or $PAGE->user_is_editing()) {
 
@@ -105,6 +108,7 @@ if ($thissection->summary or $thissection->sequence or $PAGE->user_is_editing())
     $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
     $summaryformatoptions = new stdClass();
     $summaryformatoptions->noclean = true;
+    $summaryformatoptions->overflowdiv = true;
     echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
 
     if ($PAGE->user_is_editing() && has_capability('moodle/course:update', $coursecontext)) {
@@ -216,7 +220,7 @@ while ($section <= $course->numsections) {
 
         echo '<div class="content">';
         if (!has_capability('moodle/course:viewhiddensections', $context) and !$thissection->visible) {   // Hidden for students
-            echo get_string('notavailable').'</div>';
+            echo get_string('notavailable');
         } else {
             if (!is_null($thissection->name)) {
                 echo $OUTPUT->heading($thissection->name, 3, 'sectionname');
@@ -227,6 +231,7 @@ while ($section <= $course->numsections) {
                 $summarytext = file_rewrite_pluginfile_urls($thissection->summary, 'pluginfile.php', $coursecontext->id, 'course', 'section', $thissection->id);
                 $summaryformatoptions = new stdClass();
                 $summaryformatoptions->noclean = true;
+                $summaryformatoptions->overflowdiv = true;
                 echo format_text($summarytext, $thissection->summaryformat, $summaryformatoptions);
             } else {
                echo '&nbsp;';
@@ -249,8 +254,34 @@ while ($section <= $course->numsections) {
         echo "</li>\n";
     }
 
+    unset($sections[$section]);
     $section++;
 }
+
+if (!$displaysection and $PAGE->user_is_editing() and has_capability('moodle/course:update', get_context_instance(CONTEXT_COURSE, $course->id))) {
+    // print stealth sections if present
+    $modinfo = get_fast_modinfo($course);
+    foreach ($sections as $section=>$thissection) {
+        if (empty($modinfo->sections[$section])) {
+            continue;
+        }
+
+        echo '<li id="section-'.$section.'" class="section main clearfix orphaned hidden">'; //'<div class="left side">&nbsp;</div>';
+
+        echo '<div class="left side">';
+        echo '</div>';
+        // Note, 'right side' is BEFORE content.
+        echo '<div class="right side">';
+        echo '</div>';
+        echo '<div class="content">';
+        echo $OUTPUT->heading(get_string('orphanedactivities'), 3, 'sectionname');
+        print_section($course, $thissection, $mods, $modnamesused);
+        echo '</div>';
+        echo "</li>\n";
+    }
+}
+
+
 echo "</ul>\n";
 
 if (!empty($sectionmenu)) {

@@ -645,15 +645,14 @@ h2.headingblock {
     text-decoration: none;
 }
 
-.forumpost .content {
-    border-width: 1px ;
-    border-color: #a0c278;
-    border-style: solid;
-    padding: 5px 10px;
+.forumpost .no-overflow,
+.forumpost .options {
+    border: 1px solid #a0c278;
 }
 
-.forumpost .commands {
-    padding: 10px 0;
+.forumpost .options,
+.forumpost .content .posting {
+    padding: 5px 10px;
 }
 
 .forumaddnew,
@@ -1068,6 +1067,15 @@ h2.headingblock {
 .yui3-skin-sam #custommenu .yui3-menu .yui3-menuitem.yui3-menuitem-active .yui3-menuitem-content {
     background-color:#4E6632;
 }
+
+.yui3-skin-sam .yui3-menu-label-active,
+.yui3-skin-sam .yui3-menu-label-menuvisible,
+.yui3-skin-sam .yui3-menu .yui3-menu .yui3-menu-label-active,
+.yui3-skin-sam .yui3-menu .yui3-menu .yui3-menu-label-menuvisible {
+ 	background-color:#4E6632;
+    
+}
+
 
 #custommenu .yui3-menu-horizontal .yui3-menu-content li a {
     cursor:pointer;

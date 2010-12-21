@@ -24,7 +24,6 @@
 /** Include required files */
 require_once($CFG->libdir.'/filelib.php');
 require_once($CFG->libdir.'/eventslib.php');
-require_once($CFG->libdir . '/completionlib.php');
 require_once($CFG->dirroot.'/user/selector/lib.php');
 
 /// CONSTANTS ///////////////////////////////////////////////////////////
@@ -452,7 +451,7 @@ function forum_cron() {
                 if ($cm = get_coursemodule_from_instance('forum', $forumid, $courseid)) {
                     $coursemodules[$forumid] = $cm;
                 } else {
-                    mtrace('Could not course module for forum '.$forumid);
+                    mtrace('Could not find course module for forum '.$forumid);
                     unset($posts[$pid]);
                     continue;
                 }
@@ -464,13 +463,6 @@ function forum_cron() {
                 $modcontext = get_context_instance(CONTEXT_MODULE, $coursemodules[$forumid]->id);
                 if ($subusers = forum_subscribed_users($courses[$courseid], $forums[$forumid], 0, $modcontext)) {
                     foreach ($subusers as $postuser) {
-                        // do not try to mail users with stopped email
-                        if ($postuser->emailstop) {
-                            if (!empty($CFG->forum_logblocked)) {
-                                add_to_log(SITEID, 'forum', 'mail blocked', '', '', 0, $postuser->id);
-                            }
-                            continue;
-                        }
                         // this user is subscribed to this forum
                         $subscribedusers[$forumid][$postuser->id] = $postuser->id;
                         // this user is a user we have to process later
@@ -635,7 +627,17 @@ function forum_cron() {
                 $eventdata->fullmessage      = $posttext;
                 $eventdata->fullmessageformat = FORMAT_PLAIN;
                 $eventdata->fullmessagehtml  = $posthtml;
-                $eventdata->smallmessage     = '';
+                $eventdata->notification = 1;
+
+                $smallmessagestrings = new stdClass();
+                $smallmessagestrings->user = fullname($userfrom);
+                $smallmessagestrings->forumname = "{$course->shortname}: ".format_string($forum->name,true).": ".$discussion->name;
+                $smallmessagestrings->message = $post->message;
+                //make sure strings are in message recipients language
+                $eventdata->smallmessage = get_string_manager()->get_string('smallmessage', 'forum', $smallmessagestrings, $userto->lang);
+
+                $eventdata->contexturl = "{$CFG->wwwroot}/mod/forum/discuss.php?d={$discussion->id}#p{$post->id}";
+                $eventdata->contexturlname = $discussion->name;
 
                 $mailresult = message_send($eventdata);
                 if (!$mailresult){
@@ -644,9 +646,6 @@ function forum_cron() {
                     add_to_log($course->id, 'forum', 'mail error', "discuss.php?d=$discussion->id#p$post->id",
                                substr(format_string($post->subject,true),0,30), $cm->id, $userto->id);
                     $errorcount[$post->id]++;
-                } else if ($mailresult === 'emailstop') {
-                    // should not be reached anymore - see check above
-                    mtrace("Error: mod/forum/lib.php forum_cron(): received 'emailstop' while sending out mail for id $post->id to user $userto->id ($userto->email)");
                 } else {
                     $mailcount[$post->id]++;
 
@@ -724,12 +723,6 @@ function forum_cron() {
                     }
                 }
                 $postuser = $users[$digestpost->userid];
-                if ($postuser->emailstop) {
-                    if (!empty($CFG->forum_logblocked)) {
-                        add_to_log(SITEID, 'forum', 'mail blocked', '', '', 0, $postuser->id);
-                    }
-                    continue;
-                }
 
                 if (!isset($posts[$digestpost->postid])) {
                     if ($post = $DB->get_record('forum_posts', array('id' => $digestpost->postid))) {
@@ -931,8 +924,6 @@ function forum_cron() {
                     mtrace("ERROR!");
                     echo "Error: mod/forum/cron.php: Could not send out digest mail to user $userto->id ($userto->email)... not trying again.\n";
                     add_to_log($course->id, 'forum', 'mail digest error', '', '', $cm->id, $userto->id);
-                } else if ($mailresult === 'emailstop') {
-                    // should not happen anymore - see check above
                 } else {
                     mtrace("success.");
                     $usermailcount++;
@@ -1846,6 +1837,8 @@ function forum_get_readable_forums($userid, $courseid=0) {
             }
             $context = get_context_instance(CONTEXT_MODULE, $cm->id);
             $forum = $courseforums[$forumid];
+            $forum->context = $context;
+            $forum->cm = $cm;
 
             if (!has_capability('mod/forum:viewdiscussion', $context)) {
                 continue;
@@ -1936,8 +1929,8 @@ function forum_search_posts($searchterms, $courseid=0, $limitfrom=0, $limitnum=5
             $params = array('userid'=>$USER->id, 'timestart'=>$now, 'timeend'=>$now);
         }
 
-        $cm = get_coursemodule_from_instance('forum', $forumid);
-        $context = get_context_instance(CONTEXT_MODULE, $cm->id);
+        $cm = $forum->cm;
+        $context = $forum->context;
 
         if ($forum->type == 'qanda'
             && !has_capability('mod/forum:viewqandawithoutposting', $context)) {
@@ -2825,7 +2818,6 @@ function forum_subscribed_users($course, $forum, $groupid=0, $context = NULL) {
               u.maildisplay,
               u.mailformat,
               u.maildigest,
-              u.emailstop,
               u.imagealt,
               u.email,
               u.city,
@@ -3109,13 +3101,11 @@ function forum_make_mail_post($course, $cm, $forum, $discussion, $post, $userfro
  * @return void
  */
 function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=false, $reply=false, $link=false,
-                          $footer="", $highlight="", $post_read=null, $dummyifcantsee=true, $istracked=null) {
-
+                          $footer="", $highlight="", $postisread=null, $dummyifcantsee=true, $istracked=null, $return=false) {
     global $USER, $CFG, $OUTPUT;
 
-    static $stredit, $strdelete, $strreply, $strparent, $strprune;
-    static $strpruneheading, $displaymode;
-    static $strmarkread, $strmarkunread;
+    // String cache
+    static $str;
 
     $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
 
@@ -3125,7 +3115,7 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
 
     // caching
     if (!isset($cm->cache)) {
-        $cm->cache = new stdClass();
+        $cm->cache = new stdClass;
     }
 
     if (!isset($cm->cache->caps)) {
@@ -3145,103 +3135,72 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         $cm->uservisible = coursemodule_visible_for_user($cm);
     }
 
+    if ($istracked && is_null($postisread)) {
+        $postisread = forum_tp_is_post_read($USER->id, $post);
+    }
+
     if (!forum_user_can_see_post($forum, $discussion, $post, NULL, $cm)) {
+        $output = '';
         if (!$dummyifcantsee) {
+            if ($return) {
+                return $output;
+            }
+            echo $output;
             return;
         }
-        echo '<a id="p'.$post->id.'"></a>';
-        echo '<table cellspacing="0" class="forumpost">';
-        echo '<tr class="header"><td class="picture left">';
-        //        print_user_picture($post->userid, $courseid, $post->picture);
-        echo '</td>';
+        $output .= html_writer::tag('a', '', array('id'=>'p'.$post->id));
+        $output .= html_writer::start_tag('div', array('class'=>'forumpost clearfix '.$forumpostclass));
+        $output .= html_writer::start_tag('div', array('class'=>'row header'));
+        $output .= html_writer::tag('div', '', array('class'=>'left picture')); // Picture
         if ($post->parent) {
-            echo '<td class="topic">';
+            $output .= html_writer::start_tag('div', array('class'=>'topic'));
         } else {
-            echo '<td class="topic starter">';
+            $output .= html_writer::start_tag('div', array('class'=>'topic starter'));
         }
-        echo '<div class="subject">'.get_string('forumsubjecthidden','forum').'</div>';
-        echo '<div class="author">';
-        print_string('forumauthorhidden','forum');
-        echo '</div></td></tr>';
+        $output .= html_writer::tag('div', get_string('forumsubjecthidden','forum'), array('class'=>'subject')); // Subject
+        $output .= html_writer::tag('div', get_string('forumauthorhidden','forum'), array('class'=>'author')); // author
+        $output .= html_writer::end_tag('div'); // row
+        $output .= html_writer::start_tag('div', array('class'=>'row'));
+        $output .= html_writer::tag('div', '&nbsp;', array('class'=>'left side')); // Groups
+        $output .= html_writer::tag('div', get_string('forumbodyhidden','forum'), array('class'=>'content')); // Content
+        $output .= html_writer::end_tag('div'); // row
+        $output .= html_writer::end_tag('div'); // forumpost
 
-        echo '<tr><td class="left side">';
-        echo '&nbsp;';
-
-        // Actual content
-
-        echo '</td><td class="content">'."\n";
-        echo get_string('forumbodyhidden','forum');
-        echo '</td></tr></table>';
+        if ($return) {
+            return $output;
+        }
+        echo $output;
         return;
     }
 
-    if (empty($stredit)) {
-        $stredit         = get_string('edit', 'forum');
-        $strdelete       = get_string('delete', 'forum');
-        $strreply        = get_string('reply', 'forum');
-        $strparent       = get_string('parent', 'forum');
-        $strpruneheading = get_string('pruneheading', 'forum');
-        $strprune        = get_string('prune', 'forum');
-        $displaymode     = get_user_preferences('forum_displaymode', $CFG->forum_displaymode);
-        $strmarkread     = get_string('markread', 'forum');
-        $strmarkunread   = get_string('markunread', 'forum');
-
+    if (empty($str)) {
+        $str = new stdClass;
+        $str->edit         = get_string('edit', 'forum');
+        $str->delete       = get_string('delete', 'forum');
+        $str->reply        = get_string('reply', 'forum');
+        $str->parent       = get_string('parent', 'forum');
+        $str->pruneheading = get_string('pruneheading', 'forum');
+        $str->prune        = get_string('prune', 'forum');
+        $str->displaymode     = get_user_preferences('forum_displaymode', $CFG->forum_displaymode);
+        $str->markread     = get_string('markread', 'forum');
+        $str->markunread   = get_string('markunread', 'forum');
     }
 
-    $read_style = '';
-    // ignore trackign status if not tracked or tracked param missing
-    if ($istracked) {
-        if (is_null($post_read)) {
-            debugging('fetching post_read info');
-            $post_read = forum_tp_is_post_read($USER->id, $post);
-        }
+    $discussionlink = new moodle_url('/mod/forum/discuss.php', array('d'=>$post->discussion));
 
-        if ($post_read) {
-            $read_style = ' read';
-        } else {
-            $read_style = ' unread';
-            echo '<a name="unread"></a>';
-        }
-    }
-
-    echo '<a id="p'.$post->id.'"></a>';
-    echo '<table cellspacing="0" class="forumpost'.$read_style.'">';
-
-    // Picture
-    $postuser = new stdClass();
+    // Build an object that represents the posting user
+    $postuser = new stdClass;
     $postuser->id        = $post->userid;
     $postuser->firstname = $post->firstname;
     $postuser->lastname  = $post->lastname;
     $postuser->imagealt  = $post->imagealt;
     $postuser->picture   = $post->picture;
     $postuser->email     = $post->email;
+    // Some handy things for later on
+    $postuser->fullname    = fullname($postuser, $cm->cache->caps['moodle/site:viewfullnames']);
+    $postuser->profilelink = new moodle_url('/user/view.php', array('id'=>$post->userid, 'course'=>$course->id));
 
-    echo '<tr class="header"><td class="picture left">';
-    echo $OUTPUT->user_picture($postuser, array('courseid'=>$course->id));
-    echo '</td>';
-
-    if ($post->parent) {
-        echo '<td class="topic">';
-    } else {
-        echo '<td class="topic starter">';
-    }
-
-    if (!empty($post->subjectnoformat)) {
-        echo '<div class="subject">'.$post->subject.'</div>';
-    } else {
-        echo '<div class="subject">'.format_string($post->subject).'</div>';
-    }
-
-    echo '<div class="author">';
-    $fullname = fullname($postuser, $cm->cache->caps['moodle/site:viewfullnames']);
-    $by = new stdClass();
-    $by->name = '<a href="'.$CFG->wwwroot.'/user/view.php?id='.
-                $post->userid.'&amp;course='.$course->id.'">'.$fullname.'</a>';
-    $by->date = userdate($post->modified);
-    print_string('bynameondate', 'forum', $by);
-    echo '</div></td></tr>';
-
-    echo '<tr><td class="left side">';
+    // Prepare the groups the posting user belongs to
     if (isset($cm->cache->usersgroups)) {
         $groups = array();
         if (isset($cm->cache->usersgroups[$post->userid])) {
@@ -3253,116 +3212,67 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         $groups = groups_get_all_groups($course->id, $post->userid, $cm->groupingid);
     }
 
-    if ($groups) {
-        print_group_picture($groups, $course->id, false, false, true);
-    } else {
-        echo '&nbsp;';
-    }
-
-// Actual content
-
-    echo '</td><td class="content">'."\n";
-
+    // Prepare the attachements for the post, files then images
     list($attachments, $attachedimages) = forum_print_attachments($post, $cm, 'separateimages');
 
-    if ($attachments !== '') {
-        echo '<div class="attachments">';
-        echo $attachments;
-        echo '</div>';
-    }
-
-    $options = new stdClass();
-    $options->para    = false;
-    $options->trusted = $post->messagetrust;
-    if ($link and (strlen(strip_tags($post->message)) > $CFG->forum_longpost)) {
-        // Print shortened version
-        echo format_text(forum_shorten_post($post->message), $post->messageformat, $options, $course->id);
-        $numwords = count_words(strip_tags($post->message));
-        echo '<div class="posting"><a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.$post->discussion.'">';
-        echo get_string('readtherest', 'forum');
-        echo '</a> ('.get_string('numwords', '', $numwords).')...</div>';
-    } else {
-        // Print whole message
-        echo '<div class="posting">';
-        if ($highlight) {
-            echo highlight($highlight, format_text($post->message, $post->messageformat, $options, $course->id));
-        } else {
-            echo format_text($post->message, $post->messageformat, $options, $course->id);
-        }
-        echo '</div>';
-        echo $attachedimages;
-    }
+    // Determine if we need to shorten this post
+    $shortenpost = ($link && (strlen(strip_tags($post->message)) > $CFG->forum_longpost));
 
 
-// Commands
-
+    // Prepare an array of commands
     $commands = array();
 
-    if ($istracked) {
-        // SPECIAL CASE: The front page can display a news item post to non-logged in users.
-        // Don't display the mark read / unread controls in this case.
-        if ($CFG->forum_usermarksread and isloggedin()) {
-            if ($post_read) {
-                $mcmd = '&amp;mark=unread&amp;postid='.$post->id;
-                $mtxt = $strmarkunread;
-            } else {
-                $mcmd = '&amp;mark=read&amp;postid='.$post->id;
-                $mtxt = $strmarkread;
-            }
-            if ($displaymode == FORUM_MODE_THREADED) {
-                $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.
-                              $post->discussion.'&amp;parent='.$post->id.$mcmd.'">'.$mtxt.'</a>';
-            } else {
-                $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.
-                              $post->discussion.$mcmd.'#p'.$post->id.'">'.$mtxt.'</a>';
-            }
+    // SPECIAL CASE: The front page can display a news item post to non-logged in users.
+    // Don't display the mark read / unread controls in this case.
+    if ($istracked && $CFG->forum_usermarksread && isloggedin()) {
+        $url = new moodle_url($discussionlink, array('postid'=>$post->id, 'mark'=>'unread'));
+        $text = $str->markunread;
+        if (!$postisread) {
+            $url->param('mark', 'read');
+            $text = $str->markread;
         }
-    }
-
-    if ($post->parent) {  // Zoom in to the parent specifically
-        if ($displaymode == FORUM_MODE_THREADED) {
-            $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.
-                      $post->discussion.'&amp;parent='.$post->parent.'">'.$strparent.'</a>';
+        if ($str->displaymode == FORUM_MODE_THREADED) {
+            $url->param('parent', $post->parent);
         } else {
-            $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.
-                      $post->discussion.'#p'.$post->parent.'">'.$strparent.'</a>';
+            $url->set_anchor('p'.$post->id);
         }
+        $commands[] = array('url'=>$url, 'text'=>$text);
     }
 
-    $age = time() - $post->created;
+    // Zoom in to the parent specifically
+    if ($post->parent) {
+        $url = new moodle_url($discussionlink);
+        if ($str->displaymode == FORUM_MODE_THREADED) {
+            $url->param('parent', $post->parent);
+        } else {
+            $url->set_anchor('p'.$post->parent);
+        }
+        $commands[] = array('url'=>$url, 'text'=>$str->parent);
+    }
+
     // Hack for allow to edit news posts those are not displayed yet until they are displayed
-    if (!$post->parent and $forum->type == 'news' and $discussion->timestart > time()) {
+    $age = time() - $post->created;
+    if (!$post->parent && $forum->type == 'news' && $discussion->timestart > time()) {
         $age = 0;
     }
-    $editanypost = $cm->cache->caps['mod/forum:editanypost'];
-
-    if ($ownpost or $editanypost) {
-        if (($age < $CFG->maxeditingtime) or $editanypost) {
-            $commands[] =  '<a href="'.$CFG->wwwroot.'/mod/forum/post.php?edit='.$post->id.'">'.$stredit.'</a>';
-        }
+    if (($ownpost && $age < $CFG->maxeditingtime) || $cm->cache->caps['mod/forum:editanypost']) {
+        $commands[] = array('url'=>new moodle_url('/mod/forum/post.php', array('edit'=>$post->id)), 'text'=>$str->edit);
     }
 
-    if ($cm->cache->caps['mod/forum:splitdiscussions']
-                && $post->parent && $forum->type != 'single') {
-
-        $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/post.php?prune='.$post->id.
-                      '" title="'.$strpruneheading.'">'.$strprune.'</a>';
+    if ($cm->cache->caps['mod/forum:splitdiscussions'] && $post->parent && $forum->type != 'single') {
+        $commands[] = array('url'=>new moodle_url('/mod/forum/post.php', array('prune'=>$post->id)), 'text'=>$str->prune, 'title'=>$str->pruneheading);
     }
 
-    if (($ownpost and $age < $CFG->maxeditingtime
-                and $cm->cache->caps['mod/forum:deleteownpost'])
-                or $cm->cache->caps['mod/forum:deleteanypost']) {
-        $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/post.php?delete='.$post->id.'">'.$strdelete.'</a>';
+    if (($ownpost && $age < $CFG->maxeditingtime && $cm->cache->caps['mod/forum:deleteownpost']) || $cm->cache->caps['mod/forum:deleteanypost']) {
+        $commands[] = array('url'=>new moodle_url('/mod/forum/post.php', array('delete'=>$post->id)), 'text'=>$str->delete);
     }
 
     if ($reply) {
-        $commands[] = '<a href="'.$CFG->wwwroot.'/mod/forum/post.php?reply='.$post->id.'">'.$strreply.'</a>';
+        $commands[] = array('url'=>new moodle_url('/mod/forum/post.php', array('reply'=>$post->id)), 'text'=>$str->reply);
     }
 
     if ($cm->cache->caps['mod/forum:exportpost'] || ($ownpost && $cm->cache->caps['mod/forum:exportownpost'])) {
-        $p = array(
-            'postid' => $post->id,
-        );
+        $p = array('postid' => $post->id);
         require_once($CFG->libdir.'/portfoliolib.php');
         $button = new portfolio_add_button();
         $button->set_callback_options('forum_portfolio_caller', array('postid' => $post->id), '/mod/forum/locallib.php');
@@ -3377,39 +3287,152 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
             $commands[] = $porfoliohtml;
         }
     }
-
-    echo '<div class="commands">';
-    echo implode(' | ', $commands);
-    echo '</div>';
+    // Finished building commands
 
 
-// Ratings
-    if (!empty($post->rating)) {
-        echo $OUTPUT->render($post->rating);
+    // Begin output
+
+    $output  = '';
+
+    if ($istracked) {
+        if ($postisread) {
+            $forumpostclass = ' read';
+        } else {
+            $forumpostclass = ' unread';
+            $output .= html_writer::tag('a', '', array('name'=>'unread'));
+        }
+    } else {
+        // ignore trackign status if not tracked or tracked param missing
+        $forumpostclass = '';
     }
 
-// Link to post if required
+    $topicclass = '';
+    if (empty($post->parent)) {
+        $topicclass = ' firstpost starter';
+    }
 
+    $output .= html_writer::tag('a', '', array('id'=>'p'.$post->id));
+    $output .= html_writer::start_tag('div', array('class'=>'forumpost clearfix'.$forumpostclass.$topicclass));
+    $output .= html_writer::start_tag('div', array('class'=>'row header clearfix'));
+    $output .= html_writer::start_tag('div', array('class'=>'left picture'));
+    $output .= $OUTPUT->user_picture($postuser, array('courseid'=>$course->id));
+    $output .= html_writer::end_tag('div');
+
+
+    $output .= html_writer::start_tag('div', array('class'=>'topic'.$topicclass));
+
+    $postsubject = $post->subject;
+    if (empty($post->subjectnoformat)) {
+        $postsubject = format_string($postsubject);
+    }
+    $output .= html_writer::tag('div', $postsubject, array('class'=>'subject'));
+
+    $by = new stdClass();
+    $by->name = html_writer::link($postuser->profilelink, $postuser->fullname);
+    $by->date = userdate($post->modified);
+    $output .= html_writer::tag('div', get_string('bynameondate', 'forum', $by), array('class'=>'author'));
+
+    $output .= html_writer::end_tag('div'); //topic
+    $output .= html_writer::end_tag('div'); //row
+
+    $output .= html_writer::start_tag('div', array('class'=>'row maincontent clearfix'));
+    $output .= html_writer::start_tag('div', array('class'=>'left'));
+
+    $groupoutput = '';
+    if ($groups) {
+        $groupoutput = print_group_picture($groups, $course->id, false, true, true);
+    }
+    if (empty($groupoutput)) {
+        $groupoutput = '&nbsp;';
+    }
+    $output .= html_writer::tag('div', $groupoutput, array('class'=>'grouppictures'));
+
+    $output .= html_writer::end_tag('div'); //left side
+    $output .= html_writer::start_tag('div', array('class'=>'no-overflow'));
+    $output .= html_writer::start_tag('div', array('class'=>'content'));
+    if (!empty($attachments)) {
+        $output .= html_writer::tag('div', $attachments, array('class'=>'attachments'));
+    }
+
+    $options = new stdClass;
+    $options->para    = false;
+    $options->trusted = $post->messagetrust;
+    $options->context = $modcontext;
+    if ($shortenpost) {
+        // Prepare shortened version
+        $postclass    = 'shortenedpost';
+        $postcontent  = format_text(forum_shorten_post($post->message), $post->messageformat, $options, $course->id);
+        $postcontent .= html_writer::link($discussionlink, get_string('readtherest', 'forum'));
+        $postcontent .= html_writer::tag('span', '('.get_string('numwords', 'moodle', count_words(strip_tags($post->message))).')...', array('class'=>'post-word-count'));
+    } else {
+        // Prepare whole post
+        $postclass    = 'fullpost';
+        $postcontent  = format_text($post->message, $post->messageformat, $options, $course->id);
+        if (!empty($highlight)) {
+            $postcontent = highlight($highlight, $postcontent);
+        }
+        $postcontent .= html_writer::tag('div', $attachedimages, array('class'=>'attachedimages'));
+    }
+    // Output the post content
+    $output .= html_writer::tag('div', $postcontent, array('class'=>'posting '.$postclass));
+    $output .= html_writer::end_tag('div'); // Content
+    $output .= html_writer::end_tag('div'); // Content mask
+    $output .= html_writer::end_tag('div'); // Row
+
+    $output .= html_writer::start_tag('div', array('class'=>'row side'));
+    $output .= html_writer::tag('div','&nbsp;', array('class'=>'left'));
+    $output .= html_writer::start_tag('div', array('class'=>'options clearfix'));
+
+    // Output ratings
+    if (!empty($post->rating)) {
+        $output .= html_writer::tag('div', $OUTPUT->render($post->rating), array('class'=>'forum-post-rating'));
+    }
+
+    // Output the commands
+    $commandhtml = array();
+    foreach ($commands as $command) {
+        if (is_array($command)) {
+            $commandhtml[] = html_writer::link($command['url'], $command['text']);
+        } else {
+            $commandhtml[] = $command;
+        }
+    }
+    $output .= html_writer::tag('div', implode(' | ', $commandhtml), array('class'=>'commands'));
+
+    // Output link to post if required
     if ($link) {
-        echo '<div class="link">';
         if ($post->replies == 1) {
             $replystring = get_string('repliesone', 'forum', $post->replies);
         } else {
             $replystring = get_string('repliesmany', 'forum', $post->replies);
         }
-        echo '<a href="'.$CFG->wwwroot.'/mod/forum/discuss.php?d='.$post->discussion.'">'.
-             get_string('discussthistopic', 'forum').'</a>&nbsp;('.$replystring.')';
-        echo '</div>';
+
+        $output .= html_writer::start_tag('div', array('class'=>'link'));
+        $output .= html_writer::link($discussionlink, get_string('discussthistopic', 'forum'));
+        $output .= '&nbsp;('.$replystring.')';
+        $output .= html_writer::end_tag('div'); // link
     }
 
+    // Output footer if required
     if ($footer) {
-        echo '<div class="footer">'.$footer.'</div>';
+        $output .= html_writer::tag('div', $footer, array('class'=>'footer'));
     }
-    echo '</td></tr></table>'."\n\n";
 
-    if ($istracked && !$CFG->forum_usermarksread && !$post_read) {
+    // Close remaining open divs
+    $output .= html_writer::end_tag('div'); // content
+    $output .= html_writer::end_tag('div'); // row
+    $output .= html_writer::end_tag('div'); // forumpost
+
+    // Mark the forum post as read if required
+    if ($istracked && !$CFG->forum_usermarksread && !$postisread) {
         forum_tp_mark_post_read($USER->id, $post, $forum->id);
     }
+
+    if ($return) {
+        return $output;
+    }
+    echo $output;
+    return;
 }
 
 /**
@@ -3735,24 +3758,18 @@ function forum_move_attachments($discussion, $forumfrom, $forumto) {
     // loop through all posts, better not use attachment flag ;-)
     if ($posts = $DB->get_records('forum_posts', array('discussion'=>$discussion->id), '', 'id, attachment')) {
         foreach ($posts as $post) {
-            if ($oldfiles = $fs->get_area_files($oldcontext->id, 'mod_forum', 'attachment', $post->id, "id", false)) {
-                foreach ($oldfiles as $oldfile) {
-                    $file_record = new stdClass();
-                    $file_record->contextid = $newcontext->id;
-                    $fs->create_file_from_storedfile($file_record, $oldfile);
-                }
-                $fs->delete_area_files($oldcontext->id, 'mod_forum', 'attachment', $post->id);
-                if ($post->attachment != '1') {
-                    //weird - let's fix it
-                    $post->attachment = '1';
-                    $DB->update_record('forum_posts', $post);
-                }
-            } else {
-                if ($post->attachment != '') {
-                    //weird - let's fix it
-                    $post->attachment = '';
-                    $DB->update_record('forum_posts', $post);
-                }
+            $fs->move_area_files_to_new_context($oldcontext->id,
+                    $newcontext->id, 'mod_forum', 'post', $post->id);
+            $attachmentsmoved = $fs->move_area_files_to_new_context($oldcontext->id,
+                    $newcontext->id, 'mod_forum', 'attachment', $post->id);
+            if ($attachmentsmoved > 0 && $post->attachment != '1') {
+                // Weird - let's fix it
+                $post->attachment = '1';
+                $DB->update_record('forum_posts', $post);
+            } else if ($attachmentsmoved == 0 && $post->attachment != '') {
+                // Weird - let's fix it
+                $post->attachment = '';
+                $DB->update_record('forum_posts', $post);
             }
         }
     }
@@ -4135,7 +4152,9 @@ function forum_add_discussion($discussion, $mform=null, &$message=null, $userid=
  * @return bool
  */
 function forum_delete_discussion($discussion, $fulldelete, $course, $cm, $forum) {
-    global $DB;
+    global $DB, $CFG;
+    require_once($CFG->libdir.'/completionlib.php');
+
     $result = true;
 
     if ($posts = $DB->get_records("forum_posts", array("discussion" => $discussion->id))) {
@@ -4187,6 +4206,7 @@ function forum_delete_discussion($discussion, $fulldelete, $course, $cm, $forum)
  */
 function forum_delete_post($post, $children, $course, $cm, $forum, $skipcompletion=false) {
     global $DB, $CFG;
+    require_once($CFG->libdir.'/completionlib.php');
 
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 
@@ -4211,6 +4231,7 @@ function forum_delete_post($post, $children, $course, $cm, $forum, $skipcompleti
     //delete attachments
     $fs = get_file_storage();
     $fs->delete_area_files($context->id, 'mod_forum', 'attachment', $post->id);
+    $fs->delete_area_files($context->id, 'mod_forum', 'post', $post->id);
 
     if ($DB->delete_records("forum_posts", array("id" => $post->id))) {
 
@@ -5002,10 +5023,19 @@ function forum_print_latest_discussions($course, $forum, $maxdiscussions=-1, $di
 // button for it. We do not show the button if we are showing site news
 // and the current user is a guest.
 
-    if (forum_user_can_post_discussion($forum, $currentgroup, $groupmode, $cm, $context) ||
-        ($forum->type != 'news'
-         and (isguestuser() or !isloggedin() or (!is_enrolled($context) and !is_viewing($context)))) ) {
+    $canstart = forum_user_can_post_discussion($forum, $currentgroup, $groupmode, $cm, $context);
+    if (!$canstart and $forum->type !== 'news') {
+        if (isguestuser() or !isloggedin()) {
+            $canstart = true;
+        }
+        if (!is_enrolled($context) and !is_viewing($context)) {
+            // allow guests and not-logged-in to see the button - they are prompted to log in after clicking the link
+            // normal users with temporary guest access see this button too, they are asked to enrol instead
+            $canstart = enrol_selfenrol_available($course->id);
+        }
+    }
 
+    if ($canstart) {
         echo '<div class="singlebutton forumaddnew">';
         echo "<form id=\"newdiscussionform\" method=\"get\" action=\"$CFG->wwwroot/mod/forum/post.php\">";
         echo '<div>';
@@ -5946,7 +5976,7 @@ function forum_remove_user_tracking($userid, $context) {
             if (!is_enrolled($context, $userid)) {
                  if ($course = $DB->get_record('course', array('id' => $context->instanceid), 'id')) {
                     // find all forums in which this user has reading tracked
-                    if ($forums = $DB->get_records_sql("SELECT f.id, cm.id as coursemodule
+                    if ($forums = $DB->get_records_sql("SELECT DISTINCT f.id, cm.id as coursemodule
                                                      FROM {forum} f,
                                                           {modules} m,
                                                           {course_modules} cm,
@@ -6973,6 +7003,7 @@ function forum_reset_userdata($data) {
                 }
                 $context = get_context_instance(CONTEXT_MODULE, $cm->id);
                 $fs->delete_area_files($context->id, 'mod_forum', 'attachment');
+                $fs->delete_area_files($context->id, 'mod_forum', 'post');
 
                 //remove ratings
                 $ratingdeloptions->contextid = $context->id;
@@ -7381,6 +7412,7 @@ function forum_get_extra_capabilities() {
  * @param stdClass $module
  * @param stdClass $cm
  */
+/*************************************************
 function forum_extend_navigation($navref, $course, $module, $cm) {
     global $CFG, $OUTPUT, $USER;
 
@@ -7393,6 +7425,7 @@ function forum_extend_navigation($navref, $course, $module, $cm) {
     }
     $discussionnode = $navref->add(get_string('discussions', 'forum').' ('.$discussioncount.')');
     $discussionnode->mainnavonly = true;
+    $discussionnode->display = false; // Do not display on navigation (only on navbar)
 
     foreach ($discussions as $discussion) {
         $icon = new pix_icon('i/feedback', '');
@@ -7422,6 +7455,7 @@ function forum_extend_navigation($navref, $course, $module, $cm) {
     if (is_array($recentposts) && count($recentposts)>0) {
         $recentnode = $navref->add(get_string('recentactivity').' ('.count($recentposts).')');
         $recentnode->mainnavonly = true;
+        $recentnode->display = false;
         foreach ($recentposts as $post) {
             $icon = new pix_icon('i/feedback', '');
             $url = new moodle_url('/mod/forum/discuss.php', array('d'=>$post->content->discussion));
@@ -7430,6 +7464,7 @@ function forum_extend_navigation($navref, $course, $module, $cm) {
         }
     }
 }
+*************************/
 
 /**
  * Adds module specific settings to the settings block
@@ -7450,7 +7485,7 @@ function forum_extend_settings_navigation(settings_navigation $settingsnav, navi
 
     $canmanage  = has_capability('mod/forum:managesubscriptions', $PAGE->cm->context);
     $subscriptionmode = forum_get_forcesubscribed($forumobject);
-    $cansubscribe = ($enrolled &&($subscriptionmode != FORUM_FORCESUBSCRIBE && ($subscriptionmode != FORUM_DISALLOWSUBSCRIBE || $canmanage)));
+    $cansubscribe = ($enrolled && $subscriptionmode != FORUM_FORCESUBSCRIBE && ($subscriptionmode != FORUM_DISALLOWSUBSCRIBE || $canmanage));
 
     if ($canmanage) {
         $mode = $forumnode->add(get_string('subscriptionmode', 'forum'), null, navigation_node::TYPE_CONTAINER);
@@ -7513,13 +7548,18 @@ function forum_extend_settings_navigation(settings_navigation $settingsnav, navi
     }
 
     if ($enrolled && forum_tp_can_track_forums($forumobject)) {
-        if (forum_tp_is_tracked($forumobject)) {
-            $linktext = get_string('notrackforum', 'forum');
+        if ($forumobject->trackingtype != FORUM_TRACKING_OPTIONAL) {
+            //tracking forced on or off in forum settings so dont provide a link here to change it
+            //could add unclickable text like for forced subscription but not sure this justifies adding another menu item
         } else {
-            $linktext = get_string('trackforum', 'forum');
+            if (forum_tp_is_tracked($forumobject)) {
+                $linktext = get_string('notrackforum', 'forum');
+            } else {
+                $linktext = get_string('trackforum', 'forum');
+            }
+            $url = new moodle_url('/mod/forum/settracking.php', array('id'=>$forumobject->id));
+            $forumnode->add($linktext, $url, navigation_node::TYPE_SETTING);
         }
-        $url = new moodle_url('/mod/forum/settracking.php', array('id'=>$forumobject->id));
-        $forumnode->add($linktext, $url, navigation_node::TYPE_SETTING);
     }
 
     if ($enrolled && !empty($CFG->enablerssfeeds) && !empty($CFG->forum_enablerssfeeds) && $forumobject->rsstype && $forumobject->rssarticles) {

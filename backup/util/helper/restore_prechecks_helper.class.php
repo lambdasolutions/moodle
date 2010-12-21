@@ -56,8 +56,17 @@ abstract class restore_prechecks_helper {
         $restoreid = $controller->get_restoreid();
         $courseid = $controller->get_courseid();
         $userid = $controller->get_userid();
-        $inforeffiles = restore_dbops::get_needed_inforef_files($restoreid); // Get all inforef files
         $rolemappings = $controller->get_info()->role_mappings;
+        // Load all the included tasks to look for inforef.xml files
+        $inforeffiles = array();
+        $tasks = restore_dbops::get_included_tasks($restoreid);
+        foreach ($tasks as $task) {
+            // Add the inforef.xml file if exists
+            $inforefpath = $task->get_taskbasepath() . '/inforef.xml';
+            if (file_exists($inforefpath)) {
+                $inforeffiles[] = $inforefpath;
+            }
+        }
 
         // Create temp tables
         restore_controller_dbops::create_restore_temp_tables($controller->get_restoreid());
@@ -116,6 +125,14 @@ abstract class restore_prechecks_helper {
         $file = $controller->get_plan()->get_basepath() . '/roles.xml';
         restore_dbops::load_roles_to_tempids($restoreid, $file); // Load needed roles to temp_ids
         if ($problems = restore_dbops::precheck_included_roles($restoreid, $courseid, $userid, $samesite, $rolemappings)) {
+            $errors = array_key_exists('errors', $problems) ? array_merge($errors, $problems['errors']) : $errors;
+            $warnings = array_key_exists('warnings', $problems) ? array_merge($warnings, $problems['warnings']) : $warnings;
+        }
+
+        // Check we are able to restore and the categories and questions
+        $file = $controller->get_plan()->get_basepath() . '/questions.xml';
+        restore_dbops::load_categories_and_questions_to_tempids($restoreid, $file);
+        if ($problems = restore_dbops::precheck_categories_and_questions($restoreid, $courseid, $userid, $samesite)) {
             $errors = array_key_exists('errors', $problems) ? array_merge($errors, $problems['errors']) : $errors;
             $warnings = array_key_exists('warnings', $problems) ? array_merge($warnings, $problems['warnings']) : $warnings;
         }

@@ -2750,8 +2750,10 @@ class admin_setting_users_with_capability extends admin_setting_configmultiselec
                 $this->choices[$user->id] = fullname($user);
             }
         }
-        foreach ($users as $user) {
-            $this->choices[$user->id] = fullname($user);
+        if (is_array($users)) {
+            foreach ($users as $user) {
+                $this->choices[$user->id] = fullname($user);
+            }
         }
         return true;
     }
@@ -3202,7 +3204,7 @@ class admin_setting_special_frontpagedesc extends admin_setting {
 }
 
 /**
- * Special settings for emoticons
+ * Administration interface for emoticon_manager settings.
  *
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -3213,66 +3215,10 @@ class admin_setting_emoticons extends admin_setting {
  */
     public function __construct() {
         global $CFG;
-        $name = 'emoticons';
-        $visiblename = get_string('emoticons', 'admin');
-        $description = get_string('configemoticons', 'admin');
-        $defaults = array('k0' => ':-)',
-            'v0' => 'smiley',
-            'k1' => ':)',
-            'v1' => 'smiley',
-            'k2' => ':-D',
-            'v2' => 'biggrin',
-            'k3' => ';-)',
-            'v3' => 'wink',
-            'k4' => ':-/',
-            'v4' => 'mixed',
-            'k5' => 'V-.',
-            'v5' => 'thoughtful',
-            'k6' => ':-P',
-            'v6' => 'tongueout',
-            'k7' => 'B-)',
-            'v7' => 'cool',
-            'k8' => '^-)',
-            'v8' => 'approve',
-            'k9' => '8-)',
-            'v9' => 'wideeyes',
-            'k10' => ':o)',
-            'v10' => 'clown',
-            'k11' => ':-(',
-            'v11' => 'sad',
-            'k12' => ':(',
-            'v12' => 'sad',
-            'k13' => '8-.',
-            'v13' => 'shy',
-            'k14' => ':-I',
-            'v14' => 'blush',
-            'k15' => ':-X',
-            'v15' => 'kiss',
-            'k16' => '8-o',
-            'v16' => 'surprise',
-            'k17' => 'P-|',
-            'v17' => 'blackeye',
-            'k18' => '8-[',
-            'v18' => 'angry',
-            'k19' => 'xx-P',
-            'v19' => 'dead',
-            'k20' => '|-.',
-            'v20' => 'sleepy',
-            'k21' => '}-]',
-            'v21' => 'evil',
-            'k22' => '(h)',
-            'v22' => 'heart',
-            'k23' => '(heart)',
-            'v23' => 'heart',
-            'k24' => '(y)',
-            'v24' => 'yes',
-            'k25' => '(n)',
-            'v25' => 'no',
-            'k26' => '(martin)',
-            'v26' => 'martin',
-            'k27' => '( )',
-            'v27' => 'egg');
-        parent::__construct($name, $visiblename, $description, $defaults);
+
+        $manager = get_emoticon_manager();
+        $defaults = $this->prepare_form_data($manager->default_emoticons());
+        parent::__construct('emoticons', get_string('emoticons', 'admin'), get_string('emoticons_desc', 'admin'), $defaults);
     }
 
     /**
@@ -3282,20 +3228,20 @@ class admin_setting_emoticons extends admin_setting {
      */
     public function get_setting() {
         global $CFG;
-        $result = $this->config_read($this->name);
-        if (is_null($result)) {
-            return NULL;
+
+        $manager = get_emoticon_manager();
+
+        $config = $this->config_read($this->name);
+        if (is_null($config)) {
+            return null;
         }
-        $i = 0;
-        $currentsetting = array();
-        $items = explode('{;}', $result);
-        foreach ($items as $item) {
-            $item = explode('{:}', $item);
-            $currentsetting['k'.$i] = $item[0];
-            $currentsetting['v'.$i] = $item[1];
-            $i++;
+
+        $config = $manager->decode_stored_config($config);
+        if (is_null($config)) {
+            return null;
         }
-        return $currentsetting;
+
+        return $this->prepare_form_data($config);
     }
 
     /**
@@ -3306,29 +3252,18 @@ class admin_setting_emoticons extends admin_setting {
      */
     public function write_setting($data) {
 
-    // there miiight be an easier way to do this :)
-    // if this is changed, make sure the $defaults array above is modified so that this
-    // function processes it correctly
+        $manager = get_emoticon_manager();
+        $emoticons = $this->process_form_data($data);
 
-        $keys = array();
-        $values = array();
-
-        foreach ($data as $key => $value) {
-            if (substr($key,0,1) == 'k') {
-                $keys[substr($key,1)] = $value;
-            } elseif (substr($key,0,1) == 'v') {
-                $values[substr($key,1)] = $value;
-            }
+        if ($emoticons === false) {
+            return false;
         }
 
-        $result = array();
-        for ($i = 0; $i < count($keys); $i++) {
-            if (($keys[$i] !== '') && ($values[$i] !== '')) {
-                $result[] = clean_param($keys[$i],PARAM_NOTAGS).'{:}'.clean_param($values[$i], PARAM_NOTAGS);
-            }
+        if ($this->config_write($this->name, $manager->encode_stored_config($emoticons))) {
+            return ''; // success
+        } else {
+            return get_string('errorsetting', 'admin') . $this->visiblename . html_writer::empty_tag('br');
         }
-
-        return ($this->config_write($this->name, implode('{;}', $result)) ? '' : get_string('errorsetting', 'admin').$this->visiblename.'<br />');
     }
 
     /**
@@ -3338,24 +3273,152 @@ class admin_setting_emoticons extends admin_setting {
      * @return string XHTML string for the fields and wrapping div(s)
      */
     public function output_html($data, $query='') {
-        $fullname = $this->get_full_name();
-        $return = '<div class="form-group">';
-        for ($i = 0; $i < count($data) / 2; $i++) {
-            $return .= '<input type="text" class="form-text" name="'.$fullname.'[k'.$i.']" value="'.$data['k'.$i].'" />';
-            $return .= '&nbsp;&nbsp;';
-            $return .= '<input type="text" class="form-text" name="'.$fullname.'[v'.$i.']" value="'.$data['v'.$i].'" /><br />';
-        }
-        $return .= '<input type="text" class="form-text" name="'.$fullname.'[k'.$i.']" value="" />';
-        $return .= '&nbsp;&nbsp;';
-        $return .= '<input type="text" class="form-text" name="'.$fullname.'[v'.$i.']" value="" /><br />';
-        $return .= '<input type="text" class="form-text" name="'.$fullname.'[k'.($i + 1).']" value="" />';
-        $return .= '&nbsp;&nbsp;';
-        $return .= '<input type="text" class="form-text" name="'.$fullname.'[v'.($i + 1).']" value="" />';
-        $return .= '</div>';
+        global $OUTPUT;
 
-        return format_admin_setting($this, $this->visiblename, $return, $this->description, false, '', NULL, $query);
+        $out  = html_writer::start_tag('table', array('border' => 1, 'class' => 'generaltable'));
+        $out .= html_writer::start_tag('thead');
+        $out .= html_writer::start_tag('tr');
+        $out .= html_writer::tag('th', get_string('emoticontext', 'admin'));
+        $out .= html_writer::tag('th', get_string('emoticonimagename', 'admin'));
+        $out .= html_writer::tag('th', get_string('emoticoncomponent', 'admin'));
+        $out .= html_writer::tag('th', get_string('emoticonalt', 'admin'), array('colspan' => 2));
+        $out .= html_writer::tag('th', '');
+        $out .= html_writer::end_tag('tr');
+        $out .= html_writer::end_tag('thead');
+        $out .= html_writer::start_tag('tbody');
+        $i = 0;
+        foreach($data as $field => $value) {
+            switch ($i) {
+            case 0:
+                $out .= html_writer::start_tag('tr');
+                $current_text = $value;
+                $current_filename = '';
+                $current_imagecomponent = '';
+                $current_altidentifier = '';
+                $current_altcomponent = '';
+            case 1:
+                $current_filename = $value;
+            case 2:
+                $current_imagecomponent = $value;
+            case 3:
+                $current_altidentifier = $value;
+            case 4:
+                $current_altcomponent = $value;
+            }
+
+            $out .= html_writer::tag('td',
+                html_writer::empty_tag('input',
+                    array(
+                        'type'  => 'text',
+                        'class' => 'form-text',
+                        'name'  => $this->get_full_name().'['.$field.']',
+                        'value' => $value,
+                    )
+                ), array('class' => 'c'.$i)
+            );
+
+            if ($i == 4) {
+                if (get_string_manager()->string_exists($current_altidentifier, $current_altcomponent)) {
+                    $alt = get_string($current_altidentifier, $current_altcomponent);
+                } else {
+                    $alt = $current_text;
+                }
+                if ($current_filename) {
+                    $out .= html_writer::tag('td', $OUTPUT->render(new pix_emoticon($current_filename, $alt, $current_imagecomponent)));
+                } else {
+                    $out .= html_writer::tag('td', '');
+                }
+                $out .= html_writer::end_tag('tr');
+                $i = 0;
+            } else {
+                $i++;
+            }
+
+        }
+        $out .= html_writer::end_tag('tbody');
+        $out .= html_writer::end_tag('table');
+        $out  = html_writer::tag('div', $out, array('class' => 'form-group'));
+        $out .= html_writer::tag('div', html_writer::link(new moodle_url('/admin/resetemoticons.php'), get_string('emoticonsreset', 'admin')));
+
+        return format_admin_setting($this, $this->visiblename, $out, $this->description, false, '', NULL, $query);
     }
 
+    /**
+     * Converts the array of emoticon objects provided by {@see emoticon_manager} into admin settings form data
+     *
+     * @see self::process_form_data()
+     * @param array $emoticons array of emoticon objects as returned by {@see emoticon_manager}
+     * @return array of form fields and their values
+     */
+    protected function prepare_form_data(array $emoticons) {
+
+        $form = array();
+        $i = 0;
+        foreach ($emoticons as $emoticon) {
+            $form['text'.$i]            = $emoticon->text;
+            $form['imagename'.$i]       = $emoticon->imagename;
+            $form['imagecomponent'.$i]  = $emoticon->imagecomponent;
+            $form['altidentifier'.$i]   = $emoticon->altidentifier;
+            $form['altcomponent'.$i]    = $emoticon->altcomponent;
+            $i++;
+        }
+        // add one more blank field set for new object
+        $form['text'.$i]            = '';
+        $form['imagename'.$i]       = '';
+        $form['imagecomponent'.$i]  = '';
+        $form['altidentifier'.$i]   = '';
+        $form['altcomponent'.$i]    = '';
+
+        return $form;
+    }
+
+    /**
+     * Converts the data from admin settings form into an array of emoticon objects
+     *
+     * @see self::prepare_form_data()
+     * @param array $data array of admin form fields and values
+     * @return false|array of emoticon objects
+     */
+    protected function process_form_data(array $form) {
+
+        $count = count($form); // number of form field values
+
+        if ($count % 5) {
+            // we must get five fields per emoticon object
+            return false;
+        }
+
+        $emoticons = array();
+        for ($i = 0; $i < $count / 5; $i++) {
+            $emoticon                   = new stdClass();
+            $emoticon->text             = clean_param(trim($form['text'.$i]), PARAM_NOTAGS);
+            $emoticon->imagename        = clean_param(trim($form['imagename'.$i]), PARAM_PATH);
+            $emoticon->imagecomponent   = clean_param(trim($form['imagecomponent'.$i]), PARAM_SAFEDIR);
+            $emoticon->altidentifier    = clean_param(trim($form['altidentifier'.$i]), PARAM_STRINGID);
+            $emoticon->altcomponent     = clean_param(trim($form['altcomponent'.$i]), PARAM_SAFEDIR);
+
+            if (strpos($emoticon->text, ':/') !== false or strpos($emoticon->text, '//') !== false) {
+                // prevent from breaking http://url.addresses by accident
+                $emoticon->text = '';
+            }
+
+            if (strlen($emoticon->text) < 2) {
+                // do not allow single character emoticons
+                $emoticon->text = '';
+            }
+
+            if (preg_match('/^[a-zA-Z]+[a-zA-Z0-9]*$/', $emoticon->text)) {
+                // emoticon text must contain some non-alphanumeric character to prevent
+                // breaking HTML tags
+                $emoticon->text = '';
+            }
+
+            if ($emoticon->text !== '' and $emoticon->imagename !== '' and $emoticon->imagecomponent !== '') {
+                $emoticons[] = $emoticon;
+            }
+        }
+        return $emoticons;
+    }
 }
 
 /**
@@ -3451,7 +3514,7 @@ class admin_setting_special_backupdays extends admin_setting_configmulticheckbox
  * Calls parent::__construct with specific arguments
  */
     public function __construct() {
-        parent::__construct('backup_sche_weekdays', get_string('schedule'), get_string('backupschedulehelp'), array(), NULL);
+        parent::__construct('backup_auto_weekdays', get_string('automatedbackupschedule','backup'), get_string('automatedbackupschedulehelp','backup'), array(), NULL);
         $this->plugin = 'backup';
     }
     /**
@@ -4752,6 +4815,108 @@ class admin_page_manageqtypes extends admin_externalpage {
     }
 }
 
+class admin_page_manageportfolios extends admin_externalpage {
+    /**
+     * Calls parent::__construct with specific arguments
+     */
+    public function __construct() {
+        global $CFG;
+        parent::__construct('manageportfolios', get_string('manageportfolios', 'portfolio'),
+                "$CFG->wwwroot/$CFG->admin/portfolio.php");
+    }
+
+    /**
+     * Searches page for the specified string.
+     * @param string $query The string to search for
+     * @return bool True if it is found on this page
+     */
+    public function search($query) {
+        global $CFG;
+        if ($result = parent::search($query)) {
+            return $result;
+        }
+
+        $found = false;
+        $textlib = textlib_get_instance();
+        $portfolios = get_plugin_list('portfolio');
+        foreach ($portfolios as $p => $dir) {
+            if (strpos($p, $query) !== false) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            foreach (portfolio_instances(false, false) as $instance) {
+                $title = $instance->get('name');
+                if (strpos($textlib->strtolower($title), $query) !== false) {
+                    $found = true;
+                    break;
+                }
+            }
+        }
+
+        if ($found) {
+            $result = new stdClass();
+            $result->page     = $this;
+            $result->settings = array();
+            return array($this->name => $result);
+        } else {
+            return array();
+        }
+    }
+}
+
+class admin_page_managerepositories extends admin_externalpage {
+    /**
+     * Calls parent::__construct with specific arguments
+     */
+    public function __construct() {
+        global $CFG;
+        parent::__construct('managerepositories', get_string('manage',
+                'repository'), "$CFG->wwwroot/$CFG->admin/repository.php");
+    }
+
+    /**
+     * Searches page for the specified string.
+     * @param string $query The string to search for
+     * @return bool True if it is found on this page
+     */
+    public function search($query) {
+        global $CFG;
+        if ($result = parent::search($query)) {
+            return $result;
+        }
+
+        $found = false;
+        $textlib = textlib_get_instance();
+        $repositories= get_plugin_list('repository');
+        foreach ($repositories as $p => $dir) {
+            if (strpos($p, $query) !== false) {
+                $found = true;
+                break;
+            }
+        }
+        if (!$found) {
+            foreach (repository::get_types() as $instance) {
+                $title = $instance->get_typename();
+                if (strpos($textlib->strtolower($title), $query) !== false) {
+                    $found = true;
+                    break;
+                }
+            }
+        }
+
+        if ($found) {
+            $result = new stdClass();
+            $result->page     = $this;
+            $result->settings = array();
+            return array($this->name => $result);
+        } else {
+            return array();
+        }
+    }
+}
+
 /**
  * Special class for authentication administration.
  *
@@ -5266,205 +5431,23 @@ class admin_page_managefilters extends admin_externalpage {
 }
 
 /**
- *
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class admin_setting_manageportfolio extends admin_setting {
-    private $baseurl;
-
-    public function __construct() {
-        global $CFG;
-        $this->nosave = true;
-        parent::__construct('manageportfolio', get_string('manageportfolios', 'portfolio'), '', '');
-        $this->baseurl = $CFG->wwwroot . '/' . $CFG->admin . '/portfolio.php?sesskey=' . sesskey();
-    }
-
-    /**
-     * Always returns true, does nothing
-     *
-     * @return true
-     */
-    public function get_setting() {
-        return true;
-    }
-
-    /**
-     * Always returns true, does nothing
-     *
-     * @return true
-     */
-    public function get_defaultsetting() {
-        return true;
-    }
-
-    /**
-     * Always returns '', does not write anything
-     *
-     * @return string Always returns ''
-     */
-    public function write_setting($data) {
-        return '';
-    }
-
-    /**
-     * Helper function that generates a moodle_url object
-     * relevant to the portfolio
-     */
-
-    function portfolio_action_url($portfolio) {
-        return new moodle_url($this->baseurl, array('sesskey'=>sesskey(), 'pf'=>$portfolio));
-    }
-
-    /**
-     * Searches the portfolio types for the specified type(string)
-     *
-     * @param string $query The string to search for
-     * @return bool true for found or related, false for not
-     */
-    public function is_related($query) {
-        if (parent::is_related($query)) {
-            return true;
-        }
-
-        $textlib = textlib_get_instance();
-        $portfolios = get_plugin_list('portfolio');
-        foreach ($portfolios as $p => $dir) {
-            if (strpos($p, $query) !== false) {
-                return true;
-            }
-        }
-        foreach (portfolio_instances(false, false) as $instance) {
-            $title = $instance->get('name');
-            if (strpos($textlib->strtolower($title), $query) !== false) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Builds XHTML to display the control
-     *
-     * @param string $data Unused
-     * @param string $query
-     * @return string XHTML to display the control
-     */
-    public function output_html($data, $query='') {
-        global $CFG, $OUTPUT;
-
-        // Get strings that are used
-        $strshow = get_string('on', 'portfolio');
-        $strhide = get_string('off', 'portfolio');
-        $strdelete = get_string('disabledinstance', 'portfolio');
-        $strsettings = get_string('settings');
-
-        $actionchoicesforexisting = array(
-            'show' => $strshow,
-            'hide' => $strhide,
-            'delete' => $strdelete
-        );
-
-        $actionchoicesfornew = array(
-            'newon' => $strshow,
-            'newoff' => $strhide,
-            'delete' => $strdelete
-        );
-
-        $output = $OUTPUT->box_start('generalbox');
-
-        $plugins = get_plugin_list('portfolio');
-        $plugins = array_keys($plugins);
-        $instances = portfolio_instances(false, false);
-        $usedplugins = array();
-
-        // to avoid notifications being sent out while admin is editing the page
-        define('ADMIN_EDITING_PORTFOLIO', true);
-
-        $insane = portfolio_plugin_sanity_check($plugins);
-        $insaneinstances = portfolio_instance_sanity_check($instances);
-
-        $table = new html_table();
-        $table->head = array(get_string('plugin', 'portfolio'), '', '');
-        $table->data = array();
-
-        foreach ($instances as $i) {
-            $settings = '<a href="' . $this->baseurl . '&amp;action=edit&amp;pf=' . $i->get('id') . '">' . $strsettings .'</a>';
-            // Set some commonly used variables
-            $pluginid = $i->get('id');
-            $plugin = $i->get('plugin');
-            $pluginname = $i->get('name');
-
-            // Check if the instance is misconfigured
-            if (array_key_exists($plugin, $insane) || array_key_exists($pluginid, $insaneinstances)) {
-                if (!empty($insane[$plugin])) {
-                    $information = $insane[$plugin];
-                } else if (!empty($insaneinstances[$pluginid])) {
-                    $information = $insaneinstances[$pluginid];
-                }
-                $table->data[] = array($pluginname, $strdelete  . " " . $OUTPUT->help_icon($information, 'portfolio_' .  $plugin), $settings);
-            } else {
-                if ($i->get('visible')) {
-                    $currentaction = 'show';
-                } else {
-                    $currentaction = 'hide';
-                }
-                $select = new single_select($this->portfolio_action_url($pluginid, 'pf'), 'action', $actionchoicesforexisting, $currentaction, null, 'applyto' . $pluginid);
-                $table->data[] = array($pluginname, $OUTPUT->render($select), $settings);
-            }
-            if (!in_array($plugin, $usedplugins)) {
-                $usedplugins[] = $plugin;
-            }
-        }
-
-        // Create insane plugin array
-        $insaneplugins = array();
-        if (!empty($plugins)) {
-            foreach ($plugins as $p) {
-                // Check if it can not have multiple instances and has already been used
-                if (!portfolio_static_function($p, 'allows_multiple_instances') && in_array($p, $usedplugins)) {
-                    continue;
-                }
-
-                // Check if it is misconfigured - if so store in array then display later
-                if (array_key_exists($p, $insane)) {
-                    $insaneplugins[] = $p;
-                } else {
-                    $select = new single_select($this->portfolio_action_url($p, 'pf'), 'action', $actionchoicesfornew, 'delete', null, 'applyto' . $p);
-                    $table->data[] = array(portfolio_static_function($p, 'get_name'), $OUTPUT->render($select), '');
-                }
-            }
-        }
-
-        // Loop through all the insane plugins
-        if (!empty($insaneplugins)) {
-            foreach ($insaneplugins as $p) {
-                $table->data[] = array(portfolio_static_function($p, 'get_name'), $strdelete . " " . $OUTPUT->help_icon($insane[$p], 'portfolio_' .  $p), '');
-            }
-        }
-
-        $output .= html_writer::table($table);
-
-        $output .= $OUTPUT->box_end();
-
-        return highlight($query, $output);
-    }
-
-}
-
-/**
  * Initialise admin page - this function does require login and permission
  * checks specified in page definition.
  *
  * This function must be called on each admin page before other code.
  *
+ * @global moodle_page $PAGE
+ * 
  * @param string $section name of page
  * @param string $extrabutton extra HTML that is added after the blocks editing on/off button.
  * @param array $extraurlparams an array paramname => paramvalue, or parameters that need to be
  *      added to the turn blocks editing on/off form, so this page reloads correctly.
  * @param string $actualurl if the actual page being viewed is not the normal one for this
  *      page (e.g. admin/roles/allowassin.php, instead of admin/roles/manage.php, you can pass the alternate URL here.
+ * @param array $options Additional options that can be specified for page setup.
+ *      pagelayout - This option can be used to set a specific pagelyaout, admin is default.
  */
-function admin_externalpage_setup($section, $extrabutton = '', array $extraurlparams = null, $actualurl = '') {
+function admin_externalpage_setup($section, $extrabutton = '', array $extraurlparams = null, $actualurl = '', array $options = array()) {
     global $CFG, $PAGE, $USER, $SITE, $OUTPUT;
 
     $PAGE->set_context(null); // hack - set context to something, by default to system context
@@ -5486,7 +5469,10 @@ function admin_externalpage_setup($section, $extrabutton = '', array $extraurlpa
         die;
     }
 
-    if ($section === 'upgradesettings') {
+    if (!empty($options['pagelayout'])) {
+        // A specific page layout has been requested.
+        $PAGE->set_pagelayout($options['pagelayout']);
+    } else if ($section === 'upgradesettings') {
         $PAGE->set_pagelayout('maintenance');
     } else {
         $PAGE->set_pagelayout('admin');
@@ -5498,14 +5484,10 @@ function admin_externalpage_setup($section, $extrabutton = '', array $extraurlpa
         $actualurl = $extpage->url;
     }
 
-    $extraurlparams = (array)$extraurlparams;
-    $extraurlparams['section'] = $section; // TODO: this is an ugly hack for navigation that must be eliminated!
-
     $PAGE->set_url($actualurl, $extraurlparams);
     if (strpos($PAGE->pagetype, 'admin-') !== 0) {
         $PAGE->set_pagetype('admin-' . $PAGE->pagetype);
     }
-    $PAGE->set_pagelayout('admin');
 
     if (empty($SITE->fullname) || empty($SITE->shortname)) {
         // During initial install.
@@ -5516,6 +5498,16 @@ function admin_externalpage_setup($section, $extrabutton = '', array $extraurlpa
         $PAGE->set_heading($strinstallation);
         $PAGE->set_cacheable(false);
         return;
+    }
+    
+    // Locate the current item on the navigation and make it active when found.
+    $path = $extpage->path;
+    $node = $PAGE->settingsnav;
+    while ($node && count($path) > 0) {
+        $node = $node->get(array_pop($path));
+    }
+    if ($node) {
+        $node->make_active();
     }
 
     // Normal case.
@@ -5936,8 +5928,6 @@ function db_replace($search, $replace) {
 
     /// Turn off time limits, sometimes upgrades can be slow.
     @set_time_limit(0);
-    @ob_implicit_flush(true);
-    while(@ob_end_flush());
 
     if (!$tables = $DB->get_tables() ) {    // No tables yet at all.
         return false;
@@ -6034,11 +6024,13 @@ function print_plugin_tables() {
         'algebra',
         'censor',
         'emailprotect',
+        'emoticon',
         'filter',
         'mediaplugin',
         'multilang',
         'tex',
-        'tidy');
+        'tidy',
+        'urltolink');
 
     $plugins_installed = array();
     $installed_mods = $DB->get_records('modules', null, 'name');

@@ -31,15 +31,27 @@ defined('MOODLE_INTERNAL') || die();
 
 /// Debug levels ///
 /** no warnings at all */
-define ('DEBUG_NONE', 0);
+define('DEBUG_NONE', 0);
 /** E_ERROR | E_PARSE */
-define ('DEBUG_MINIMAL', 5);
+define('DEBUG_MINIMAL', 5);
 /** E_ERROR | E_PARSE | E_WARNING | E_NOTICE */
-define ('DEBUG_NORMAL', 15);
+define('DEBUG_NORMAL', 15);
 /** E_ALL without E_STRICT for now, do show recoverable fatal errors */
-define ('DEBUG_ALL', 6143);
+define('DEBUG_ALL', 6143);
 /** DEBUG_ALL with extra Moodle debug messages - (DEBUG_ALL | 32768) */
-define ('DEBUG_DEVELOPER', 38911);
+define('DEBUG_DEVELOPER', 38911);
+
+/** Remove any memory limits */
+define('MEMORY_UNLIMITED', -1);
+/** Standard memory limit for given platform */
+define('MEMORY_STANDARD', -2);
+/**
+ * Large memory limit for given platform - used in cron, upgrade, and other places that need a lot of memory.
+ * Can be overridden with $CFG->extramemorylimit setting.
+ */
+define('MEMORY_EXTRA', -3);
+/** Extremely large memory limit - not recommended for standard scripts */
+define('MEMORY_HUGE', -4);
 
 /**
  * Simple class. It is usually used instead of stdClass because it looks
@@ -146,7 +158,14 @@ class webservice_parameter_exception extends moodle_exception {
 class required_capability_exception extends moodle_exception {
     function __construct($context, $capability, $errormessage, $stringfile) {
         $capabilityname = get_capability_string($capability);
-        parent::__construct($errormessage, $stringfile, get_context_url($context), $capabilityname);
+        if ($context->contextlevel == CONTEXT_MODULE and preg_match('/:view$/', $capability)) {
+            // we can not go to mod/xx/view.php because we most probably do not have cap to view it, let's go to course instead
+            $paranetcontext = get_context_instance_by_id(get_parent_contextid($context));
+            $link = get_context_url($paranetcontext);
+        } else {
+            $link = get_context_url($context);
+        }
+        parent::__construct($errormessage, $stringfile, $link, $capabilityname);
     }
 }
 
@@ -249,16 +268,39 @@ class invalid_dataroot_permissions extends moodle_exception {
 }
 
 /**
+ * An exception that indicates that file can not be served
+ *
+ * @package    core
+ * @subpackage lib
+ * @copyright  2010 Petr Skoda {@link http://skodak.org}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class file_serving_exception extends moodle_exception {
+    /**
+     * Constructor
+     * @param string $debuginfo optional more detailed information
+     */
+    function __construct($debuginfo = NULL) {
+        parent::__construct('cannotservefile', 'error', '', NULL, $debuginfo);
+    }
+}
+
+/**
  * Default exception handler, uncaught exceptions are equivalent to error() in 1.9 and earlier
  *
  * @param Exception $ex
  * @return void -does not return. Terminates execution!
  */
 function default_exception_handler($ex) {
-    global $DB, $OUTPUT;
+    global $CFG, $DB, $OUTPUT, $USER, $FULLME, $SESSION;
 
     // detect active db transactions, rollback and log as error
     abort_all_db_transactions();
+
+    if (($ex instanceof required_capability_exception) && !CLI_SCRIPT && !AJAX_SCRIPT && !empty($CFG->autologinguests) && !empty($USER->autologinguest)) {
+        $SESSION->wantsurl = $FULLME;
+        redirect(get_login_url());
+    }
 
     $info = get_exception_info($ex);
 
@@ -506,6 +548,26 @@ function format_backtrace($callers, $plaintext = false) {
 }
 
 /**
+ * This function makes the return value of ini_get consistent if you are
+ * setting server directives through the .htaccess file in apache.
+ *
+ * Current behavior for value set from php.ini On = 1, Off = [blank]
+ * Current behavior for value set from .htaccess On = On, Off = Off
+ * Contributed by jdell @ unr.edu
+ *
+ * @param string $ini_get_arg The argument to get
+ * @return bool True for on false for not
+ */
+function ini_get_bool($ini_get_arg) {
+    $temp = ini_get($ini_get_arg);
+
+    if ($temp == '1' or strtolower($temp) == 'on') {
+        return true;
+    }
+    return false;
+}
+
+/**
  * This function verifies the sanity of PHP configuration
  * and stops execution if anything critical found.
  */
@@ -583,9 +645,14 @@ function initialise_fullme() {
     // $CFG->sslproxy specifies if external SSL appliance is used
     // (That is, the Moodle server uses http, with an external box translating everything to https).
     if (empty($CFG->sslproxy)) {
-        if ($rurl['scheme'] == 'http' and $wwwroot['scheme'] == 'https') {
+        if ($rurl['scheme'] === 'http' and $wwwroot['scheme'] === 'https') {
             print_error('sslonlyaccess', 'error');
         }
+    } else {
+        if ($wwwroot['scheme'] !== 'https') {
+            throw new coding_exception('Must use https address in wwwroot when ssl proxy enabled!');
+        }
+        $rurl['scheme'] = 'https'; // make moodle believe it runs on https, squid or something else it doing it
     }
 
     // $CFG->reverseproxy specifies if reverse proxy server used.
@@ -761,33 +828,67 @@ function during_initial_install() {
  * Function to raise the memory limit to a new value.
  * Will respect the memory limit if it is higher, thus allowing
  * settings in php.ini, apache conf or command line switches
- * to override it
+ * to override it.
  *
- * The memory limit should be expressed with a string (eg:'64M')
+ * The memory limit should be expressed with a constant
+ * MEMORY_STANDARD, MEMORY_EXTRA or MEMORY_HUGE.
+ * It is possible to use strings or integers too (eg:'128M').
  *
- * @param string $newlimit the new memory limit
- * @return bool
+ * @param mixed $newlimit the new memory limit
+ * @return bool success
  */
 function raise_memory_limit($newlimit) {
+    global $CFG;
 
-    if (empty($newlimit)) {
+    if ($newlimit == MEMORY_UNLIMITED) {
+        ini_set('memory_limit', -1);
+        return true;
+
+    } else if ($newlimit == MEMORY_STANDARD) {
+        if (PHP_INT_SIZE > 4) {
+            $newlimit = get_real_size('128M'); // 64bit needs more memory
+        } else {
+            $newlimit = get_real_size('96M');
+        }
+
+    } else if ($newlimit == MEMORY_EXTRA) {
+        if (PHP_INT_SIZE > 4) {
+            $newlimit = get_real_size('384M'); // 64bit needs more memory
+        } else {
+            $newlimit = get_real_size('256M');
+        }
+        if (!empty($CFG->extramemorylimit)) {
+            $extra = get_real_size($CFG->extramemorylimit);
+            if ($extra > $newlimit) {
+                $newlimit = $extra;
+            }
+        }
+
+    } else if ($newlimit == MEMORY_HUGE) {
+        $newlimit = get_real_size('2G');
+
+    } else {
+        $newlimit = get_real_size($newlimit);
+    }
+
+    if ($newlimit <= 0) {
+        debugging('Invalid memory limit specified.');
         return false;
     }
 
-    $cur = @ini_get('memory_limit');
+    $cur = ini_get('memory_limit');
     if (empty($cur)) {
         // if php is compiled without --enable-memory-limits
         // apparently memory_limit is set to ''
-        $cur=0;
+        $cur = 0;
     } else {
         if ($cur == -1){
             return true; // unlimited mem!
         }
-      $cur = get_real_size($cur);
+        $cur = get_real_size($cur);
     }
 
-    $new = get_real_size($newlimit);
-    if ($new > $cur) {
+    if ($newlimit > $cur) {
         ini_set('memory_limit', $newlimit);
         return true;
     }
@@ -809,11 +910,11 @@ function reduce_memory_limit($newlimit) {
     if (empty($newlimit)) {
         return false;
     }
-    $cur = @ini_get('memory_limit');
+    $cur = ini_get('memory_limit');
     if (empty($cur)) {
         // if php is compiled without --enable-memory-limits
         // apparently memory_limit is set to ''
-        $cur=0;
+        $cur = 0;
     } else {
         if ($cur == -1){
             return true; // unlimited mem!
@@ -833,14 +934,17 @@ function reduce_memory_limit($newlimit) {
 /**
  * Converts numbers like 10M into bytes.
  *
- * @param mixed $size The size to be converted
- * @return mixed
+ * @param string $size The size to be converted
+ * @return int
  */
-function get_real_size($size=0) {
+function get_real_size($size = 0) {
     if (!$size) {
         return 0;
     }
     $scan = array();
+    $scan['GB'] = 1073741824;
+    $scan['Gb'] = 1073741824;
+    $scan['G'] = 1073741824;
     $scan['MB'] = 1048576;
     $scan['Mb'] = 1048576;
     $scan['M'] = 1048576;
@@ -860,6 +964,36 @@ function get_real_size($size=0) {
 }
 
 /**
+ * Try to disable all output buffering and purge
+ * all headers.
+ *
+ * @private to be called only from lib/setup.php !
+ * @return void
+ */
+function disable_output_buffering() {
+    $olddebug = error_reporting(0);
+
+    // disable compression, it would prevent closing of buffers
+    if (ini_get_bool('zlib.output_compression')) {
+        ini_set('zlib.output_compression', 'Off');
+    }
+
+    // try to flush everything all the time
+    ob_implicit_flush(true);
+
+    // close all buffers if possible and discard any existing output
+    // this can actually work around some whitespace problems in config.php
+    while(ob_get_level()) {
+        if (!ob_end_clean()) {
+            // prevent infinite loop when buffer can not be closed
+            break;
+        }
+    }
+
+    error_reporting($olddebug);
+}
+
+/**
  * Check whether a major upgrade is needed. That is defined as an upgrade that
  * changes something really fundamental in the database, so nothing can possibly
  * work until the database has been updated, and that is defined by the hard-coded
@@ -867,7 +1001,7 @@ function get_real_size($size=0) {
  */
 function redirect_if_major_upgrade_required() {
     global $CFG;
-    $lastmajordbchanges = 2010070300;
+    $lastmajordbchanges = 2010111700;
     if (empty($CFG->version) or (int)$CFG->version < $lastmajordbchanges or
             during_initial_install() or !empty($CFG->adminsetuppending)) {
         try {

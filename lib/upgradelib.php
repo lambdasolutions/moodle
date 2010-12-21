@@ -303,7 +303,7 @@ function upgrade_plugins($type, $startcallback, $endcallback, $verbose) {
                 if (function_exists($recover_install_function)) {
                     $startcallback($component, true, $verbose);
                     $recover_install_function();
-                    unset_config('installrunning', 'block_'.$plugin->fullname);
+                    unset_config('installrunning', $plugin->fullname);
                     update_capabilities($component);
                     log_update_descriptions($component);
                     external_update_descriptions($component);
@@ -330,10 +330,10 @@ function upgrade_plugins($type, $startcallback, $endcallback, $verbose) {
         /// execute post install file
             if (file_exists($fullplug.'/db/install.php')) {
                 require_once($fullplug.'/db/install.php');
-                set_config('installrunning', 1, 'block_'.$plugin->fullname);
-                $post_install_function = 'xmldb_'.$plugin->fullname.'_install';;
+                set_config('installrunning', 1, $plugin->fullname);
+                $post_install_function = 'xmldb_'.$plugin->fullname.'_install';
                 $post_install_function();
-                unset_config('installrunning', 'block_'.$plugin->fullname);
+                unset_config('installrunning', $plugin->fullname);
             }
 
         /// Install various components
@@ -1278,6 +1278,8 @@ function install_core($version, $verbose) {
 function upgrade_core($version, $verbose) {
     global $CFG;
 
+    raise_memory_limit(MEMORY_EXTRA);
+
     require_once($CFG->libdir.'/db/upgrade.php');    // Defines upgrades
 
     try {
@@ -1294,8 +1296,8 @@ function upgrade_core($version, $verbose) {
         print_upgrade_part_start('moodle', false, $verbose);
 
         // one time special local migration pre 2.0 upgrade script
-        if ($version < 2007101600) {
-            $pre20upgradefile = "$CFG->dirrot/local/upgrade_pre20.php";
+        if ($CFG->version < 2007101600) {
+            $pre20upgradefile = "$CFG->dirroot/local/upgrade_pre20.php";
             if (file_exists($pre20upgradefile)) {
                 set_time_limit(0);
                 require($pre20upgradefile);
@@ -1340,6 +1342,8 @@ function upgrade_core($version, $verbose) {
  */
 function upgrade_noncore($verbose) {
     global $CFG;
+
+    raise_memory_limit(MEMORY_EXTRA);
 
     // upgrade all plugins types
     try {
@@ -1503,6 +1507,7 @@ function upgrade_plugin_mnet_functions($component) {
                 } else {
                     $serviceobj = new stdClass();
                     $serviceobj->name        = $service['servicename'];
+                    $serviceobj->description = empty($service['description']) ? '' : $service['description'];
                     $serviceobj->apiversion  = $service['apiversion'];
                     $serviceobj->offer       = 1;
                     $serviceobj->id          = $DB->insert_record('mnet_service', $serviceobj);

@@ -11,6 +11,9 @@ class block_glossary_random extends block_base {
 
     function specialization() {
         global $CFG, $DB;
+
+        require_once($CFG->libdir . '/filelib.php');
+
         $this->course = $this->page->course;
 
         // load userdefined title and make sure it's never empty
@@ -37,6 +40,12 @@ class block_glossary_random extends block_base {
                 $this->config->cache = get_string('noentriesyet','block_glossary_random');
                 $this->instance_config_commit();
             }
+
+            // Get module and context, to be able to rewrite urls
+            if (! $cm = get_coursemodule_from_instance("glossary", $this->config->glossary, $this->course->id)) {
+                return false;
+            }
+            $glossaryctx = get_context_instance(CONTEXT_MODULE, $cm->id);
 
             $limitfrom = 0;
             $limitnum = 1;
@@ -69,7 +78,7 @@ class block_glossary_random extends block_base {
                     break;
             }
 
-            if ($entry = $DB->get_records_sql("SELECT concept, definition, definitionformat, definitiontrust
+            if ($entry = $DB->get_records_sql("SELECT id, concept, definition, definitionformat, definitiontrust
                                                  FROM {glossary_entries}
                                                 WHERE glossaryid = ? AND approved = 1
                                              ORDER BY timemodified $SORT", array($this->config->glossary), $limitfrom, $limitnum)) {
@@ -84,6 +93,8 @@ class block_glossary_random extends block_base {
 
                 $options = new stdClass();
                 $options->trusted = $entry->definitiontrust;
+                $options->overflowdiv = true;
+                $entry->definition = file_rewrite_pluginfile_urls($entry->definition, 'pluginfile.php', $glossaryctx->id, 'mod_glossary', 'entry', $entry->id);
                 $text .= format_text($entry->definition, $entry->definitionformat, $options);
 
                 $this->config->nexttime = usergetmidnight(time()) + DAYSECS * $this->config->refresh;
@@ -173,18 +184,5 @@ class block_glossary_random extends block_base {
         }
         return false;
     }
-
-    /**
-     * Executed after block instance has been created, we use it to recode
-     * the glossary config setting to point to the new (restored) one
-     */
-    function after_restore($restore) {
-    /// We need to transform the glossary->id from the original one to the restored one
-        if ($rec = backup_getid($restore->backup_unique_code, 'glossary', $this->config->glossary)) {
-            $this->config->glossary = $rec->new_id;
-            $this->instance_config_commit();
-        }
-    }
-
 }
 

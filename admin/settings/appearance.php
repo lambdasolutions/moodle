@@ -97,6 +97,8 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
     $temp->add(new admin_setting_configcheckbox('formatstringstriptags', get_string('stripalltitletags', 'admin'), get_string('configstripalltitletags', 'admin'), 1));
     $temp->add(new admin_setting_emoticons());
     $ADMIN->add('appearance', $temp);
+    $ADMIN->add('appearance', new admin_externalpage('resetemoticons', get_string('emoticonsreset', 'admin'),
+        new moodle_url('/admin/resetemoticons.php'), 'moodle/site:config', true));
 
     // "documentation" settingpage
     $temp = new admin_settingpage('documentation', get_string('moodledocs'));
@@ -122,12 +124,19 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
     $setting = new admin_setting_configcheckbox('cachejs', get_string('cachejs', 'admin'), get_string('cachejs_help', 'admin'), 1);
     $setting->set_updatedcallback('js_reset_all_caches');
     $temp->add($setting);
-    $temp->add(new admin_setting_configcheckbox('disablecourseajax', get_string('disablecourseajax', 'admin'), get_string('configdisablecourseajax', 'admin'),
-                                                isset($CFG->disablecourseajax) ? 1 : empty($CFG->enableajax)));
+    $temp->add(new admin_setting_configcheckbox('enablecourseajax', get_string('enablecourseajax', 'admin'),
+                                                get_string('enablecourseajax_desc', 'admin'), 1));
     $ADMIN->add('appearance', $temp);
 
     // link to tag management interface
     $ADMIN->add('appearance', new admin_externalpage('managetags', get_string('managetags', 'tag'), "$CFG->wwwroot/tag/manage.php"));
+    
+    $temp = new admin_settingpage('additionalhtml', get_string('additionalhtml', 'admin'));
+    $temp->add(new admin_setting_heading('additionalhtml_heading', get_string('additionalhtml_heading', 'admin'), get_string('additionalhtml_desc', 'admin')));
+    $temp->add(new admin_setting_configtextarea('additionalhtmlhead', get_string('additionalhtmlhead', 'admin'), get_string('additionalhtmlhead_desc', 'admin'), '', PARAM_RAW));
+    $temp->add(new admin_setting_configtextarea('additionalhtmltopofbody', get_string('additionalhtmltopofbody', 'admin'), get_string('additionalhtmltopofbody_desc', 'admin'), '', PARAM_RAW));
+    $temp->add(new admin_setting_configtextarea('additionalhtmlfooter', get_string('additionalhtmlfooter', 'admin'), get_string('additionalhtmlfooter_desc', 'admin'), '', PARAM_RAW));
+    $ADMIN->add('appearance', $temp);
 
 } // end of speedup
 

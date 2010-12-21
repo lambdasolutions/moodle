@@ -40,6 +40,7 @@
 // CLI via web interface, please do not use this hack elsewhere
 define('CLI_SCRIPT', true);
 define('WEB_CRON_EMULATED_CLI', 'defined'); // ugly ugly hack, do not use elsewhere please
+define('NO_OUTPUT_BUFFERING', true);
 
 require('../config.php');
 require_once($CFG->libdir.'/clilib.php');
@@ -72,12 +73,6 @@ if (check_browser_version('MSIE')) {
 } else {
     //send proper plaintext header
     @header('Content-Type: text/plain; charset=utf-8');
-}
-
-// no more headers and buffers
-@ob_implicit_flush(true);
-while(ob_get_level()) {
-    ob_end_clean();
 }
 
 // execute the cron

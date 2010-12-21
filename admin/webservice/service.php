@@ -29,13 +29,14 @@ require_once($CFG->dirroot . '/webservice/lib.php');
 
 admin_externalpage_setup('externalservice');
 
-//Deactivate the 'Edit service' navigation node, and use the main 'Service' navigation node
+//define nav bar
 $node = $PAGE->settingsnav->find('externalservice', navigation_node::TYPE_SETTING);
 $newnode = $PAGE->settingsnav->find('externalservices', navigation_node::TYPE_SETTING);
 if ($node && $newnode) {
     $node->display = false;
     $newnode->make_active();
 }
+$PAGE->navbar->add(get_string('externalservice', 'webservice'));
 
 //Retrieve few general parameters
 $id = required_param('id', PARAM_INT);
@@ -57,7 +58,7 @@ if ($action == 'delete' and confirm_sesskey() and $service and empty($service->c
     }
     //The user has confirmed the deletion, delete and redirect
     $webservicemanager->delete_service($service->id);
-    add_to_log(1, 'webservice', 'delete', $returnurl, get_string('deleteservice', 'webservice', $service));
+    add_to_log(SITEID, 'webservice', 'delete', $returnurl, get_string('deleteservice', 'webservice', $service));
     redirect($returnurl);
 }
 
@@ -74,7 +75,7 @@ if ($mform->is_cancelled()) {
     //create operation
     if (empty($servicedata->id)) {
         $servicedata->id = $webservicemanager->add_external_service($servicedata);
-        add_to_log(1, 'webservice', 'add', $returnurl, get_string('addservice', 'webservice', $servicedata));
+        add_to_log(SITEID, 'webservice', 'add', $returnurl, get_string('addservice', 'webservice', $servicedata));
 
         //redirect to the 'add functions to service' page
         $addfunctionpage = new moodle_url(
@@ -84,7 +85,7 @@ if ($mform->is_cancelled()) {
     } else {
         //update operation
         $webservicemanager->update_external_service($servicedata);
-        add_to_log(1, 'webservice', 'edit', $returnurl, get_string('editservice', 'webservice', $servicedata));
+        add_to_log(SITEID, 'webservice', 'edit', $returnurl, get_string('editservice', 'webservice', $servicedata));
     }
 
     redirect($returnurl);

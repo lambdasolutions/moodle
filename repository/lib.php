@@ -1348,7 +1348,11 @@ abstract class repository {
             $ret[$entry->name] = $entry->value;
         }
         if (!empty($config)) {
+            if (isset($ret[$config])) {
                 return $ret[$config];
+            } else {
+                return null;
+            }
         } else {
             return $ret;
         }
@@ -1405,7 +1409,7 @@ abstract class repository {
      *           perpage, items per page
      *           page
      *           pages, total pages
-     *           search_result, is it a search result?
+     *           issearchresult, is it a search result?
      *           list, file list
      *           path, current path and parent path
      */

@@ -75,7 +75,7 @@ function get_questions_category( $category, $noparent=false, $recurse=true, $exp
 
     // get (list) of categories
     if ($recurse) {
-        $categorylist = question_categorylist( $category->id );
+        $categorylist = question_categorylist($category->id);
     }
     else {
         $categorylist = $category->id;
@@ -89,7 +89,7 @@ function get_questions_category( $category, $noparent=false, $recurse=true, $exp
         foreach($questions as $question) {
             $questiontype = $QTYPES[$question->qtype];
             $question->export_process = $export;
-            $questiontype->get_question_options( $question );
+            $questiontype->get_question_options($question);
             $qresults[] = $question;
         }
     }
@@ -801,8 +801,7 @@ class question_bank_view {
         }
 
         // Create the url of the new question page to forward to.
-        $returnurl = $pageurl->out(false);
-        $returnurl = str_replace($CFG->wwwroot . '/', '', $returnurl);
+        $returnurl = str_replace($CFG->wwwroot, '', $pageurl->out(false));
         $this->editquestionurl = new moodle_url('/question/question.php',
                 array('returnurl' => $returnurl));
         if ($cm !== null){
@@ -1160,6 +1159,7 @@ class question_bank_view {
     protected function print_category_info($category) {
         $formatoptions = new stdClass;
         $formatoptions->noclean = true;
+        $formatoptions->overflowdiv = true;
         echo '<div class="boxaligncenter">';
         echo format_text($category->info, FORMAT_MOODLE, $formatoptions, $this->course->id);
         echo "</div>\n";
@@ -1385,7 +1385,8 @@ class question_bank_view {
     public function process_actions() {
         global $CFG, $DB;
         /// Now, check for commands on this page and modify variables as necessary
-        if (optional_param('move', false, PARAM_BOOL) and confirm_sesskey()) { /// Move selected questions to new category
+        if (optional_param('move', false, PARAM_BOOL) and confirm_sesskey()) {
+            // Move selected questions to new category
             $category = required_param('category', PARAM_SEQUENCE);
             list($tocategoryid, $contextid) = explode(',', $category);
             if (! $tocategory = $DB->get_record('question_categories', array('id' => $tocategoryid, 'contextid' => $contextid))) {
@@ -1403,38 +1404,18 @@ class question_bank_view {
             }
             if ($questionids) {
                 list($usql, $params) = $DB->get_in_or_equal($questionids);
-                $sql = "SELECT q.*, c.contextid FROM {question} q, {question_categories} c WHERE q.id $usql AND c.id = q.category";
-                if (!$questions = $DB->get_records_sql($sql, $params)){
-                    print_error('questiondoesnotexist', 'question', $pageurl->out());
-                }
-                $checkforfiles = false;
+                $sql = "";
+                $questions = $DB->get_records_sql("
+                        SELECT q.*, c.contextid
+                        FROM {question} q
+                        JOIN {question_categories} c ON c.id = q.category
+                        WHERE q.id $usql", $params);
                 foreach ($questions as $question){
-                    //check capabilities
                     question_require_capability_on($question, 'move');
-                    $fromcontext = get_context_instance_by_id($question->contextid);
-                    if (get_filesdir_from_context($fromcontext) != get_filesdir_from_context($tocontext)){
-                        $checkforfiles = true;
-                    }
                 }
-                $returnurl = $this->baseurl->out(false, array('category' => "$tocategoryid,$contextid"));
-                if (!$checkforfiles){
-                    if (!question_move_questions_to_category(implode(',', $questionids), $tocategory->id)) {
-                        print_error('errormovingquestions', 'question', $returnurl, $questionids);
-                    }
-                    redirect($returnurl);
-                } else {
-                    $returnurl = str_replace($CFG->wwwroot . '/', '', $returnurl);
-                    $movecontexturl  = new moodle_url('/question/contextmoveq.php',
-                                                    array('returnurl' => $returnurl,
-                                                            'ids' => implode(',', $questionids),
-                                                            'tocatid' => $tocategoryid));
-                    if (!empty($cm->id)){
-                        $movecontexturl->param('cmid', $cm->id);
-                    } else {
-                        $movecontexturl->param('courseid', $this->course->id);
-                    }
-                    redirect($movecontexturl);
-                }
+                question_move_questions_to_category($questionids, $tocategory->id);
+                redirect($this->baseurl->out(false,
+                        array('category' => "$tocategoryid,$contextid")));
             }
         }
 

@@ -143,7 +143,7 @@ function xmldb_feedback_upgrade($oldversion) {
     }
 
     if ($oldversion < 2008042400) { //New version in version.php
-        if ($all_nonanonymous_feedbacks = $DB->get_records('feedback', 'anonymous', 2)) {
+        if ($all_nonanonymous_feedbacks = $DB->get_records('feedback', array('anonymous'=>2))) {
             $update_sql = 'UPDATE {feedback_completed} SET anonymous_response = 2 WHERE feedback = ';
             foreach ($all_nonanonymous_feedbacks as $fb) {
                 $DB->execute($update_sql.$fb->id);
@@ -289,6 +289,21 @@ function xmldb_feedback_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2010051601, 'feedback');
     }
 
+    if ($oldversion < 2010102300) {
+
+        // Define field completionsubmit to be added to feedback
+        $table = new xmldb_table('feedback');
+        $field = new xmldb_field('completionsubmit', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'timemodified');
+
+        // Conditionally launch add field completionsubmit
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // feedback savepoint reached
+        upgrade_mod_savepoint(true, 2010102300, 'feedback');
+    }
+    
     return true;
 }
 

@@ -172,6 +172,16 @@ class grade_test extends UnitTestCaseUsingDatabase {
 
     /**
      * Load grade_category data into the database, and adds the corresponding objects to this class' variable.
+     * category structure:
+                              course category
+                                    |
+                           +--------+-------------+
+                           |                      |
+             unittestcategory1               level1category
+                  |
+         +--------+-------------+
+         |                      |
+        unittestcategory2  unittestcategory3
      */
     function load_grade_categories() {
         global $DB;
@@ -637,7 +647,7 @@ class grade_test extends UnitTestCaseUsingDatabase {
         $grade = new stdClass();
         $grade->itemid = $this->grade_items[1]->id;
         $grade->userid = 1;
-        $grade->finalgrade = 60;
+        $grade->finalgrade = 72;
         $grade->timecreated = mktime();
         $grade->timemodified = mktime();
         $grade->information = '4 of 17 grade_grades';
@@ -648,7 +658,7 @@ class grade_test extends UnitTestCaseUsingDatabase {
         $grade = new stdClass();
         $grade->itemid = $this->grade_items[1]->id;
         $grade->userid = 2;
-        $grade->finalgrade = 70;
+        $grade->finalgrade = 92;
         $grade->timecreated = mktime();
         $grade->timemodified = mktime();
         $grade->information = '5 of 17 grade_grades';

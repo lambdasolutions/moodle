@@ -65,6 +65,8 @@ abstract class backup_helper {
      * TODO: Modernise this
      */
     static public function delete_dir_contents($dir, $excludeddir='') {
+        global $CFG;
+
         if (!is_dir($dir)) {
             // if we've been given a directory that doesn't exist yet, return true.
             // this happens when we're trying to clear out a course that has only just
@@ -78,7 +80,7 @@ abstract class backup_helper {
         $dir_subdirs    = array();
 
         // Make sure we can delete it
-        chmod($dir, 0777);
+        chmod($dir, $CFG->directorypermissions);
 
         if ((($handle = opendir($dir))) == false) {
             // The directory could not be opened
@@ -97,7 +99,7 @@ abstract class backup_helper {
 
         // Delete all files in the curent directory return false and halt if a file cannot be removed
         for ($i=0; $i<count($dir_files); $i++) {
-            chmod($dir_files[$i], 0777);
+            chmod($dir_files[$i], $CFG->directorypermissions);
             if (((unlink($dir_files[$i]))) == false) {
                 return false;
             }
@@ -105,7 +107,7 @@ abstract class backup_helper {
 
         // Empty sub directories and then remove the directory
         for ($i=0; $i<count($dir_subdirs); $i++) {
-            chmod($dir_subdirs[$i], 0777);
+            chmod($dir_subdirs[$i], $CFG->directorypermissions);
             if (self::delete_dir_contents($dir_subdirs[$i]) == false) {
                 return false;
             } else {
@@ -173,7 +175,7 @@ abstract class backup_helper {
 
     /**
      * Given one backupid and the (FS) final generated file, perform its final storage
-     * into Moodle file storage
+     * into Moodle file storage. For stored files it returns the complete file_info object
      */
     static public function store_backup_file($backupid, $filepath) {
 
@@ -191,15 +193,14 @@ abstract class backup_helper {
         $courseid  = $dinfo[0]->courseid;              // Id of the course
 
         // Quick hack. If for any reason, filename is blank, fix it here.
-        // This hack will be out once MDL-22142 - P26 gets fixed
+        // TODO: This hack will be out once MDL-22142 - P26 gets fixed
         if (empty($filename)) {
             $filename = backup_plan_dbops::get_default_backup_filename('moodle2', $backuptype, $id, $hasusers, $isannon);
         }
 
-
         // Backups of type IMPORT aren't stored ever
         if ($backupmode == backup::MODE_IMPORT) {
-            return true;
+            return false;
         }
 
         // Calculate file storage options of id being backup
@@ -226,6 +227,11 @@ abstract class backup_helper {
                 $filearea  = 'course';
                 $itemid    = 0;
                 break;
+        }
+
+        if ($backupmode == backup::MODE_AUTOMATED) {
+            // Automated backups have there own special area!
+            $filearea  = 'automated';
         }
 
         // Backups of type HUB (by definition never have user info)

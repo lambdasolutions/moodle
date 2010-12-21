@@ -201,7 +201,7 @@ function wiki_upgrade_install_20_tables() {
  * Migrating wiki pages history
  */
 function wiki_upgrade_migrate_versions() {
-    global $DB, $CFG;
+    global $DB, $CFG, $OUTPUT;
     upgrade_set_timeout();
     require_once($CFG->dirroot . '/mod/wiki/db/migration/lib.php');
     $sql = "SELECT po.id as oldpage_id, po.pagename as oldpage_pagename, po.version, po.flags, po.content, po.author, po.userid as oldpage_userid, po.created, po.lastmodified, po.refs, po.meta, po.hits, po.wiki,
@@ -218,8 +218,7 @@ function wiki_upgrade_migrate_versions() {
                 ON po.pagename = p.title AND p.subwikiid = s.id";
     $pagesinfo = $DB->get_recordset_sql($sql, array());
 
-    while ($pagesinfo->valid()) {
-        $pageinfo = $pagesinfo->current();
+    foreach ($pagesinfo as $pageinfo) {
 
         $oldpage = new StdClass();
         $oldpage->id = $pageinfo->oldpage_id;
@@ -294,19 +293,15 @@ function wiki_upgrade_migrate_versions() {
                 $version->content = $content;
                 $DB->insert_record('wiki_versions', $version);
             } catch (Exception $e) {
-                echo $OUTPUT->notification('Cannot insert this record');
-                print_object($version);
+                echo $OUTPUT->notification('Cannot insert this record, page id: ' . $page->id);
             }
         } else {
             try {
                 $DB->insert_record('wiki_versions', $version);
             } catch (Exception $e) {
-                echo $OUTPUT->notification('Cannot insert this record');
-                print_object($version);
+                echo $OUTPUT->notification('Cannot insert this record, page id: ' . $page->id);
             }
         }
-
-        $pagesinfo->next();
     }
 
     $pagesinfo->close();

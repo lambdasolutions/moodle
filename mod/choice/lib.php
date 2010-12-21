@@ -221,30 +221,32 @@ function choice_prepare_options($choice, $user, $coursemodule, $allresponses) {
             }
             if ( $choice->limitanswers && ($option->countanswers >= $option->maxanswers) && empty($option->attributes->checked)) {
                 $option->attributes->disabled = true;
-                }
-            $cdisplay['options'][] = $option;
             }
+            $cdisplay['options'][] = $option;
         }
+    }
 
     $cdisplay['hascapability'] = is_enrolled($context, NULL, 'mod/choice:choose'); //only enrolled users are allowed to make a choice
 
     if ($choice->allowupdate && $DB->record_exists('choice_answers', array('choiceid'=> $choice->id, 'userid'=> $user->id))) {
         $cdisplay['allowupdate'] = true;
-                }
+    }
 
     return $cdisplay;
-                    }
+}
 
 /**
  * @global object
  * @param int $formanswer
  * @param object $choice
  * @param int $userid
- * @param int $courseid
+ * @param object $course Course object
  * @param object $cm
  */
-function choice_user_submit_response($formanswer, $choice, $userid, $courseid, $cm) {
-    global $DB;
+function choice_user_submit_response($formanswer, $choice, $userid, $course, $cm) {
+    global $DB, $CFG;
+    require_once($CFG->libdir.'/completionlib.php');
+
     $current = $DB->get_record('choice_answers', array('choiceid' => $choice->id, 'userid' => $userid));
     $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 
@@ -291,7 +293,7 @@ WHERE
             $newanswer->optionid = $formanswer;
             $newanswer->timemodified = time();
             $DB->update_record("choice_answers", $newanswer);
-            add_to_log($courseid, "choice", "choose again", "view.php?id=$cm->id", $choice->id, $cm->id);
+            add_to_log($course->id, "choice", "choose again", "view.php?id=$cm->id", $choice->id, $cm->id);
         } else {
             $newanswer = NULL;
             $newanswer->choiceid = $choice->id;
@@ -299,7 +301,13 @@ WHERE
             $newanswer->optionid = $formanswer;
             $newanswer->timemodified = time();
             $DB->insert_record("choice_answers", $newanswer);
-            add_to_log($courseid, "choice", "choose", "view.php?id=$cm->id", $choice->id, $cm->id);
+
+            // Update completion state
+            $completion = new completion_info($course);
+            if ($completion->is_enabled($cm) && $choice->completionsubmit) {
+                $completion->update_state($cm, COMPLETION_COMPLETE);
+            }
+            add_to_log($course->id, "choice", "choose", "view.php?id=$cm->id", $choice->id, $cm->id);
         }
     } else {
         if (!($current->optionid==$formanswer)) { //check to see if current choice already selected - if not display error
@@ -352,7 +360,7 @@ function prepare_choice_show_results($choice, $course, $cm, $allresponses, $forc
         $display->options[$optionid]->maxanswer = $choice->maxanswers[$optionid];
 
         if (array_key_exists($optionid, $allresponses)) {
-            $display->options[$optionid]->user = $allresponses[$optionid]; //->user;
+            $display->options[$optionid]->user = $allresponses[$optionid];
             $totaluser += count($allresponses[$optionid]);
         }
     }
@@ -513,11 +521,15 @@ function prepare_choice_show_results($choice, $course, $cm, $allresponses, $forc
 /**
  * @global object
  * @param array $attemptids
- * @param int $choiceid
+ * @param object $choice Choice main table row
+ * @param object $cm Course-module object
+ * @param object $course Course object
  * @return bool
  */
-function choice_delete_responses($attemptids, $choiceid) {
-    global $DB;
+function choice_delete_responses($attemptids, $choice, $cm, $course) {
+    global $DB, $CFG;
+    require_once($CFG->libdir.'/completionlib.php');
+
     if(!is_array($attemptids) || empty($attemptids)) {
         return false;
     }
@@ -528,9 +540,14 @@ function choice_delete_responses($attemptids, $choiceid) {
         }
     }
 
+    $completion = new completion_info($course);
     foreach($attemptids as $attemptid) {
-        if ($todelete = $DB->get_record('choice_answers', array('choiceid' => $choiceid, 'userid' => $attemptid))) {
-            $DB->delete_records('choice_answers', array('choiceid' => $choiceid, 'userid' => $attemptid));
+        if ($todelete = $DB->get_record('choice_answers', array('choiceid' => $choice->id, 'userid' => $attemptid))) {
+            $DB->delete_records('choice_answers', array('choiceid' => $choice->id, 'userid' => $attemptid));
+            // Update completion state
+            if ($completion->is_enabled($cm) && $choice->completionsubmit) {
+                $completion->update_state($cm, COMPLETION_INCOMPLETE, $attemptid);
+            }
         }
     }
     return true;
@@ -772,6 +789,7 @@ function choice_supports($feature) {
         case FEATURE_GROUPMEMBERSONLY:        return true;
         case FEATURE_MOD_INTRO:               return true;
         case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
+        case FEATURE_COMPLETION_HAS_RULES:    return true;
         case FEATURE_GRADE_HAS_GRADE:         return false;
         case FEATURE_GRADE_OUTCOMES:          return false;
         case FEATURE_BACKUP_MOODLE2:          return true;
@@ -807,5 +825,32 @@ function choice_extend_settings_navigation(settings_navigation $settings, naviga
             }
         }
         $choicenode->add(get_string("viewallresponses", "choice", $responsecount), new moodle_url('/mod/choice/report.php', array('id'=>$PAGE->cm->id)));
+    }
+}
+
+/**
+ * Obtains the automatic completion state for this choice based on any conditions
+ * in forum settings.
+ *
+ * @param object $course Course
+ * @param object $cm Course-module
+ * @param int $userid User ID
+ * @param bool $type Type of comparison (or/and; can be used as return value if no conditions)
+ * @return bool True if completed, false if not, $type if conditions not set.
+ */
+function choice_get_completion_state($course, $cm, $userid, $type) {
+    global $CFG,$DB;
+
+    // Get choice details
+    $choice = $DB->get_record('choice', array('id'=>$cm->instance), '*',
+            MUST_EXIST);
+
+    // If completion option is enabled, evaluate it and return true/false
+    if($choice->completionsubmit) {
+        return $DB->record_exists('choice_answers', array(
+                'choiceid'=>$choice->id, 'userid'=>$userid));
+    } else {
+        // Completion option is not enabled so just return $type
+        return $type;
     }
 }

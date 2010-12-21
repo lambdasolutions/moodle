@@ -37,35 +37,13 @@
     if ($parent !== 0) {
         $url->param('parent', $parent);
     }
-    if ($mode !== 0) {
-        $url->param('mode', $mode);
-    }
-    if ($move !== 0) {
-        $url->param('move', $move);
-    }
-    if ($mark !== '') {
-        $url->param('mark', $mark);
-    }
-    if ($postid !== 0) {
-        $url->param('postid', $postid);
-    }
     $PAGE->set_url($url);
 
-    if (!$discussion = $DB->get_record('forum_discussions', array('id' => $d))) {
-        print_error('invaliddiscussionid', 'forum');
-    }
+    $discussion = $DB->get_record('forum_discussions', array('id' => $d), '*', MUST_EXIST);
+    $course = $DB->get_record('course', array('id' => $discussion->course), '*', MUST_EXIST);
+    $forum = $DB->get_record('forum', array('id' => $discussion->forum), '*', MUST_EXIST);
+    $cm = get_coursemodule_from_instance('forum', $forum->id, $course->id, false, MUST_EXIST);
 
-    if (!$course = $DB->get_record('course', array('id' => $discussion->course))) {
-        print_error('invalidcourseid');
-    }
-
-    if (!$forum = $DB->get_record('forum', array('id' => $discussion->forum))) {
-        echo $OUTPUT->notification("Bad forum ID stored in this discussion");
-    }
-
-    if (!$cm = get_coursemodule_from_instance('forum', $forum->id, $course->id)) {
-        print_error('invalidcoursemodule');
-    }
     require_course_login($course, true, $cm);
 
 /// Add ajax-related libs
@@ -74,7 +52,7 @@
     $PAGE->requires->yui2_lib('json');
 
     // move this down fix for MDL-6926
-    require_once('lib.php');
+    require_once($CFG->dirroot.'/mod/forum/lib.php');
 
     $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
     require_capability('mod/forum:viewdiscussion', $modcontext, NULL, true, 'noviewdiscussionspermission', 'forum');
@@ -116,8 +94,7 @@
             print_error('cannotmovenotvisible', 'forum', $return);
         }
 
-        require_capability('mod/forum:startdiscussion',
-            get_context_instance(CONTEXT_MODULE,$cmto->id));
+        require_capability('mod/forum:startdiscussion', get_context_instance(CONTEXT_MODULE,$cmto->id));
 
         if (!forum_move_attachments($discussion, $forum->id, $forumto->id)) {
             echo $OUTPUT->notification("Errors occurred while moving attachment directories - check your file permissions");
@@ -127,7 +104,7 @@
         add_to_log($course->id, 'forum', 'move discussion', "discuss.php?d=$discussion->id", $discussion->id, $cmto->id);
 
         require_once($CFG->libdir.'/rsslib.php');
-        require_once('rsslib.php');
+        require_once($CFG->dirroot.'/mod/forum/rsslib.php');
 
         // Delete the RSS files for the 2 forums to force regeneration of the feeds
         forum_rss_delete_file($forum);
@@ -136,12 +113,7 @@
         redirect($return.'&moved=-1&sesskey='.sesskey());
     }
 
-    $logparameters = "d=$discussion->id";
-    if ($parent) {
-        $logparameters .= "&amp;parent=$parent";
-    }
-
-    add_to_log($course->id, 'forum', 'view discussion', "discuss.php?$logparameters", $discussion->id, $cm->id);
+    add_to_log($course->id, 'forum', 'view discussion', $PAGE->url->out(false), $discussion->id, $cm->id);
 
     unset($SESSION->fromdiscussion);
 
@@ -182,9 +154,18 @@
 
     $searchform = forum_search_form($course);
 
-    if ($parent != $discussion->firstpost) {
-        $PAGE->navbar->add(format_string($post->subject));
+    $forumnode = $PAGE->navigation->find($cm->id, navigation_node::TYPE_ACTIVITY);
+    if (empty($forumnode)) {
+        $forumnode = $PAGE->navbar;
+    } else {
+        $forumnode->make_active();
     }
+    $node = $forumnode->add(format_string($discussion->name), new moodle_url('/mod/forum/discuss.php', array('d'=>$discussion->id)));
+    $node->display = false;
+    if ($node && $post->id != $discussion->firstpost) {
+        $node->add(format_string($post->subject), $PAGE->url);
+    }
+
     $PAGE->set_title("$course->shortname: ".format_string($discussion->name));
     $PAGE->set_heading($course->fullname);
     $PAGE->set_button($searchform);
@@ -194,36 +175,46 @@
 /// If so, make sure the current person is allowed to see this discussion
 /// Also, if we know they should be able to reply, then explicitly set $canreply for performance reasons
 
-    if (isguestuser() or !isloggedin() or (!is_enrolled($modcontext) and !is_viewing($modcontext))) {
-        // allow guests and not-logged-in to see the link - they are prompted to log in after clicking the link
-        // normal users with temporary guest access see this link too, they are asked to enrol instead
-        $canreply = ($forum->type != 'news'); // no reply in news forums
-
-    } else {
-        $canreply = forum_user_can_post($forum, $discussion, $USER, $cm, $course, $modcontext);
+    $canreply = forum_user_can_post($forum, $discussion, $USER, $cm, $course, $modcontext);
+    if (!$canreply and $forum->type !== 'news') {
+        if (isguestuser() or !isloggedin()) {
+            $canreply = true;
+        }
+        if (!is_enrolled($modcontext) and !is_viewing($modcontext)) {
+            // allow guests and not-logged-in to see the link - they are prompted to log in after clicking the link
+            // normal users with temporary guest access see this link too, they are asked to enrol instead
+            $canreply = enrol_selfenrol_available($course->id);
+        }
     }
 
 /// Print the controls across the top
     echo '<div class="discussioncontrols clearfix">';
 
-    // groups selector not needed here
-    echo '<div class="displaymode">';
-    forum_print_mode_form($discussion->id, $displaymode);
-    echo "</div>";
-
     if (has_capability('mod/forum:exportdiscussion', $modcontext) && (!empty($CFG->enableportfolios))) {
-        echo '<div class="exporttoportfolio">';
         require_once($CFG->libdir.'/portfoliolib.php');
         $button = new portfolio_add_button();
         $button->set_callback_options('forum_portfolio_caller', array('discussionid' => $discussion->id), '/mod/forum/locallib.php');
-        $button->render();
-        echo '</div>';
+        $button = $button->to_html(PORTFOLIO_ADD_FULL_FORM, get_string('exportdiscussion', 'mod_forum'));
+        $buttonextraclass = '';
+        if (empty($button)) {
+            // no portfolio plugin available.
+            $button = '&nbsp;';
+            $buttonextraclass = ' noavailable';
+        }
+        echo html_writer::tag('div', $button, array('class' => 'discussioncontrol exporttoportfolio'.$buttonextraclass));
+    } else {
+        echo html_writer::tag('div', '&nbsp;', array('class'=>'discussioncontrol nullcontrol'));
     }
+
+    // groups selector not needed here
+    echo '<div class="discussioncontrol displaymode">';
+    forum_print_mode_form($discussion->id, $displaymode);
+    echo "</div>";
 
     if ($forum->type != 'single'
                 && has_capability('mod/forum:movediscussions', $modcontext)) {
 
-        echo '<div class="movediscussion">';
+        echo '<div class="discussioncontrol movediscussion">';
         // Popup menu to move discussions to other forums. The discussion in a
         // single discussion forum can't be moved.
         $modinfo = get_fast_modinfo($course);
@@ -248,7 +239,9 @@
             }
             if (!empty($forummenu)) {
                 echo '<div class="movediscussionoption">';
-                $select = new url_select($forummenu, '', array(''=>get_string("movethisdiscussionto", "forum")), 'forummenu');
+                $select = new url_select($forummenu, '',
+                        array(''=>get_string("movethisdiscussionto", "forum")),
+                        'forummenu', get_string('move'));
                 echo $OUTPUT->render($select);
                 echo "</div>";
             }

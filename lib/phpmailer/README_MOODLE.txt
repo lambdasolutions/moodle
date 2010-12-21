@@ -9,8 +9,3 @@ class.pop3.php
 docs/
 examples/
 test/
-
-Our changes:
- * Modified EncodeQP() in class.phpmailer.php to not use php's implementation of quoted
-   printable encoding as it was causing problems for some users MDL-23240
-

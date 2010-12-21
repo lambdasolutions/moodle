@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="lib/db" VERSION="20100920" COMMENT="XMLDB file for core Moodle tables"
+<XMLDB PATH="lib/db" VERSION="20101026" COMMENT="XMLDB file for core Moodle tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../lib/xmldb/xmldb.xsd"
 >
@@ -579,8 +579,11 @@
         <FIELD NAME="fullmessage" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="subject" NEXT="fullmessageformat"/>
         <FIELD NAME="fullmessageformat" TYPE="int" LENGTH="4" NOTNULL="false" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="The format of the full message" PREVIOUS="fullmessage" NEXT="fullmessagehtml"/>
         <FIELD NAME="fullmessagehtml" TYPE="text" LENGTH="medium" NOTNULL="false" SEQUENCE="false" COMMENT="html format of message" PREVIOUS="fullmessageformat" NEXT="smallmessage"/>
-        <FIELD NAME="smallmessage" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="Smal version of message (eg sms)" PREVIOUS="fullmessagehtml" NEXT="timecreated"/>
-        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="smallmessage"/>
+        <FIELD NAME="smallmessage" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="Smal version of message (eg sms)" PREVIOUS="fullmessagehtml" NEXT="notification"/>
+        <FIELD NAME="notification" TYPE="int" LENGTH="1" NOTNULL="false" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="smallmessage" NEXT="contexturl"/>
+        <FIELD NAME="contexturl" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="If this message is a notification of an event contexturl should contain a link to view this event. For example if its a notification of a forum post contexturl should contain a link to the forum post." PREVIOUS="notification" NEXT="contexturlname"/>
+        <FIELD NAME="contexturlname" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="Display text for the contexturl" PREVIOUS="contexturl" NEXT="timecreated"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="contexturlname"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -599,8 +602,11 @@
         <FIELD NAME="fullmessage" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="subject" NEXT="fullmessageformat"/>
         <FIELD NAME="fullmessageformat" TYPE="int" LENGTH="4" NOTNULL="false" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="The format of the full message" PREVIOUS="fullmessage" NEXT="fullmessagehtml"/>
         <FIELD NAME="fullmessagehtml" TYPE="text" LENGTH="medium" NOTNULL="false" SEQUENCE="false" COMMENT="html format of message" PREVIOUS="fullmessageformat" NEXT="smallmessage"/>
-        <FIELD NAME="smallmessage" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="Smal version of message (eg sms)" PREVIOUS="fullmessagehtml" NEXT="timecreated"/>
-        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="smallmessage" NEXT="timeread"/>
+        <FIELD NAME="smallmessage" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="Smal version of message (eg sms)" PREVIOUS="fullmessagehtml" NEXT="notification"/>
+        <FIELD NAME="notification" TYPE="int" LENGTH="1" NOTNULL="false" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="smallmessage" NEXT="contexturl"/>
+        <FIELD NAME="contexturl" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="If this message is a notification of an event contexturl should contain a link to view this event. For example if its a notification of a forum post contexturl should contain a link to the forum post." PREVIOUS="notification" NEXT="contexturlname"/>
+        <FIELD NAME="contexturlname" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" COMMENT="Display text for the contexturl" PREVIOUS="contexturl" NEXT="timecreated"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="contexturlname" NEXT="timeread"/>
         <FIELD NAME="timeread" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="timecreated"/>
       </FIELDS>
       <KEYS>
@@ -742,7 +748,7 @@
         <FIELD NAME="secret" TYPE="char" LENGTH="15" NOTNULL="true" SEQUENCE="false" PREVIOUS="lastip" NEXT="picture"/>
         <FIELD NAME="picture" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="secret" NEXT="url"/>
         <FIELD NAME="url" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="picture" NEXT="description"/>
-        <FIELD NAME="description" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="url" NEXT="descriptionformat"/>
+        <FIELD NAME="description" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false" PREVIOUS="url" NEXT="descriptionformat"/>
         <FIELD NAME="descriptionformat" TYPE="int" LENGTH="2" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="description" NEXT="mailformat"/>
         <FIELD NAME="mailformat" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="1" SEQUENCE="false" PREVIOUS="descriptionformat" NEXT="maildigest"/>
         <FIELD NAME="maildigest" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="mailformat" NEXT="maildisplay"/>
@@ -778,7 +784,7 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="true" NEXT="userid"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="id" NEXT="name"/>
-        <FIELD NAME="name" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" PREVIOUS="userid" NEXT="value"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="userid" NEXT="value"/>
         <FIELD NAME="value" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="name"/>
       </FIELDS>
       <KEYS>
@@ -1629,7 +1635,8 @@
         <FIELD NAME="aggregateoutcomes" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="Aggregate outcomes" PREVIOUS="aggregateonlygraded" NEXT="aggregatesubcats"/>
         <FIELD NAME="aggregatesubcats" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" COMMENT="ignore subcategories in aggregation" PREVIOUS="aggregateoutcomes" NEXT="timecreated"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="aggregatesubcats" NEXT="timemodified"/>
-        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="timecreated"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" SEQUENCE="false" PREVIOUS="timecreated" NEXT="hidden"/>
+        <FIELD NAME="hidden" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="timemodified"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="courseid"/>

@@ -29,7 +29,6 @@ require_once($CFG->libdir.'/eventslib.php');
 /** Include calendar/lib.php */
 require_once($CFG->dirroot.'/calendar/lib.php');
 
-
 define('FEEDBACK_ANONYMOUS_YES', 1);
 define('FEEDBACK_ANONYMOUS_NO', 2);
 define('FEEDBACK_MIN_ANONYMOUS_COUNT_IN_GROUP', 2);
@@ -58,6 +57,7 @@ function feedback_supports($feature) {
         case FEATURE_GROUPMEMBERSONLY:        return true;
         case FEATURE_MOD_INTRO:               return true;
         case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
+        case FEATURE_COMPLETION_HAS_RULES:    return true;
         case FEATURE_GRADE_HAS_GRADE:         return false;
         case FEATURE_GRADE_OUTCOMES:          return false;
         case FEATURE_BACKUP_MOODLE2:          return true;
@@ -417,6 +417,31 @@ function feedback_print_recent_mod_activity($activity, $courseid, $detail, $modn
     echo "</td></tr></table>";
 
     return;
+}
+
+/**
+ * Obtains the automatic completion state for this feedback based on the condition
+ * in feedback settings.
+ *
+ * @param object $course Course
+ * @param object $cm Course-module
+ * @param int $userid User ID
+ * @param bool $type Type of comparison (or/and; can be used as return value if no conditions)
+ * @return bool True if completed, false if not, $type if conditions not set.
+ */
+function feedback_get_completion_state($course, $cm, $userid, $type) {
+    global $CFG, $DB;
+
+    // Get feedback details
+    $feedback = $DB->get_record('feedback', array('id'=>$cm->instance), '*', MUST_EXIST);
+
+    // If completion option is enabled, evaluate it and return true/false
+    if($feedback->completionsubmit) {
+        return $DB->record_exists('feedback_tracking', array('userid'=>$userid, 'feedback'=>$feedback->id));
+    } else {
+        // Completion option is not enabled so just return $type
+        return $type;
+    }
 }
 
 
@@ -1026,7 +1051,10 @@ function feedback_delete_template($id) {
  * @param boolean $deleteold
  */
 function feedback_items_from_template($feedback, $templateid, $deleteold = false) {
-    global $DB;
+    global $DB, $CFG;
+
+    require_once($CFG->libdir.'/completionlib.php');
+
     $fs = get_file_storage();
 
     //get all templateitems
@@ -1037,6 +1065,7 @@ function feedback_items_from_template($feedback, $templateid, $deleteold = false
     //files in the template_item are in the context of the current course
     //files in the feedback_item are in the feedback_context of the feedback
     $c_context = get_context_instance(CONTEXT_COURSE, $feedback->course);
+    $course = $DB->get_record('course', array('id'=>$feedback->course));
     $cm = get_coursemodule_from_instance('feedback', $feedback->id);
     $f_context = get_context_instance(CONTEXT_MODULE, $cm->id);
 
@@ -1050,7 +1079,17 @@ function feedback_items_from_template($feedback, $templateid, $deleteold = false
             }
             //delete tracking-data
             $DB->delete_records('feedback_tracking', array('feedback'=>$feedback->id));
-            $DB->delete_records('feedback_completed', array('feedback'=>$feedback->id));
+
+            if($completeds = $DB->get_records('feedback_completed', array('feedback'=>$feedback->id))) {
+                $completion = new completion_info($course);
+                foreach($completeds as $completed) {
+                    // Update completion state
+                    if ($completion->is_enabled($cm) && $feedback->completionsubmit) {
+                        $completion->update_state($cm, COMPLETION_INCOMPLETE, $completed->userid);
+                    }
+                    $DB->delete_records('feedback_completed', array('id'=>$completed->id));
+                }
+            }
             $DB->delete_records('feedback_completedtmp', array('feedback'=>$feedback->id));
         }
         $positionoffset = 0;
@@ -1329,7 +1368,20 @@ function feedback_delete_item($itemid, $renumber = true){
  * @return void
  */
 function feedback_delete_all_items($feedbackid){
-    global $DB;
+    global $DB, $CFG;
+    require_once($CFG->libdir.'/completionlib.php');
+
+    if(!$feedback = $DB->get_record('feedback', array('id'=>$feedbackid))) {
+        return false;
+    }
+
+    if (!$cm = get_coursemodule_from_instance('feedback', $feedback->id)) {
+        return false;
+    }
+
+    if(!$course = $DB->get_record('course', array('id'=>$feedback->course))) {
+        return false;
+    }
 
     if(!$items = $DB->get_records('feedback_item', array('feedback'=>$feedbackid))) {
         return;
@@ -1337,8 +1389,20 @@ function feedback_delete_all_items($feedbackid){
     foreach($items as $item) {
         feedback_delete_item($item->id, false);
     }
+    // $DB->delete_records('feedback_completed', array('feedback'=>$feedbackid));
+    if($completeds = $DB->get_records('feedback_completed', array('feedback'=>$feedback->id))) {
+        $completion = new completion_info($course);
+        foreach($completeds as $completed) {
+            // Update completion state
+            if ($completion->is_enabled($cm) && $feedback->completionsubmit) {
+                $completion->update_state($cm, COMPLETION_INCOMPLETE, $completed->userid);
+            }
+            $DB->delete_records('feedback_completed', array('id'=>$completed->id));
+        }
+    }
+
     $DB->delete_records('feedback_completedtmp', array('feedback'=>$feedbackid));
-    $DB->delete_records('feedback_completed', array('feedback'=>$feedbackid));
+
 }
 
 /**
@@ -2270,11 +2334,25 @@ function feedback_delete_all_completeds($feedbackid) {
  * @return boolean
  */
 function feedback_delete_completed($completedid) {
-    global $DB;
+    global $DB, $CFG;
+    require_once($CFG->libdir.'/completionlib.php');
 
     if (!$completed = $DB->get_record('feedback_completed', array('id'=>$completedid))) {
         return false;
     }
+
+    if (!$feedback = $DB->get_record('feedback', array('id'=>$completed->feedback))) {
+        return false;
+    }
+
+    if (!$course = $DB->get_record('course', array('id'=>$feedback->course))) {
+        return false;
+    }
+
+    if (!$cm = get_coursemodule_from_instance('feedback', $feedback->id)) {
+        return false;
+    }
+
     //first we delete all related values
     $DB->delete_records('feedback_value', array('completed'=>$completed->id));
 
@@ -2283,6 +2361,11 @@ function feedback_delete_completed($completedid) {
         $DB->delete_records('feedback_tracking', array('completed'=>$completed->id));
     }
 
+    // Update completion state
+    $completion = new completion_info($course);
+    if ($completion->is_enabled($cm) && $feedback->completionsubmit) {
+        $completion->update_state($cm, COMPLETION_INCOMPLETE, $completed->userid);
+    }
     //last we delete the completed-record
     return $DB->delete_records('feedback_completed', array('id'=>$completed->id));
 }
@@ -2499,8 +2582,8 @@ function feedback_send_email($cm, $feedback, $course, $userid) {
 
             if($feedback->anonymous == FEEDBACK_ANONYMOUS_NO) {
                 $eventdata = new stdClass();
-                $eventdata->name             = 'feedback';
-                $eventdata->component        = 'mod';
+                $eventdata->name             = 'submission';
+                $eventdata->component        = 'mod_feedback';
                 $eventdata->userfrom         = $user;
                 $eventdata->userto           = $teacher;
                 $eventdata->subject          = $postsubject;
@@ -2511,8 +2594,8 @@ function feedback_send_email($cm, $feedback, $course, $userid) {
                 message_send($eventdata);
             }else {
                 $eventdata = new stdClass();
-                $eventdata->name             = 'feedback';
-                $eventdata->component        = 'mod';
+                $eventdata->name             = 'submission';
+                $eventdata->component        = 'mod_feedback';
                 $eventdata->userfrom         = $teacher;
                 $eventdata->userto           = $teacher;
                 $eventdata->subject          = $postsubject;
@@ -2563,8 +2646,8 @@ function feedback_send_email_anonym($cm, $feedback, $course) {
             $posthtml = ($teacher->mailformat == 1) ? feedback_send_email_html($info, $course, $cm) : '';
 
             $eventdata = new stdClass();
-            $eventdata->name             = 'feedback';
-            $eventdata->component        = 'mod';
+            $eventdata->name             = 'submission';
+            $eventdata->component        = 'mod_feedback';
             $eventdata->userfrom         = $teacher;
             $eventdata->userto           = $teacher;
             $eventdata->subject          = $postsubject;

@@ -49,10 +49,11 @@ abstract class backup implements checksumable {
     const INTERACTIVE_NO  = false;
 
     // Predefined modes (purposes) of the backup
-    const MODE_GENERAL  = 10;
-    const MODE_IMPORT   = 20;
-    const MODE_HUB      = 30;
-    const MODE_SAMESITE = 40;
+    const MODE_GENERAL   = 10;
+    const MODE_IMPORT    = 20;
+    const MODE_HUB       = 30;
+    const MODE_SAMESITE  = 40;
+    const MODE_AUTOMATED = 50;
 
     // Target (new/existing/current/adding/deleting)
     const TARGET_CURRENT_DELETING = 0;
@@ -106,8 +107,8 @@ abstract class backup implements checksumable {
     const OPERATION_RESTORE ='restore';// We are performing one restore
 
     // Version (to keep CFG->backup_version (and release) updated automatically)
-    const VERSION = 2010092100;
-    const RELEASE = '2.0 RC1';
+    const VERSION = 2010111800;
+    const RELEASE = '2.0';
 }
 
 /*

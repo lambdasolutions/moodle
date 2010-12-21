@@ -45,7 +45,8 @@ class core_register_renderer extends plugin_renderer_base {
     /**
      * Display the page to register on Moodle.org or on a specific hub
      */
-    public function registrationselector() {
+    public function registrationselector($updatemoodleorg = false) {
+        global $CFG;
         $table = new html_table();
         $table->head = array(get_string('moodleorg', 'hub'), get_string('specifichub', 'hub'));
         $table->size = array('50%', '50%');
@@ -66,17 +67,17 @@ class core_register_renderer extends plugin_renderer_base {
         $table->data[] = $row;
 
         //Moodle.org button cell
-        $registeronmoodleorgurl = new moodle_url("/admin/registration/register.php",
+        $registeronmoodleorgurl = new moodle_url("/" . $CFG->admin . "/registration/register.php",
                         array('sesskey' => sesskey(), 'huburl' => HUB_MOODLEORGHUBURL
                             , 'hubname' => 'Moodle.org'));
         $registeronmoodleorgbutton = new single_button($registeronmoodleorgurl,
-                        get_string('registeronmoodleorg', 'hub'));
+                        $updatemoodleorg ? get_string('updatesite', 'hub', 'Moodle.org') : get_string('registeronmoodleorg', 'hub'));
         $registeronmoodleorgbutton->class = 'centeredbutton';
         $registeronmoodleorgbuttonhtml = $this->output->render($registeronmoodleorgbutton);
         $moodleorgcell = $registeronmoodleorgbuttonhtml;
 
         //Specific hub button cell
-        $registeronspecifichuburl = new moodle_url("/admin/registration/hubselector.php",
+        $registeronspecifichuburl = new moodle_url("/" . $CFG->admin . "/registration/hubselector.php",
                         array('sesskey' => sesskey()));
         $registeronspecifichubbutton = new single_button($registeronspecifichuburl,
                         get_string('registeronspecifichub', 'hub'));
@@ -96,15 +97,19 @@ class core_register_renderer extends plugin_renderer_base {
      * Display the listing of registered on hub
      */
     public function registeredonhublisting($hubs) {
+        global $CFG;
         $table = new html_table();
         $table->head = array(get_string('hub', 'hub'), get_string('operation', 'hub'));
         $table->size = array('80%', '20%');
 
         foreach ($hubs as $hub) {
+            if ($hub->huburl == HUB_MOODLEORGHUBURL) {
+                $hub->hubname = get_string('registeredmoodleorg', 'hub', $hub->hubname);
+            }
             $hublink = html_writer::tag('a', $hub->hubname, array('href' => $hub->huburl));
             $hublinkcell = html_writer::tag('div', $hublink, array('class' => 'registeredhubrow'));
 
-            $unregisterhuburl = new moodle_url("/admin/registration/index.php",
+            $unregisterhuburl = new moodle_url("/" . $CFG->admin . "/registration/index.php",
                             array('sesskey' => sesskey(), 'huburl' => $hub->huburl,
                                 'unregistration' => 1));
             $unregisterbutton = new single_button($unregisterhuburl,

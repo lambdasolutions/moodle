@@ -43,7 +43,7 @@ function forum_rss_get_feed($context, $args) {
         return null;
     }
 
-    $forumid = $args[3];
+    $forumid  = clean_param($args[3], PARAM_INT);
 
     $uservalidated = false;
 
@@ -79,7 +79,9 @@ function forum_rss_get_feed($context, $args) {
     if (file_exists($cachedfilepath)) {
         $cachedfilelastmodified = filemtime($cachedfilepath);
     }
-    if (forum_rss_newstuff($forum, $cm, $cachedfilelastmodified)) {
+    //if the cache is more than 60 seconds old and there's new stuff
+    $dontrecheckcutoff = time()-60;
+    if ( $dontrecheckcutoff > $cachedfilelastmodified && forum_rss_newstuff($forum, $cm, $cachedfilelastmodified)) {
         //need to regenerate the cached version
         $result = forum_rss_feed_contents($forum, $sql);
         if (!empty($result)) {
@@ -279,7 +281,7 @@ function forum_rss_feed_contents($forum, $sql) {
     //set a flag. Are we displaying discussions or posts?
     $isdiscussion = true;
     if (!empty($forum->rsstype) && $forum->rsstype!=1) {
-            $isdiscussion = false;
+        $isdiscussion = false;
     }
 
     $formatoptions = new stdClass();
@@ -287,7 +289,14 @@ function forum_rss_feed_contents($forum, $sql) {
     foreach ($recs as $rec) {
             $item = new stdClass();
             $user = new stdClass();
-            $item->title = format_string($rec->discussionname);
+            if ($isdiscussion && !empty($rec->discussionname)) {
+                $item->title = format_string($rec->discussionname);
+            } else if (!empty($rec->postsubject)) {
+                $item->title = format_string($rec->postsubject);
+            } else {
+                //we should have an item title by now but if we dont somehow then substitute something somewhat meaningful
+                $item->title = format_string($forum->name.' '.userdate($rec->postcreated,get_string('strftimedatetimeshort', 'langconfig')));
+            }
             $user->firstname = $rec->userfirstname;
             $user->lastname = $rec->userlastname;
             $item->author = fullname($user);

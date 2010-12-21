@@ -24,21 +24,21 @@
  */
 require_once('../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
-require_once($CFG->dirroot . '/admin/webservice/lib.php');
+require_once($CFG->dirroot . '/' . $CFG->admin . '/webservice/lib.php');
 require_once($CFG->dirroot . '/webservice/lib.php');
 
 $id = required_param('id', PARAM_INT);
 
-$PAGE->set_url('/admin/webservice/service_users.php', array('id' => $id));
-$PAGE->navbar->ignore_active(true);
-$PAGE->navbar->add(get_string('administrationsite'));
-$PAGE->navbar->add(get_string('plugins', 'admin'));
-$PAGE->navbar->add(get_string('webservices', 'webservice'));
-$PAGE->navbar->add(get_string('externalservices', 'webservice'),
-        new moodle_url('/admin/settings.php?section=externalservices'));
-$PAGE->navbar->add(get_string('serviceusers', 'webservice'));
-
 admin_externalpage_setup('externalserviceusers');
+
+//define nav bar
+$PAGE->set_url('/' . $CFG->admin . '/webservice/service_users.php', array('id' => $id));
+$node = $PAGE->settingsnav->find('externalservices', navigation_node::TYPE_SETTING);
+if ($node) {
+    $node->make_active();
+}
+$PAGE->navbar->add(get_string('serviceusers', 'webservice'),
+        new moodle_url('/' . $CFG->admin . '/webservice/service_users.php', array('id' => $id)));
 
 $webservicemanager = new webservice();
 
@@ -57,7 +57,7 @@ if (optional_param('add', false, PARAM_BOOL) && confirm_sesskey()) {
             $serviceuser->externalserviceid = $id;
             $serviceuser->userid = $adduser->id;
             $webservicemanager->add_ws_authorised_user($serviceuser);
-            add_to_log(1, 'core', 'assign', $CFG->admin . '/webservice/service_users.php?id='
+            add_to_log(SITEID, 'core', 'assign', $CFG->admin . '/webservice/service_users.php?id='
                     . $id, 'add', '', $adduser->id);
         }
         $potentialuserselector->invalidate_selected_users();
@@ -71,7 +71,7 @@ if (optional_param('remove', false, PARAM_BOOL) && confirm_sesskey()) {
     if (!empty($userstoremove)) {
         foreach ($userstoremove as $removeuser) {
             $webservicemanager->remove_ws_authorised_user($removeuser, $id);
-            add_to_log(1, 'core', 'assign', $CFG->admin . '/webservice/service_users.php?id='
+            add_to_log(SITEID, 'core', 'assign', $CFG->admin . '/webservice/service_users.php?id='
                     . $id, 'remove', '', $removeuser->id);
         }
         $potentialuserselector->invalidate_selected_users();

@@ -45,6 +45,7 @@ require_once($CFG->dirroot.'/search/lib.php');
     $site = get_site();
 
     $PAGE->set_url('/search/stats.php');
+    $PAGE->set_context(get_context_instance(CONTEXT_SYSTEM));
     $PAGE->navbar->add($strsearch, new moodle_url('/search/index.php'));
     $PAGE->navbar->add($strquery, new moodle_url('/search/stats.php'));
     $PAGE->set_title($strsearch);
@@ -106,7 +107,8 @@ require_once($CFG->dirroot.'/search/lib.php');
         }
 
         echo html_writer::table($admin_table);
-        echo $OUTPUT->spacer(array('height'=>20, 'br'=>true)); // should be done with CSS instead
+        $spacer = array('height'=>20, 'br'=>true);
+        echo $OUTPUT->spacer($spacer); // should be done with CSS instead
         echo $OUTPUT->heading($solutionsstr);
 
         unset($admin_table->data);

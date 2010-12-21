@@ -2,11 +2,20 @@
 
 /* HUB SELECTOR */
 #page-blocks-community-communitycourse .hubscreenshot {float: left; }
-#page-blocks-community-communitycourse .hubdescription {color: #003333;font-size: 95%;}
-#page-blocks-community-communitycourse .hubadditionaldesc {color: #666666;font-size: 90%;}
+#page-blocks-community-communitycourse .hubdescription {
+    color: #003333;
+    font-size: 95%;
+    display:block;
+}
+#page-blocks-community-communitycourse .hubdescriptiontext {margin-left:160px;display:block;}
+#page-blocks-community-communitycourse .hubadditionaldesc {
+    color: #666666;
+    font-size: 90%;
+    display:block;
+}
 #page-blocks-community-communitycourse .hubscreenshot {margin-right: 10px;}
-#page-blocks-community-communitycourse .nottrusted {}
-#page-blocks-community-communitycourse .hubtrusted {}
+#page-blocks-community-communitycourse .hubnottrusted {margin-left: 6px;}
+#page-blocks-community-communitycourse .hubtrusted {display:inline;margin-left: 6px;}
 #page-blocks-community-communitycourse .hubnottrusted {}
 #page-blocks-community-communitycourse .trustedtr {background-color: #ffe1c3;}
 #page-blocks-community-communitycourse .prioritisetr {background-color: #ffd4ff;}
@@ -21,7 +30,7 @@
 /* COURSES RESULT */
 #page-blocks-community-communitycourse .additionaldesc {font-size: 80%; color: #8B8989;}
 #page-blocks-community-communitycourse .comment-link {font-size: 80%; color: #555555;}
-#page-blocks-community-communitycourse .coursescreenshot {text-align:center;}
+#page-blocks-community-communitycourse .coursescreenshot {text-align:center;cursor: pointer;}
 #page-blocks-community-communitycourse .hubcourseinfo {margin-left: 15px;}
 #page-blocks-community-communitycourse .coursesitelink {}
 #page-blocks-community-communitycourse .pagingbar {text-align: center;}
@@ -33,6 +42,7 @@
 #page-blocks-community-communitycourse .hubcourserating { padding-top: 3px; font-size: 80%; color: #555555;}
 #page-blocks-community-communitycourse .coursedescription {width: 70%; float: left;}
 #page-blocks-community-communitycourse .fullhubcourse {margin-bottom: 20px;}
+#page-blocks-community-communitycourse .hubcoursetitlepanel {margin-bottom: 6px;}
 #page-blocks-community-communitycourse .hubcourseresult {
     background:none repeat scroll 0 0 #FFFFFF;
     clear:both;
@@ -83,6 +93,7 @@
     background-color: #EEE9E9;
     margin-left: 6px;
     font-size: 95%;
+    margin-bottom: 9px;
 }
 #page-blocks-community-communitycourse .comment-list li {
     background-color:#FFFAFA !important;
@@ -152,3 +163,64 @@
 #page-blocks-community-communitycourse .hubrateandcomment { font-size: 80%;}
 #page-blocks-community-communitycourse .hubcourseoutcomes {}
 #page-blocks-community-communitycourse .nextlink {text-align: center;margin-top: 6px;}
+#page-blocks-community-communitycourse .textinfo { text-align: center;}
+
+#ss-mask {
+    z-index: 10;
+    position:fixed;
+    top:0;
+    left:0;
+    bottom:0;
+    right:0;
+    opacity:0.35;
+    filter:alpha(opacity:35);
+    background:#000;
+}
+
+.hiddenoverlay {
+    display: none;
+    text-align: center;
+}
+
+.imagearrow {
+    font-size: 120%;
+    display: inline;
+    cursor: pointer;
+}
+.imagetitle {
+    display: inline;
+    cursor: pointer;
+}
+
+#page-blocks-community-communitycourse .moodle-dialogue-base .moodle-dialogue {
+    -moz-border-radius:12px 12px 12px 12px;
+    -moz-box-shadow:0 1px 3px rgba(0, 0, 0, 0.6);
+    -webkit-border-radius:12px 12px 12px 12px;
+    -webkit-box-shadow:0 1px 3px rgba(0, 0, 0, 0.6);
+    border-width:0 0 0 0;
+}
+
+#page-blocks-community-communitycourse .moodle-dialogue-base .moodle-dialogue-wrap {
+    -moz-border-radius:12px 12px 0px 0px;
+    -webkit-border-radius:12px 12px 0px 0px;
+    background-color:#FFFFFF;
+    border:1px solid #555555;
+}
+
+#page-blocks-community-communitycourse .moodle-dialogue-base .moodle-dialogue-hd {
+    -moz-border-radius:12px 12px 0 0;
+    -webkit-border-radius:12px 12px 0 0;
+    background-color:#F6F6F6;
+    border:1px solid #CCCCCC;
+    overflow: auto;
+}
+
+#page-blocks-community-communitycourse .moodle-dialogue-base .moodle-dialogue-bd {
+    padding:0px;
+    margin-bottom: -5px;
+}
+
+#page-blocks-community-communitycourse .moodle-dialogue-base .closebutton {
+    margin-top:4px;
+    width:30px;
+}

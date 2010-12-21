@@ -129,7 +129,7 @@ class quiz_statistics_report extends quiz_default_report {
                 if ($s > 1){
                     $imageurl = $CFG->wwwroot.'/mod/quiz/report/statistics/statistics_graph.php?id='.$quizstats->id;
                     echo $OUTPUT->heading(get_string('statisticsreportgraph', 'quiz_statistics'));
-                    echo '<div class="mdl-align"><img src="'.$imageurl.'" alt="'.get_string('statisticsreportgraph', 'quiz_statistics').'" /></div>';
+                    echo '<div class="graph flexible-wrap"><img src="'.$imageurl.'" alt="'.get_string('statisticsreportgraph', 'quiz_statistics').'" /></div>';
                 }
             }
             if ($this->table->is_downloading()){
@@ -230,7 +230,7 @@ class quiz_statistics_report extends quiz_default_report {
             echo $OUTPUT->heading(get_string('questioninformation', 'quiz_statistics'));
             echo html_writer::table($questioninfotable);
 
-            echo $OUTPUT->box(format_text($question->questiontext, $question->questiontextformat).$actions, 'boxaligncenter generalbox boxwidthnormal mdl-align');
+            echo $OUTPUT->box(format_text($question->questiontext, $question->questiontextformat, array('overflowdiv'=>true)).$actions, 'boxaligncenter generalbox boxwidthnormal mdl-align');
 
             echo $OUTPUT->heading(get_string('questionstatistics', 'quiz_statistics'));
             echo html_writer::table($questionstatstable);
@@ -281,6 +281,7 @@ class quiz_statistics_report extends quiz_default_report {
                 foreach ($tresponsesforsubq as $aid => $teacherresponse){
                     $teacherresponserow = new stdClass();
                     $teacherresponserow->response = $teacherresponse->answer;
+                    $teacherresponserow->indent = '';
                     $teacherresponserow->rcount = 0;
                     $teacherresponserow->subq = $subq;
                     $teacherresponserow->credit = $teacherresponse->credit;
@@ -303,7 +304,8 @@ class quiz_statistics_report extends quiz_default_report {
                                 } else {
                                     $indent = '    ';
                                 }
-                                $response->response = ($qhaswildcards?$indent:'').$response->response;
+                                $response->response = $response->response;
+                                $response->indent = $qhaswildcards ? $indent : '';
                                 $response->subq = $subq;
                                 if ((count($responses[$subqid][$aid])<2) || ($response->rcount > ($teacherresponserow->rcount / 10))){
                                     $this->qtable->add_data_keyed($this->qtable->format_row($response));
@@ -354,7 +356,7 @@ class quiz_statistics_report extends quiz_default_report {
         $quizinformationtable = new html_table();
         $quizinformationtable->align = array('center', 'center');
         $quizinformationtable->width = '60%';
-        $quizinformationtable->class = 'generaltable titlesleft';
+        $quizinformationtable->attributes['class'] = 'generaltable titlesleft boxaligncenter';
         $quizinformationtable->data = array();
         $quizinformationtable->data[] = array(get_string('quizname', 'quiz_statistics'), $quiz->name);
         $quizinformationtable->data[] = array(get_string('coursename', 'quiz_statistics'), $course->fullname);

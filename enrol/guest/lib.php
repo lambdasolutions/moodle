@@ -46,9 +46,9 @@ class enrol_guest_plugin extends enrol_plugin {
     public function get_info_icons(array $instances) {
         foreach ($instances as $instance) {
             if ($instance->password) {
-                return array(new pix_icon('withoutpassword', get_string('pluginname', 'enrol_guest'), 'enrol_guest'));
-            } else {
                 return array(new pix_icon('withpassword', get_string('pluginname', 'enrol_guest'), 'enrol_guest'));
+            } else {
+                return array(new pix_icon('withoutpassword', get_string('pluginname', 'enrol_guest'), 'enrol_guest'));
             }
         }
     }
@@ -78,7 +78,7 @@ class enrol_guest_plugin extends enrol_plugin {
             // Temporarily assign them some guest role for this context
             $context = get_context_instance(CONTEXT_COURSE, $instance->courseid);
             $USER->access = load_temp_role($context, $CFG->guestroleid, $USER->access);
-            return ENROL_REQUIRE_LOGIN_CACHE_PERIOD;
+            return ENROL_REQUIRE_LOGIN_CACHE_PERIOD + time();
         }
 
         return false;

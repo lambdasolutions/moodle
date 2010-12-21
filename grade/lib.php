@@ -460,7 +460,7 @@ function grade_print_tabs($active_type, $active_plugin, $plugin_info, $return=fa
  * @return array
  */
 function grade_get_plugin_info($courseid, $active_type, $active_plugin) {
-    global $CFG;
+    global $CFG, $SITE;
 
     $context = get_context_instance(CONTEXT_COURSE, $courseid);
 
@@ -476,8 +476,11 @@ function grade_get_plugin_info($courseid, $active_type, $active_plugin) {
         $plugin_info['report'] = $reports;
     }
 
-    if ($edittree = grade_helper::get_info_edit_structure($courseid)) {
-        $plugin_info['edittree'] = $edittree;
+    //showing grade categories and items make no sense if we're not within a course
+    if ($courseid!=$SITE->id) {
+        if ($edittree = grade_helper::get_info_edit_structure($courseid)) {
+            $plugin_info['edittree'] = $edittree;
+        }
     }
 
     if ($scale = grade_helper::get_info_scales($courseid)) {
@@ -514,9 +517,11 @@ function grade_get_plugin_info($courseid, $active_type, $active_plugin) {
         }
     }
 
-    // Put settings last
-    if ($setting = grade_helper::get_info_manage_settings($courseid)) {
-        $plugin_info['settings'] = array('course'=>$setting);
+    //hide course settings if we're not in a course
+    if ($courseid!=$SITE->id) {
+        if ($setting = grade_helper::get_info_manage_settings($courseid)) {
+            $plugin_info['settings'] = array('course'=>$setting);
+        }
     }
 
     // Put preferences last
@@ -628,7 +633,11 @@ function print_grade_page_head($courseid, $active_type, $active_plugin=null,
         $title = $PAGE->course->fullname.': ' . $stractive_plugin;
     }
 
-    $PAGE->set_pagelayout('admin');
+    if ($active_type == 'report') {
+        $PAGE->set_pagelayout('report');
+    } else {
+        $PAGE->set_pagelayout('admin');
+    }
     $PAGE->set_title(get_string('grades') . ': ' . $stractive_type);
     $PAGE->set_heading($title);
     if ($buttons instanceof single_button) {
@@ -1004,6 +1013,7 @@ class grade_structure {
                 $is_category = $element['object']->is_category_item();
                 $is_scale    = $element['object']->gradetype == GRADE_TYPE_SCALE;
                 $is_value    = $element['object']->gradetype == GRADE_TYPE_VALUE;
+                $is_outcome  = !empty($element['object']->outcomeid);
 
                 if ($element['object']->is_calculated()) {
                     $strcalc = get_string('calculatedgrade', 'grades');
@@ -1029,12 +1039,19 @@ class grade_structure {
                     }
 
                 } else if ($element['object']->itemtype == 'mod') {
-                    $strmodname = get_string('modulename', $element['object']->itemmodule);
-                    return '<img src="'.$OUTPUT->pix_url('icon',
+                    //prevent outcomes being displaying the same icon as the activity they are attached to
+                    if ($is_outcome) {
+                        $stroutcome = s(get_string('outcome', 'grades'));
+                        return '<img src="'.$OUTPUT->pix_url('i/outcomes') . '" ' .
+                            'class="icon itemicon" title="'.$stroutcome.
+                            '" alt="'.$stroutcome.'"/>';
+                    } else {
+                        $strmodname = get_string('modulename', $element['object']->itemmodule);
+                        return '<img src="'.$OUTPUT->pix_url('icon',
                             $element['object']->itemmodule) . '" ' .
                             'class="icon itemicon" title="' .s($strmodname).
                             '" alt="' .s($strmodname).'"/>';
-
+                    }
                 } else if ($element['object']->itemtype == 'manual') {
                     if ($element['object']->is_outcome_item()) {
                         $stroutcome = get_string('outcome', 'grades');
@@ -2213,6 +2230,8 @@ abstract class grade_helper {
      * @return array
      */
     public static function get_plugins_reports($courseid) {
+        global $SITE;
+        
         if (self::$gradereports !== null) {
             return self::$gradereports;
         }
@@ -2220,6 +2239,11 @@ abstract class grade_helper {
         $gradereports = array();
         $gradepreferences = array();
         foreach (get_plugin_list('gradereport') as $plugin => $plugindir) {
+            //some reports make no sense if we're not within a course
+            if ($courseid==$SITE->id && ($plugin=='grader' || $plugin=='user')) {
+                continue;
+            }
+
             // Remove ones we can't see
             if (!has_capability('gradereport/'.$plugin.':view', $context)) {
                 continue;
@@ -2285,7 +2309,7 @@ abstract class grade_helper {
      * @return grade_plugin_info
      */
     public static function get_info_outcomes($courseid) {
-        global $CFG;
+        global $CFG, $SITE;
 
         if (self::$outcomeinfo !== null) {
             return self::$outcomeinfo;
@@ -2296,15 +2320,19 @@ abstract class grade_helper {
         if (!empty($CFG->enableoutcomes) && ($canmanage || $canupdate)) {
             $outcomes = array();
             if ($canupdate) {
-                $url = new moodle_url('/grade/edit/outcome/course.php', array('id'=>$courseid));
-                $outcomes['course'] = new grade_plugin_info('course', $url, get_string('outcomescourse', 'grades'));
+                if ($courseid!=$SITE->id) {
+                    $url = new moodle_url('/grade/edit/outcome/course.php', array('id'=>$courseid));
+                    $outcomes['course'] = new grade_plugin_info('course', $url, get_string('outcomescourse', 'grades'));
+                }
                 $url = new moodle_url('/grade/edit/outcome/index.php', array('id'=>$courseid));
                 $outcomes['edit'] = new grade_plugin_info('edit', $url, get_string('editoutcomes', 'grades'));
                 $url = new moodle_url('/grade/edit/outcome/import.php', array('courseid'=>$courseid));
                 $outcomes['import'] = new grade_plugin_info('import', $url, get_string('importoutcomes', 'grades'));
             } else {
-                $url = new moodle_url('/grade/edit/outcome/course.php', array('id'=>$courseid));
-                $outcomes['edit'] = new grade_plugin_info('edit', $url, get_string('outcomescourse', 'grades'));
+                if ($courseid!=$SITE->id) {
+                    $url = new moodle_url('/grade/edit/outcome/course.php', array('id'=>$courseid));
+                    $outcomes['edit'] = new grade_plugin_info('edit', $url, get_string('outcomescourse', 'grades'));
+                }
             }
             self::$outcomeinfo = $outcomes;
         } else {

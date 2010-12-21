@@ -34,7 +34,7 @@
     }
 
     $PAGE->set_context($context);
-    $PAGE->set_pagelayout('course');
+    $PAGE->set_pagelayout('popup');
     $PAGE->set_url('/course/info.php', array('id' => $course->id));
     $PAGE->set_title(get_string("summaryof", "", $course->fullname));
     $PAGE->set_heading('Course info');
@@ -54,7 +54,7 @@
     echo $OUTPUT->box_start('generalbox info');
 
     $course->summary = file_rewrite_pluginfile_urls($course->summary, 'pluginfile.php', $context->id, 'course', 'summary', NULL);
-    echo format_text($course->summary, $course->summaryformat, NULL, $course->id);
+    echo format_text($course->summary, $course->summaryformat, array('overflowdiv'=>true), $course->id);
 
     if (!empty($CFG->coursecontact)) {
         $coursecontactroles = explode(',', $CFG->coursecontact);

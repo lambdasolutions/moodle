@@ -237,9 +237,9 @@ class portfolio_add_button {
     *
     * @param int $format format to display the button or form or icon or link.
     *                    See constants PORTFOLIO_ADD_XXX for more info.
-    *                    optional, defaults to PORTFOLI_ADD_FULL_FORM
+    *                    optional, defaults to PORTFOLIO_ADD_FULL_FORM
     * @param str $addstr string to use for the button or icon alt text or link text.
-    *                    this is whole string, not key.  optional, defaults to 'Add to portfolio';
+    *                    this is whole string, not key. optional, defaults to 'Export to portfolio';
     */
     public function render($format=null, $addstr=null) {
         echo $this->to_html($format, $addstr);
@@ -334,7 +334,7 @@ class portfolio_add_button {
 
         $formoutput = '<form method="post" action="' . $CFG->wwwroot . '/portfolio/add.php" id="portfolio-add-button">' . "\n";
         $formoutput .= html_writer::input_hidden_params($url);
-        $linkoutput = '<a href="' . $url->out();
+        $linkoutput = '<a class="portfolio-add-link" title="'.$addstr.'" href="' . $url->out();
 
         switch ($format) {
             case PORTFOLIO_ADD_FULL_FORM:
@@ -344,17 +344,15 @@ class portfolio_add_button {
             break;
             case PORTFOLIO_ADD_ICON_FORM:
                 $formoutput .= $selectoutput;
-                $formoutput .= "\n" . '<input type="image" src="' . $OUTPUT->pix_url('t/portfolio') . '" alt=' . $addstr .'" />';
+                $formoutput .= "\n" . '<input class="portfolio-add-icon" type="image" src="' . $OUTPUT->pix_url('t/portfolioadd') . '" alt=' . $addstr .'" />';
                 $formoutput .= "\n" . '</form>';
             break;
             case PORTFOLIO_ADD_ICON_LINK:
-                $linkoutput .= '"><img src="' . $OUTPUT->pix_url('t/portfolio') . '" alt="' . $addstr .'" /></a>';
+                $linkoutput .= '"><img class="portfolio-add-icon" src="' . $OUTPUT->pix_url('t/portfolioadd') . '" alt="' . $addstr .'" /></a>';
             break;
             case PORTFOLIO_ADD_TEXT_LINK:
                 $linkoutput .= '">' . $addstr .'</a>';
             break;
-            case PORTFOLIO_ADD_FAKE_URL:
-                return urldecode($linkoutput);
             default:
                 debugging(get_string('invalidaddformat', 'portfolio', $format));
         }
@@ -1173,6 +1171,24 @@ function portfolio_existing_exports_by_plugin($userid) {
     return $DB->get_records_sql_menu($sql, $values);
 }
 
+/**
+ * Return default common options for {@link format_text()} when preparing a content to be exported
+ *
+ * It is important not to apply filters and not to clean the HTML in format_text()
+ *
+ * @return stdClass
+ */
+function portfolio_format_text_options() {
+
+    $options                = new stdClass();
+    $options->para          = false;
+    $options->newlines      = true;
+    $options->filter        = false;
+    $options->noclean       = true;
+    $options->overflowdiv   = false;
+
+    return $options;
+}
 
 /**
  * callback function from {@link portfolio_rewrite_pluginfile_urls}
@@ -1206,7 +1222,7 @@ function portfolio_rewrite_pluginfile_url_callback($contextid, $component, $file
         $filepath = implode('/', $bits);
     }
     if (!$file = $fs->get_file($contextid, $component, $filearea, $itemid, $filepath, $filename)) {
-        debugging("Couldn\t find a file from the embedded path info context $contextid component $component filearea $filearea itemid $itemid filepath $filepath name $filename");
+        debugging("Couldn't find a file from the embedded path info context $contextid component $component filearea $filearea itemid $itemid filepath $filepath name $filename");
         return $matches;
     }
     if (empty($options)) {

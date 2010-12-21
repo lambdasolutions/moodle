@@ -143,11 +143,6 @@ class question_edit_calculatedmulti_form extends question_edit_form {
             $mform->addElement('hidden', 'multiplier'."[$i]", optional_param('multiplier'."[$i]", '', PARAM_NUMBER));
             $mform->setType('multiplier'."[$i]", PARAM_NUMBER);
         }
-        $mform->addElement('hidden','unitgradingtype',optional_param('unitgradingtype', '', PARAM_INT)) ;
-        $mform->addElement('hidden','unitpenalty',optional_param('unitpenalty', '', PARAM_NUMBER)) ;
-        $mform->addElement('hidden','showunits',optional_param('showunits', '', PARAM_INT)) ;
-        $mform->addElement('hidden','unitsleft',optional_param('unitsleft', '', PARAM_INT)) ;
-        $mform->addElement('hidden','instructions',optional_param('instructions', '', PARAM_RAW)) ;
 
         $mform->setType('addunits','hidden');
         $mform->addElement('header', 'overallfeedbackhdr', get_string('overallfeedback', 'qtype_multichoice'));
@@ -184,17 +179,12 @@ class question_edit_calculatedmulti_form extends question_edit_form {
                     $default_values['correctanswerformat['.$key.']'] = $answer->correctanswerformat;
                     $default_values['feedback['.$key.']'] = array();
                     // prepare draftarea
-                    $default_values['feedback['.$key.']']['text'] = file_prepare_draft_area($draftid, $this->context->id, 'question', 'answerfeedback', empty($answer->id)?null:(int)$answer->id, null, $answer->feedback);
+                    $default_values['feedback['.$key.']']['text'] = file_prepare_draft_area($draftid, $this->context->id, 'question', 'answerfeedback', empty($answer->id)?null:(int)$answer->id, $this->fileoptions, $answer->feedback);
                     $default_values['feedback['.$key.']']['format'] = $answer->feedbackformat;
                     $default_values['feedback['.$key.']']['itemid'] = $draftid;
                     $key++;
                 }
             }
-            //  $default_values['unitgradingtype'] = $question->options->unitgradingtype ;
-            //  $default_values['unitpenalty'] = $question->options->unitpenalty ;
-            //  $default_values['showunits'] = $question->options->showunits ;
-            //  $default_values['unitsleft'] = $question->options->unitsleft ;
-            //  $default_values['instructions'] = $question->options->instructions  ;
             $default_values['synchronize'] = $question->options->synchronize ;
 
             if (isset($question->options->units)){

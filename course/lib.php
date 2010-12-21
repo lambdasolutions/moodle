@@ -244,7 +244,7 @@ function build_logs_array($course, $user=0, $date=0, $order="l.time ASC", $limit
     }
 
     $joins = array();
-    $oarams = array();
+    $params = array();
 
     if ($course->id != SITEID || $modid != 0) {
         $joins[] = "l.course = :courseid";
@@ -843,7 +843,7 @@ function print_log_graph($course, $userid=0, $type="course.png", $date=0) {
 }
 
 
-function print_overview($courses) {
+function print_overview($courses, array $remote_courses=array()) {
     global $CFG, $USER, $DB, $OUTPUT;
 
     $htmlarray = array();
@@ -859,17 +859,31 @@ function print_overview($courses) {
         }
     }
     foreach ($courses as $course) {
-        echo $OUTPUT->box_start("coursebox");
-        $linkcss = '';
+        echo $OUTPUT->box_start('coursebox');
+        $attributes = array('title' => s($course->fullname));
         if (empty($course->visible)) {
-            $linkcss = 'class="dimmed"';
+            $attributes['class'] = 'dimmed';
         }
-        echo $OUTPUT->heading('<a title="'. format_string($course->fullname).'" '.$linkcss.' href="'.$CFG->wwwroot.'/course/view.php?id='.$course->id.'">'. format_string($course->fullname).'</a>', 3);
+        echo $OUTPUT->heading(html_writer::link(
+            new moodle_url('/course/view.php', array('id' => $course->id)), format_string($course->fullname), $attributes), 3);
         if (array_key_exists($course->id,$htmlarray)) {
             foreach ($htmlarray[$course->id] as $modname => $html) {
                 echo $html;
             }
         }
+        echo $OUTPUT->box_end();
+    }
+
+    if (!empty($remote_courses)) {
+        echo $OUTPUT->heading(get_string('remotecourses', 'mnet'));
+    }
+    foreach ($remote_courses as $course) {
+        echo $OUTPUT->box_start('coursebox');
+        $attributes = array('title' => s($course->fullname));
+        echo $OUTPUT->heading(html_writer::link(
+            new moodle_url('/auth/mnet/jump.php', array('hostid' => $course->hostid, 'wantsurl' => '/course/view.php?id='.$course->remoteid)),
+            format_string($course->shortname),
+            $attributes) . ' (' . format_string($course->hostname) . ')', 3);
         echo $OUTPUT->box_end();
     }
 }
@@ -1272,6 +1286,7 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
 
     $labelformatoptions = new stdClass();
     $labelformatoptions->noclean = true;
+    $labelformatoptions->overflowdiv = true;
 
 /// Casting $course->modinfo to string prevents one notice when the field is null
     $modinfo = get_fast_modinfo($course);
@@ -1347,7 +1362,11 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
                 }
             }
 
-            echo '<li class="activity '.$mod->modname.'" id="module-'.$modnumber.'">';  // Unique ID
+            $liclasses = array();
+            $liclasses[] = 'activity';
+            $liclasses[] = $mod->modname;
+            $liclasses[] = 'modtype_'.$mod->modname;
+            echo html_writer::start_tag('li', array('class'=>join(' ', $liclasses), 'id'=>'module-'.$modnumber));
             if ($ismoving) {
                 echo '<a title="'.$strmovefull.'"'.
                      ' href="'.$CFG->wwwroot.'/course/mod.php?moveto='.$mod->id.'&amp;sesskey='.sesskey().'">'.
@@ -1356,9 +1375,14 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
                      ';
             }
 
-            if ($mod->indent) {
-                echo $OUTPUT->spacer(array('height'=>12, 'width'=>(20 * $mod->indent))); // should be done with CSS instead
+            $classes = array('mod-indent');
+            if (!empty($mod->indent)) {
+                $classes[] = 'mod-indent-'.$mod->indent;
+                if ($mod->indent > 15) {
+                    $classes[] = 'mod-indent-huge';
+                }
             }
+            echo html_writer::start_tag('div', array('class'=>join(' ', $classes)));
 
             $extra = '';
             if (!empty($modinfo->cms[$modnumber]->extra)) {
@@ -1431,7 +1455,7 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
                     echo '<a '.$linkcss.' '.$extra.
                          ' href="'.$CFG->wwwroot.'/mod/'.$mod->modname.'/view.php?id='.$mod->id.'">'.
                          '<img src="'.$icon.'" class="activityicon" alt="'.get_string('modulename',$mod->modname).'" /> '.
-                         $accesstext.'<span>'.$instancename.$altname.'</span></a>';
+                         $accesstext.'<span class="instancename">'.$instancename.$altname.'</span></a>';
 
                     if (!empty($mod->groupingid) && has_capability('moodle/course:managegroups', get_context_instance(CONTEXT_COURSE, $course->id))) {
                         if (!isset($groupings)) {
@@ -1557,7 +1581,8 @@ function print_section($course, $section, $mods, $modnamesused, $absolute=false,
                 }
             }
 
-            echo "</li>\n";
+            echo html_writer::end_tag('div');
+            echo html_writer::end_tag('li')."\n";
         }
 
     } elseif ($ismoving) {
@@ -2322,6 +2347,7 @@ function print_course($course, $highlightterms = '') {
     $options = NULL;
     $options->noclean = true;
     $options->para = false;
+    $options->overflowdiv = true;
     if (!isset($course->summaryformat)) {
         $course->summaryformat = FORMAT_MOODLE;
     }
@@ -2468,6 +2494,7 @@ function print_remote_course($course, $width="100%") {
     $options = NULL;
     $options->noclean = true;
     $options->para = false;
+    $options->overflowdiv = true;
     echo format_text($course->summary, $course->summaryformat, $options);
     echo '</div>';
     echo '</div>';
@@ -3394,6 +3421,43 @@ function course_format_uses_sections($format) {
 }
 
 /**
+ * Returns the information about the ajax support in the given source format
+ *
+ * The returned object's property (boolean)capable indicates that
+ * the course format supports Moodle course ajax features.
+ * The property (array)testedbrowsers can be used as a parameter for {@see ajaxenabled()}.
+ *
+ * @param string $format
+ * @return stdClass
+ */
+function course_format_ajax_support($format) {
+    global $CFG;
+
+    // set up default values
+    $ajaxsupport = new stdClass();
+    $ajaxsupport->capable = false;
+    $ajaxsupport->testedbrowsers = array();
+
+    // get the information from the course format library
+    $featurefile = $CFG->dirroot.'/course/format/'.$format.'/lib.php';
+    $featurefunction = 'callback_'.$format.'_ajax_support';
+    if (!function_exists($featurefunction) && file_exists($featurefile)) {
+        require_once $featurefile;
+    }
+    if (function_exists($featurefunction)) {
+        $formatsupport = $featurefunction();
+        if (isset($formatsupport->capable)) {
+            $ajaxsupport->capable = $formatsupport->capable;
+        }
+        if (is_array($formatsupport->testedbrowsers)) {
+            $ajaxsupport->testedbrowsers = $formatsupport->testedbrowsers;
+        }
+    }
+
+    return $ajaxsupport;
+}
+
+/**
  * Can the current user delete this course?
  * Course creators have exception,
  * 1 day after the creation they can sill delete the course.
@@ -3634,21 +3698,69 @@ function update_course($data, $editoroptions = NULL) {
 }
 
 /**
- * TODO: Average number of participants (in non-empty courses)
+ * Average number of participants
  * @return integer
  */
 function average_number_of_participants() {
-    global $DB;
-    return 0;
+    global $DB, $SITE;
+
+    //count total of enrolments for visible course (except front page)
+    $sql = 'SELECT COUNT(*) FROM (
+        SELECT DISTINCT ue.userid, e.courseid
+        FROM {user_enrolments} ue, {enrol} e, {course} c
+        WHERE ue.enrolid = e.id
+            AND e.courseid <> :siteid
+            AND c.id = e.courseid
+            AND c.visible = 1) as total';
+    $params = array('siteid' => $SITE->id);
+    $enrolmenttotal = $DB->count_records_sql($sql, $params);
+
+
+    //count total of visible courses (minus front page)
+    $coursetotal = $DB->count_records('course', array('visible' => 1));
+    $coursetotal = $coursetotal - 1 ;
+
+    //average of enrolment
+    if (empty($coursetotal)) {
+        $participantaverage = 0;
+    } else {
+        $participantaverage = $enrolmenttotal / $coursetotal;
+    }
+
+    return $participantaverage;
 }
 
 /**
- * TODO: Average number of course modules (in non-empty courses)
+ * Average number of course modules
  * @return integer
  */
 function average_number_of_courses_modules() {
-    global $DB;
-    return 0;
+    global $DB, $SITE;
+
+    //count total of visible course module (except front page)
+    $sql = 'SELECT COUNT(*) FROM (
+        SELECT cm.course, cm.module
+        FROM {course} c, {course_modules} cm
+        WHERE c.id = cm.course
+            AND c.id <> :siteid
+            AND cm.visible = 1
+            AND c.visible = 1) as total';
+    $params = array('siteid' => $SITE->id);
+    $moduletotal = $DB->count_records_sql($sql, $params);
+
+
+    //count total of visible courses (minus front page)
+    $coursetotal = $DB->count_records('course', array('visible' => 1));
+    $coursetotal = $coursetotal - 1 ;
+
+    //average of course module
+    if (empty($coursetotal)) {
+        $coursemoduleaverage = 0;
+    } else {
+        $coursemoduleaverage = $moduletotal / $coursetotal;
+    }
+
+    return $coursemoduleaverage;
 }
 
 /**

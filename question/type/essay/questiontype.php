@@ -37,30 +37,28 @@ class question_essay_qtype extends default_questiontype {
     function save_question_options($question) {
         global $DB;
         $context = $question->context;
-        $result = true;
-        $update = true;
-        $answer = $DB->get_record("question_answers", array("question" => $question->id));
+
+        $answer = $DB->get_record('question_answers', array('question' => $question->id));
         if (!$answer) {
             $answer = new stdClass;
             $answer->question = $question->id;
-            $update = false;
+            $answer->answer = '';
+            $answer->feedback = '';
+            $answer->id = $DB->insert_record('question_answers', $answer);
         }
+
+        $answer->feedback = $question->feedback['text'];
         $answer->feedbackformat = $question->feedback['format'];
+        $answer->answer = $answer->feedback;
         $answer->answerformat = $question->feedback['format'];
         $answer->fraction = $question->fraction;
-        if ($update) {
-            $answer->feedback = file_save_draft_area_files($question->feedback['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, self::$fileoptions, trim($question->feedback['text']));
-            $answer->answer = $answer->feedback;
-            $DB->update_record("question_answers", $answer);
-        } else {
-            $answer->feedback = $question->feedback['text'];
-            $answer->answer = $answer->feedback;
-            $answer->id = $DB->insert_record('question_answers', $answer);
-            $answer->feedback = file_save_draft_area_files($question->feedback['itemid'], $context->id, 'question', 'answerfeedback', $answer->id, self::$fileoptions, trim($question->feedback['text']));
-            $answer->answer = $answer->feedback;
-            $DB->update_record('question_answers', $answer);
-        }
-        return $result;
+
+        $answer->feedback = $this->import_or_save_files($question->feedback,
+                $context, 'question', 'answerfeedback', $answer->id);
+        $answer->answer = $answer->feedback;
+        $DB->update_record('question_answers', $answer);
+
+        return true;
     }
 
     function print_question_formulation_and_controls(&$question, &$state, $cmoptions, $options) {
@@ -98,7 +96,7 @@ class question_essay_qtype extends default_questiontype {
         if (isset($state->responses[''])) {
             $value = $state->responses[''];
         } else {
-            $value = "";
+            $value = '';
         }
 
         // answer
@@ -146,36 +144,17 @@ class question_essay_qtype extends default_questiontype {
             $course = $DB->get_record('course', array('id' => $courseid));
         }
 
-        return $this->save_question($question, $form, $course);
+        return $this->save_question($question, $form);
     }
 
-    /**
-     * When move the category of questions, the belonging files should be moved as well
-     * @param object $question, question information
-     * @param object $newcategory, target category information
-     */
-    function move_files($question, $newcategory) {
-        global $DB;
-        parent::move_files($question, $newcategory);
+    function move_files($questionid, $oldcontextid, $newcontextid) {
+        parent::move_files($questionid, $oldcontextid, $newcontextid);
+        $this->move_files_in_answers($questionid, $oldcontextid, $newcontextid);
+    }
 
-        $fs = get_file_storage();
-        // process files in answer
-        if (!$oldanswers = $DB->get_records('question_answers', array('question' =>  $question->id), 'id ASC')) {
-            $oldanswers = array();
-        }
-        $component = 'question';
-        $filearea = 'answerfeedback';
-        foreach ($oldanswers as $answer) {
-            $files = $fs->get_area_files($question->contextid, $component, $filearea, $answer->id);
-            foreach ($files as $storedfile) {
-                if (!$storedfile->is_directory()) {
-                    $newfile = new stdClass();
-                    $newfile->contextid = (int)$newcategory->contextid;
-                    $fs->create_file_from_storedfile($newfile, $storedfile);
-                    $storedfile->delete();
-                }
-            }
-        }
+    protected function delete_files($questionid, $contextid) {
+        parent::delete_files($questionid, $contextid);
+        $this->delete_files_in_answers($questionid, $contextid);
     }
 
     function check_file_access($question, $state, $options, $contextid, $component,

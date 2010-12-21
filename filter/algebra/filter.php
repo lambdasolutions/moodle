@@ -67,6 +67,7 @@ function filter_algebra_image($imagefile, $tex= "", $height="", $width="", $alig
     $style .= " width:{$width}px;";
   }
   $style .= '"';
+  $anchorcontents = '';
   if ($imagefile) {
     $anchorcontents .= "<img $title alt=\"".s($origtex)."\" src=\"";
     if ($CFG->slasharguments) {        // Use this method if possible for better caching
@@ -92,7 +93,7 @@ function filter_algebra_image($imagefile, $tex= "", $height="", $width="", $alig
 }
 
 class filter_algebra extends moodle_text_filter {
-    function filter($text){
+    function filter($text, array $options = array()){
         global $CFG, $DB;
 
         /// Do a quick check using stripos to avoid unnecessary wor

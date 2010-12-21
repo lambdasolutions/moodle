@@ -91,7 +91,7 @@ class quiz_report_statistics_table extends flexible_table {
         if (!$this->is_downloading()){
             if ($question->qtype!='random'){
                 $tooltip = get_string('detailedanalysis', 'quiz_statistics');
-                $url = $this->baseurl .'&amp;qid='.$question->id;
+                $url = $this->baseurl .'qid='.$question->id;
                 $html = "<a title=\"$tooltip\" href=\"$url\">".$question->name."</a>";
             } else {
                 $html = $question->name;
@@ -132,7 +132,11 @@ class quiz_report_statistics_table extends flexible_table {
         }
     }
     function col_actions($question){
-        return quiz_question_action_icons($this->quiz, $this->cmid, $question, $this->baseurl);
+        global $CFG;
+        $editreturnurl = str_replace($CFG->wwwroot, '', $this->baseurl);
+        $editreturnurl = str_replace('&amp;', '&', $editreturnurl);
+        $editreturnurl = preg_replace('/&$/', '', $editreturnurl);
+        return quiz_question_action_icons($this->quiz, $this->cmid, $question, $editreturnurl);
     }
     function col_qtype($question){
         return get_string($question->qtype,'quiz');
@@ -202,6 +206,15 @@ class quiz_report_statistics_table extends flexible_table {
             return '';
         }
     }
-
+    public function  wrap_html_start() {
+        if (!$this->is_downloading()) {
+            echo html_writer::start_tag('div', array('id'=>'tablecontainer', 'class'=>'statistics-tablecontainer'));
+        }
+    }
+    public function wrap_html_finish() {
+        if (!$this->is_downloading()) {
+            echo html_writer::end_tag('div'); // Opened in this::wrap_html_start
+        }
+    }
 }
 

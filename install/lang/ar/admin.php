@@ -28,5 +28,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['environmentrequireinstall'] = 'مطلوب تثبيته/تمكينه';
+$string['clianswerno'] = 'لا';
+$string['cliansweryes'] = 'نعم';
+$string['cliincorrectvalueerror'] = 'خطأ، القيمة "{$a->value}" غير صحيحة من أجل "{$a->option}"';
+$string['cliincorrectvalueretry'] = 'قيمة غير صحيحة، حاول مرة أخرى';
+$string['clitypevalue'] = 'أدخل القيمة';
+$string['environmentrequireinstall'] = 'مطلوب تثبيته/تفيله';
 $string['environmentrequireversion'] = 'مطلوب الأصدار {$a->needed} ، وانت تستخدم الأصدار {$a->current}';

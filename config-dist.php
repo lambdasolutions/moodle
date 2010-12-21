@@ -155,10 +155,6 @@ $CFG->admin = 'admin';
 // any existing key.
 //      $CFG->mnetkeylifetime = 28;
 //
-// Prevent scheduled backups from operating (and hide the GUI for them)
-// Useful for webhost operators who have alternate methods of backups
-//      $CFG->disablescheduledbackups = true;
-//
 // Allow user passwords to be included in backup files. Very dangerous
 // setting as far as it publishes password hashes that can be unencrypted
 // if the backup file is publicy available. Use it only if you can guarantee
@@ -353,6 +349,14 @@ $CFG->admin = 'admin';
 //
 //     $CFG->lang = 'yourlangcode'; // for example 'cs'
 //
+// When Moodle is about to perform an intensive operation it raises PHP's memory
+// limit. The following setting should be used on large sites to set the raised
+// memory limit to something higher.
+// The value for the settings should be a valid PHP memory value. e.g. 512M, 1G
+//
+//     $CFG->extramemorylimit = 1G;
+//
+//
 //=========================================================================
 // 8. SETTINGS FOR DEVELOPMENT SERVERS - not intended for production use!!!
 //=========================================================================
@@ -362,6 +366,11 @@ $CFG->admin = 'admin';
 // @ini_set('display_errors', '1'); // NOT FOR PRODUCTION SERVERS!
 // $CFG->debug = 38911;  // DEBUG_DEVELOPER // NOT FOR PRODUCTION SERVERS!
 // $CFG->debugdisplay = true;   // NOT FOR PRODUCTION SERVERS!
+//
+// You can specify a comma separated list of user ids that that always see
+// debug messages, this overrides the debug flag in $CFG->debug and $CFG->debugdisplay
+// for these users only.
+// $CFG->debugusers = '2';
 //
 // Prevent theme caching
 // $CFG->themerev = -1; // NOT FOR PRODUCTION SERVERS!
@@ -394,6 +403,12 @@ $CFG->admin = 'admin';
 // Since 2.0 sql queries are not shown during upgrade by default.
 // Please note that this setting may produce very long upgrade page on large sites.
 // $CFG->upgradeshowsql = true; // NOT FOR PRODUCTION SERVERS!
+//
+// Add SQL queries to the output of cron, just before their execution
+// $CFG->showcronsql = true;
+//
+// Force developer level debug and add debug info to the output of cron
+// $CFG->showcrondebugging = true;
 //
 //=========================================================================
 // 9. FORCED SETTINGS

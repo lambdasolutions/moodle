@@ -41,7 +41,7 @@ class repository_upload extends repository {
      * Process uploaded file
      * @return array|bool
      */
-    public function upload() {
+    public function upload($saveas_filename, $maxbytes) {
         global $USER, $CFG;
 
         $types = optional_param('accepted_types', '*', PARAM_RAW);
@@ -74,13 +74,38 @@ class repository_upload extends repository {
         if (!isset($_FILES[$elname])) {
             throw new moodle_exception('nofile');
         }
-
         if (!empty($_FILES[$elname]['error'])) {
-            throw new moodle_exception('maxbytes');
+            switch ($_FILES[$elname]['error']) {
+            case UPLOAD_ERR_INI_SIZE:
+                throw new moodle_exception('upload_error_ini_size', 'repository_upload');
+                break;
+            case UPLOAD_ERR_FORM_SIZE:
+                throw new moodle_exception('upload_error_form_size', 'repository_upload');
+                break;
+            case UPLOAD_ERR_PARTIAL:
+                throw new moodle_exception('upload_error_partial', 'repository_upload');
+                break;
+            case UPLOAD_ERR_NO_FILE:
+                throw new moodle_exception('upload_error_no_file', 'repository_upload');
+                break;
+            case UPLOAD_ERR_NO_TMP_DIR:
+                throw new moodle_exception('upload_error_no_tmp_dir', 'repository_upload');
+                break;
+            case UPLOAD_ERR_CANT_WRITE:
+                throw new moodle_exception('upload_error_cant_write', 'repository_upload');
+                break;
+            case UPLOAD_ERR_EXTENSION:
+                throw new moodle_exception('upload_error_extension', 'repository_upload');
+                break;
+            default:
+                throw new moodle_exception('nofile');
+            }
         }
 
-        if (empty($record->filename)) {
+        if (empty($saveas_filename)) {
             $record->filename = clean_param($_FILES[$elname]['name'], PARAM_FILE);
+        } else {
+            $record->filename = $saveas_filename;
         }
 
         if ($this->mimetypes != '*') {
@@ -98,12 +123,12 @@ class repository_upload extends repository {
             $record->itemid = 0;
         }
 
+        if (($maxbytes!==-1) && (filesize($_FILES[$elname]['tmp_name']) > $maxbytes)) {
+            throw new file_exception('maxbytes');
+        }
+
         if ($file = $fs->get_file($context->id, $record->component, $record->filearea, $record->itemid, $record->filepath, $record->filename)) {
-            return array(
-                'url'=>moodle_url::make_draftfile_url($file->get_itemid(), $file->get_filepath(), $file->get_filename())->out(),
-                'id'=>$file->get_itemid(),
-                'file'=>$file->get_filename()
-            );
+            throw new moodle_exception('fileexists', 'repository');
         }
 
         $record->contextid = $context->id;

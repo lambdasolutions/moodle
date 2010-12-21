@@ -138,11 +138,19 @@ class mssql_native_moodle_database extends moodle_database {
 
         $this->store_settings($dbhost, $dbuser, $dbpass, $dbname, $prefix, $dboptions);
 
+        $dbhost = $this->dbhost;
+        if (isset($dboptions['dbport'])) {
+            if (stristr(PHP_OS, 'win') && !stristr(PHP_OS, 'darwin')) {
+                $dbhost .= ','.$dboptions['dbport'];
+            } else {
+                $dbhost .= ':'.$dboptions['dbport'];
+            }
+        }
         ob_start();
         if (!empty($this->dboptions['dbpersist'])) { // persistent connection
-            $this->mssql = mssql_pconnect($this->dbhost, $this->dbuser, $this->dbpass, true);
+            $this->mssql = mssql_pconnect($dbhost, $this->dbuser, $this->dbpass, true);
         } else {
-            $this->mssql = mssql_connect($this->dbhost, $this->dbuser, $this->dbpass, true);
+            $this->mssql = mssql_connect($dbhost, $this->dbuser, $this->dbpass, true);
         }
         $dberr = ob_get_contents();
         ob_end_clean();
@@ -622,7 +630,7 @@ class mssql_native_moodle_database extends moodle_database {
                 $return .= 'NULL';
 
             } else if (is_number($param)) { // we can not use is_numeric() because it eats leading zeros from strings like 0045646
-                $return .= $param;
+                $return .= "'".$param."'"; //fix for MDL-24863 to prevent auto-cast to int.
 
             } else if (is_float($param)) {
                 $return .= $param;
@@ -686,7 +694,7 @@ class mssql_native_moodle_database extends moodle_database {
         if ($limitfrom or $limitnum) {
             if ($limitnum >= 1) { // Only apply TOP clause if we have any limitnum (limitfrom offset is handled later)
                 $fetch = $limitfrom + $limitnum;
-                $sql = preg_replace('/^([\s(])*SELECT( DISTINCT)?(?!\s*TOP\s*\()/i',
+                $sql = preg_replace('/^([\s(])*SELECT([\s]+(DISTINCT|ALL))?(?!\s*TOP\s*\()/i',
                                     "\\1SELECT\\2 TOP $fetch", $sql);
             }
         }
@@ -1052,7 +1060,19 @@ class mssql_native_moodle_database extends moodle_database {
 /// SQL helper functions
 
     public function sql_cast_char2int($fieldname, $text=false) {
-        return ' CAST(' . $fieldname . ' AS INT) ';
+        if (!$text) {
+            return ' CAST(' . $fieldname . ' AS INT) ';
+        } else {
+            return ' CAST(' . $this->sql_compare_text($fieldname) . ' AS INT) ';
+        }
+    }
+
+    public function sql_cast_char2real($fieldname, $text=false) {
+        if (!$text) {
+            return ' CAST(' . $fieldname . ' AS REAL) ';
+        } else {
+            return ' CAST(' . $this->sql_compare_text($fieldname) . ' AS REAL) ';
+        }
     }
 
     public function sql_ceil($fieldname) {

@@ -75,6 +75,7 @@ class MoodleQuickForm_filepicker extends HTML_QuickForm_input {
         $args->accepted_types = $this->_options['accepted_types']?$this->_options['accepted_types']:'*';
         $args->return_types = FILE_INTERNAL;
         $args->itemid = $draftitemid;
+        $args->maxbytes = $this->_options['maxbytes'];
         $args->context = $PAGE->context;
 
         $html = $this->_getTabs();
@@ -101,7 +102,7 @@ class MoodleQuickForm_filepicker extends HTML_QuickForm_input {
 
         // non js file picker
         $html .= '<noscript>';
-        $html .= "<object type='text/html' data='$nonjsfilepicker' height='160' width='600' style='border:1px solid #000'></object>";
+        $html .= "<div><object type='text/html' data='$nonjsfilepicker' height='160' width='600' style='border:1px solid #000'></object></div>";
         $html .= '</noscript>';
 
         return $html;
@@ -111,7 +112,8 @@ class MoodleQuickForm_filepicker extends HTML_QuickForm_input {
         global $USER;
 
         // make sure max one file is present and it is not too big
-        if ($draftitemid = $submitValues[$this->_attributes['name']]) {
+        if (!empty($submitValues[$this->_attributes['name']])) {
+            $draftitemid = $submitValues[$this->_attributes['name']];
             $fs = get_file_storage();
             $usercontext = get_context_instance(CONTEXT_USER, $USER->id);
             if ($files = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id DESC', false)) {
@@ -125,8 +127,10 @@ class MoodleQuickForm_filepicker extends HTML_QuickForm_input {
                     $file->delete();
                 }
             }
+            return array($this->_attributes['name'] => $submitValues[$this->_attributes['name']]);
+        } else {
+            return null;
         }
 
-        return array($this->_attributes['name'] => $submitValues[$this->_attributes['name']]);
     }
 }

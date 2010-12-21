@@ -48,7 +48,7 @@ function scorm_get_manifest($blocks,$scoes) {
                     $resources = array();
                     $resources = scorm_get_resources($block['children']);
                     $scoes = scorm_get_manifest($block['children'],$scoes);
-                    if (count($scoes->elements) <= 0) {
+                    if (empty($scoes->elements) || count($scoes->elements) <= 0) {
                         foreach ($resources as $item => $resource) {
                             if (!empty($resource['HREF'])) {
                                 $sco = new stdClass();
@@ -66,7 +66,9 @@ function scorm_get_manifest($blocks,$scoes) {
                     if (!isset($scoes->defaultorg) && isset($block['attrs']['DEFAULT'])) {
                         $scoes->defaultorg = $block['attrs']['DEFAULT'];
                     }
-                    $scoes = scorm_get_manifest($block['children'],$scoes);
+                    if (!empty($block['children'])) {
+                        $scoes = scorm_get_manifest($block['children'],$scoes);
+                    }
                 break;
                 case 'ORGANIZATION':
                     $identifier = $block['attrs']['IDENTIFIER'];
@@ -83,7 +85,9 @@ function scorm_get_manifest($blocks,$scoes) {
                     array_push($parents, $parent);
                     $organization = $identifier;
 
-                    $scoes = scorm_get_manifest($block['children'],$scoes);
+                    if (!empty($block['children'])) {
+                        $scoes = scorm_get_manifest($block['children'],$scoes);
+                    }
 
                     array_pop($parents);
                 break;
@@ -123,7 +127,9 @@ function scorm_get_manifest($blocks,$scoes) {
                     $parent->organization = $organization;
                     array_push($parents, $parent);
 
-                    $scoes = scorm_get_manifest($block['children'],$scoes);
+                    if (!empty($block['children'])) {
+                        $scoes = scorm_get_manifest($block['children'],$scoes);
+                    }
 
                     array_pop($parents);
                 break;
@@ -701,13 +707,23 @@ function scorm_get_siblings($sco) {
     }
     return null;
 }
-
+//get an array that contains all the parent scos for this sco.
 function scorm_get_ancestors($sco) {
-    if ($sco->parent != '/') {
-        return array_push(scorm_get_ancestors(scorm_get_parent($sco)));
-    } else {
-        return $sco;
+    $ancestors = array();
+    $continue = true;
+    While ($continue) {
+        $ancestor = scorm_get_parent($sco);
+        if (!empty($ancestor) && $ancestor->id !== $sco->id) {
+            $sco = $ancestor;
+            $ancestors[] = $ancestor;
+            if ($sco->parent == '/') {
+                $continue = false;
+            }
+        } else {
+            $continue = false;
+        }
     }
+    return $ancestors;
 }
 
 function scorm_get_preorder($preorder=array(),$sco) {

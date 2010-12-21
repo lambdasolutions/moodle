@@ -305,7 +305,8 @@
                 if (!isset($group->descriptionformat)) {
                     $group->descriptionformat = FORMAT_MOODLE;
                 }
-                $contentcell->text = $OUTPUT->heading($contentheading, 3) . format_text($group->description, $group->descriptionformat);
+                $options = array('overflowdiv'=>true);
+                $contentcell->text = $OUTPUT->heading($contentheading, 3) . format_text($group->description, $group->descriptionformat, $options);
                 $groupinfotable->data[] = new html_table_row(array($picturecell, $contentcell));
                 echo html_writer::table($groupinfotable);
             }
@@ -373,7 +374,7 @@
     if ($isfrontpage) {
         $select = "SELECT u.id, u.username, u.firstname, u.lastname,
                           u.email, u.city, u.country, u.picture,
-                          u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt,
+                          u.lang, u.timezone, u.maildisplay, u.imagealt,
                           u.lastaccess";
         $joins[] = "JOIN ($esql) e ON e.id = u.id"; // everybody on the frontpage usually
         if ($accesssince) {
@@ -383,7 +384,7 @@
     } else {
         $select = "SELECT u.id, u.username, u.firstname, u.lastname,
                           u.email, u.city, u.country, u.picture,
-                          u.lang, u.timezone, u.emailstop, u.maildisplay, u.imagealt,
+                          u.lang, u.timezone, u.maildisplay, u.imagealt,
                           COALESCE(ul.timeaccess, 0) AS lastaccess";
         $joins[] = "JOIN ($esql) e ON e.id = u.id"; // course enrolled users only
         $joins[] = "LEFT JOIN {user_lastaccess} ul ON (ul.userid = u.id AND ul.courseid = :courseid)"; // not everybody accessed course yet
@@ -489,9 +490,9 @@
         }
         echo $OUTPUT->heading($heading, 3);
     } else {
-        if ($course->id != SITEID && has_capability('moodle/role:assign', $context)) {
-            $editlink  = ' <a href="'.$CFG->wwwroot.'/'.$CFG->admin.'/roles/assign.php?contextid='.$context->id.'">';
-            $editlink .= '<img src="'.$OUTPUT->pix_url('i/edit') . '" class="icon" alt="" /></a>';
+        if ($course->id != SITEID && has_capability('moodle/course:enrolreview', $context)) {
+            $editlink = $OUTPUT->action_icon(new moodle_url('/enrol/users.php', array('id' => $course->id)),
+                                             new pix_icon('i/edit', get_string('edit')));
         } else {
             $editlink = '';
         }
@@ -593,7 +594,7 @@
                     $row->cells[0] = new html_table_cell();
                     $row->cells[0]->attributes['class'] = 'left side';
 
-                    $row->cells[0]->text = $OUTPUT->user_picture($user, array('courseid'=>$course->id));
+                    $row->cells[0]->text = $OUTPUT->user_picture($user, array('size' => 100, 'courseid'=>$course->id));
                     $row->cells[1] = new html_table_cell();
                     $row->cells[1]->attributes['class'] = 'content';
 
@@ -712,7 +713,7 @@
                     $profilelink = '<strong>'.fullname($user).'</strong>';
                 }
 
-                $data = array ($OUTPUT->user_picture($user, array('courseid'=>$course->id)), $profilelink);
+                $data = array ($OUTPUT->user_picture($user, array('size' => 35, 'courseid'=>$course->id)), $profilelink);
 
                 if ($mode === MODE_BRIEF && !isset($hiddenfields['city'])) {
                     $data[] = $user->city;
@@ -774,7 +775,7 @@
 
         echo '<input type="hidden" name="id" value="'.$course->id.'" />';
         echo '<noscript style="display:inline">';
-        echo '<input type="submit" value="'.get_string('ok').'" />';
+        echo '<div><input type="submit" value="'.get_string('ok').'" /></div>';
         echo '</noscript>';
         echo '</div></div>';
         echo '</form>';
@@ -829,99 +830,3 @@ function get_user_lastaccess_sql($accesssince='') {
         return 'u.lastaccess != 0 AND u.lastaccess < '.$accesssince;
     }
 }
-
-function get_participants_extra ($userids, $course, $context) {
-    global $CFG, $DB;
-
-    if (count($userids) === 0) {
-        return array();
-    }
-
-    $params = array();
-
-    $userids = implode(',', $userids);
-
-    // turn the path into a list of context ids
-    $contextids = substr($context->path, 1); // kill leading slash
-    $contextids = str_replace('/', ',', $contextids);;
-
-    $gpjoin = "LEFT OUTER JOIN {groupings_groups} gpg
-                    ON gpg.groupid=g.id
-               LEFT OUTER JOIN {groupings} gp
-                    ON (gp.courseid={$course->id} AND gp.id=gpg.groupingid)";
-    $gpselect = ',gp.id AS gpid, gp.name AS gpname ';
-
-    // Note: this returns strange redundant rows, perhaps
-    // due to the multiple OUTER JOINs. If we can tweak the
-    // JOINs to avoid it ot
-    $sql = "SELECT DISTINCT ra.userid,
-                   ctx.id AS ctxid, ctx.path AS ctxpath, ctx.depth AS ctxdepth,
-                   ctx.contextlevel AS ctxlevel, ctx.instanceid AS ctxinstanceid,
-                   cc.name  AS ccname,
-                   ra.roleid AS roleid,
-                   g.id     AS gid, g.name AS gname
-                   $gpselect
-              FROM {role_assignments} ra
-              JOIN {context} ctx
-                   ON (ra.contextid=ctx.id)
-              LEFT JOIN {course_categories} cc
-                   ON (ctx.contextlevel=40 AND ctx.instanceid=cc.id)
-
-            /* only if groups active */
-              LEFT JOIN {groups_members} gm
-                   ON (ra.userid=gm.userid)
-              LEFT JOIN {groups} g
-                   ON (gm.groupid=g.id AND g.courseid={$course->id})
-            /* and if groupings is enabled... */
-            $gpjoin
-
-             WHERE ra.userid IN ( $userids )
-                   AND ra.contextid in ( $contextids )
-
-          ORDER BY ra.userid, ctx.depth DESC";
-
-    $rs = $DB->get_recordset_sql($sql, $params);
-    $extra = array();
-
-    // Data structure -
-    // $extra [ $userid ] [ 'group' ] [ $groupid => 'group name']
-    //                    [ 'gping' ] [ $gpingid => 'gping name']
-    //                    [ 'ra' ] [  [ "$ctxid:$roleid" => [ctxid => $ctxid
-    //                                                       ctxdepth =>  $ctxdepth,
-    //                                                       ctxpath => $ctxpath,
-    //                                                       ctxname => 'name' (categories only)
-    //                                                       ctxinstid =>
-    //                                                       roleid => $roleid
-
-    foreach ($rs as $rec) {
-        $userid = $rec->userid;
-
-        // Prime an initial user rec...
-        if (!isset($extra[$userid])) {
-            $extra[$userid] = array( 'group' => array(),
-                                     'gping' => array(),
-                                     'ra'    => array() );
-        }
-
-        if (!empty($rec->gid)) {
-            $extra[$userid]['group'][$rec->gid]= $rec->gname;
-        }
-        if (!empty($rec->gpid)) {
-            $extra[$userid]['gping'][$rec->gpid]= $rec->gpname;
-        }
-        $rakey = $rec->ctxid . ':' . $rec->roleid;
-        if (!isset($extra[$userid]['ra'][$rakey])) {
-            $extra[$userid]['ra'][$rakey] = array('ctxid'         => $rec->ctxid,
-                                                  'ctxlevel'       => $rec->ctxlevel,
-                                                  'ctxinstanceid' => $rec->ctxinstanceid,
-                                                  'ccname'        => $rec->ccname,
-                                                  'roleid'        => $rec->roleid);
-
-        }
-    }
-    $rs->close();
-    return $extra;
-
-}
-
-

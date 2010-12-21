@@ -49,13 +49,23 @@ class create_and_clean_temp_stuff extends backup_execution_step {
  */
 class drop_and_clean_temp_stuff extends backup_execution_step {
 
+    protected $skipcleaningtempdir = false;
+
     protected function define_execution() {
         global $CFG;
+
         backup_controller_dbops::drop_backup_ids_temp_table($this->get_backupid()); // Drop ids temp table
         backup_helper::delete_old_backup_dirs(time() - (4 * 60 * 60));              // Delete > 4 hours temp dirs
-        if (empty($CFG->keeptempdirectoriesonbackup)) { // Conditionally
+        // Delete temp dir conditionally:
+        // 1) If $CFG->keeptempdirectoriesonbackup is not enabled
+        // 2) If backup temp dir deletion has been marked to be avoided
+        if (empty($CFG->keeptempdirectoriesonbackup) && !$this->skipcleaningtempdir) {
             backup_helper::delete_backup_dir($this->get_backupid()); // Empty backup dir
         }
+    }
+
+    public function skip_cleaning_temp_dir($skip) {
+        $this->skipcleaningtempdir = $skip;
     }
 }
 
@@ -150,7 +160,7 @@ abstract class backup_activity_structure_step extends backup_structure_step {
 
 /**
  * Abstract structure step, to be used by all the activities using core questions stuff
- * (namelu quiz module), supporting question plugins, states and sessions
+ * (namely quiz module), supporting question plugins, states and sessions
  */
 abstract class backup_questions_activity_structure_step extends backup_activity_structure_step {
 
@@ -771,7 +781,7 @@ class backup_gradebook_structure_step extends backup_structure_step {
                 //'courseid', 
                 'parent', 'depth', 'path', 'fullname', 'aggregation', 'keephigh',
                 'dropload', 'aggregateonlygraded', 'aggregateoutcomes', 'aggregatesubcats',
-                'timecreated', 'timemodified'));
+                'timecreated', 'timemodified', 'hidden'));
 
         $letters = new backup_nested_element('grade_letters');
         $letter = new backup_nested_element('grade_letter', 'id', array(
@@ -986,7 +996,7 @@ class backup_users_structure_step extends backup_structure_step {
         // Then, the fields potentially needing anonymization
         $anonfields = array(
             'username', 'idnumber', 'firstname', 'lastname',
-            'email', 'emailstop', 'icq', 'skype',
+            'email', 'icq', 'skype',
             'yahoo', 'aim', 'msn', 'phone1',
             'phone2', 'institution', 'department', 'address',
             'city', 'country', 'lastip', 'picture',
@@ -1176,6 +1186,42 @@ class backup_block_instance_structure_step extends backup_structure_step {
 
 /**
  * structure step in charge of constructing the logs.xml file for all the log records found
+ * in course. Note that we are sending to backup ALL the log records having cmid = 0. That
+ * includes some records that won't be restoreable (like 'upload', 'calendar'...) but we do
+ * that just in case they become restored some day in the future
+ */
+class backup_course_logs_structure_step extends backup_structure_step {
+
+    protected function define_structure() {
+
+        // Define each element separated
+
+        $logs = new backup_nested_element('logs');
+
+        $log = new backup_nested_element('log', array('id'), array(
+            'time', 'userid', 'ip', 'module',
+            'action', 'url', 'info'));
+
+        // Build the tree
+
+        $logs->add_child($log);
+
+        // Define sources (all the records belonging to the course, having cmid = 0)
+
+        $log->set_source_table('log', array('course' => backup::VAR_COURSEID, 'cmid' => backup_helper::is_sqlparam(0)));
+
+        // Annotations
+        // NOTE: We don't annotate users from logs as far as they MUST be
+        //       always annotated by the course (enrol, ras... whatever)
+
+        // Return the root element (logs)
+
+        return $logs;
+    }
+}
+
+/**
+ * structure step in charge of constructing the logs.xml file for all the log records found
  * in activity
  */
 class backup_activity_logs_structure_step extends backup_structure_step {
@@ -1200,7 +1246,7 @@ class backup_activity_logs_structure_step extends backup_structure_step {
 
         // Annotations
         // NOTE: We don't annotate users from logs as far as they MUST be
-        //       always annotated by the activity.
+        //       always annotated by the activity (true participants).
 
         // Return the root element (logs)
 
@@ -1552,10 +1598,20 @@ class backup_annotate_all_question_files extends backup_execution_step {
                                         JOIN {backup_ids_temp} bi ON bi.itemid = qc.id
                                        WHERE bi.backupid = ?
                                          AND bi.itemname = 'question_categoryfinal'", array($this->get_backupid()));
+        // To know about qtype specific components/fileareas
+        $components = backup_qtype_plugin::get_components_and_fileareas();
+        // Let's loop
         foreach($rs as $record) {
             // We don't need to specify filearea nor itemid as far as by
             // component and context it's enough to annotate the whole bank files
+            // This backups "questiontext", "generalfeedback" and "answerfeedback" fileareas (all them
+            // belonging to the "question" component
             backup_structure_dbops::annotate_files($this->get_backupid(), $record->contextid, 'question', null, null);
+            // Again, it is enough to pick files only by context and component
+            // Do it for qtype specific components
+            foreach ($components as $component => $fileareas) {
+                backup_structure_dbops::annotate_files($this->get_backupid(), $record->contextid, $component, null, null);
+            }
         }
         $rs->close();
     }
@@ -1610,6 +1666,7 @@ class backup_questions_structure_step extends backup_structure_step {
         $question->set_source_table('question', array('category' => backup::VAR_PARENTID));
 
         // don't need to annotate ids nor files
+        // (already done by {@link backup_annotate_all_question_files}
 
         return $qcategories;
     }
@@ -1788,7 +1845,7 @@ class backup_course_completion_structure_step extends backup_structure_step {
         $cc->add_child($aggregatemethod);
 
         // We need to get the courseinstances shortname rather than an ID for restore
-        $criteria->set_source_sql("SELECT ccc.*, c.shortname courseinstanceshortname
+        $criteria->set_source_sql("SELECT ccc.*, c.shortname AS courseinstanceshortname
                                    FROM {course_completion_criteria} ccc
                                    LEFT JOIN {course} c ON c.id = ccc.courseinstance
                                    WHERE ccc.course = ?", array(backup::VAR_COURSEID));

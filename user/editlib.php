@@ -123,12 +123,6 @@ function useredit_shared_definition(&$mform, $editoroptions = null) {
     $mform->setDefault('maildisplay', 2);
 
     $choices = array();
-    $choices['0'] = get_string('emailenable');
-    $choices['1'] = get_string('emaildisable');
-    $mform->addElement('select', 'emailstop', get_string('emailactive'), $choices);
-    $mform->setDefault('emailstop', 0);
-
-    $choices = array();
     $choices['0'] = get_string('textformat');
     $choices['1'] = get_string('htmlformat');
     $mform->addElement('select', 'mailformat', get_string('emailformat'), $choices);
@@ -238,7 +232,7 @@ function useredit_shared_definition(&$mform, $editoroptions = null) {
     $mform->setType('description_editor', PARAM_CLEANHTML);
     $mform->addHelpButton('description_editor', 'userdescription');
 
-    if (!empty($CFG->gdversion)) {
+    if (!empty($CFG->gdversion) and empty($USER->newadminuser)) {
         $mform->addElement('header', 'moodle_picture', get_string('pictureofuser'));
 
         $mform->addElement('static', 'currentpicture', get_string('currentpicture'));
@@ -246,7 +240,7 @@ function useredit_shared_definition(&$mform, $editoroptions = null) {
         $mform->addElement('checkbox', 'deletepicture', get_string('delete'));
         $mform->setDefault('deletepicture', 0);
 
-        $mform->addElement('filepicker', 'imagefile', get_string('newpicture'));
+        $mform->addElement('filepicker', 'imagefile', get_string('newpicture'), '', array('maxbytes'=>get_max_upload_file_size($CFG->maxbytes)));
         $mform->addHelpButton('imagefile', 'newpicture');
 
         $mform->addElement('text', 'imagealt', get_string('imagealt'), 'maxlength="100" size="30"');
@@ -254,7 +248,7 @@ function useredit_shared_definition(&$mform, $editoroptions = null) {
 
     }
 
-    if (!empty($CFG->usetags)) {
+    if (!empty($CFG->usetags) and empty($USER->newadminuser)) {
         $mform->addElement('header', 'moodle_interests', get_string('interests'));
         $mform->addElement('tags', 'interests', get_string('interestslist'), array('display' => 'noofficial'));
         $mform->addHelpButton('interests', 'interestslist');

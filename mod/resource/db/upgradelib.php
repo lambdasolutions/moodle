@@ -202,6 +202,12 @@ function resource_20_prepare_migration() {
         return true;
     }
 
+    // fix invalid NULL popup and options data in old mysql databases
+    $sql = "UPDATE {resource} SET popup = ? WHERE popup IS NULL";
+    $DB->execute($sql, array($DB->sql_empty()));
+    $sql = "UPDATE {resource} SET options = ? WHERE options IS NULL";
+    $DB->execute($sql, array($DB->sql_empty()));
+
     // Adding fields to table resource_old
     $table->add_field('id', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
     $table->add_field('course', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0');

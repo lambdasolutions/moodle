@@ -25,6 +25,7 @@
 
 require_once('../../config.php');
 require_once('lib.php');
+require_once($CFG->libdir.'/completionlib.php');
 
 $reply   = optional_param('reply', 0, PARAM_INT);
 $forum   = optional_param('forum', 0, PARAM_INT);
@@ -111,9 +112,11 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     if (! forum_user_can_post_discussion($forum, $groupid, -1, $cm)) {
         if (!isguestuser()) {
             if (!is_enrolled($coursecontext)) {
-                $SESSION->wantsurl = $FULLME;
-                $SESSION->enrolcancel = $_SERVER['HTTP_REFERER'];
-                redirect($CFG->wwwroot.'/enrol/index.php?id='.$course->id, get_string('youneedtoenrol'));
+                if (enrol_selfenrol_available($course->id)) {
+                    $SESSION->wantsurl = $FULLME;
+                    $SESSION->enrolcancel = $_SERVER['HTTP_REFERER'];
+                    redirect($CFG->wwwroot.'/enrol/index.php?id='.$course->id, get_string('youneedtoenrol'));
+                }
             }
         }
         print_error('nopostforum', 'forum');
@@ -170,7 +173,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     }
 
     // Ensure lang, theme, etc. is set up properly. MDL-6926
-    $PAGE->set_course($course);
+    $PAGE->set_cm($cm, $course, $forum);
 
     $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
     $modcontext    = get_context_instance(CONTEXT_MODULE, $cm->id);
@@ -251,6 +254,9 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     } else {
         $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
     }
+
+    $PAGE->set_cm($cm, $course, $forum);
+
     if (!($forum->type == 'news' && !$post->parent && $discussion->timestart > time())) {
         if (((time() - $post->created) > $CFG->maxeditingtime) and
                     !has_capability('mod/forum:editanypost', $modcontext)) {
@@ -304,6 +310,12 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     $replycount = forum_count_replies($post);
 
     if (!empty($confirm) && confirm_sesskey()) {    // User has confirmed the delete
+        //check user capability to delete post.
+        $timepassed = time() - $post->created;
+        if (($timepassed > $CFG->maxeditingtime) && !has_capability('mod/forum:deleteanypost', $modcontext)) {
+            print_error("cannotdeletepost", "forum",
+                      forum_go_back_to("discuss.php?d=$post->discussion"));
+        }
 
         if ($post->totalscore) {
             notice(get_string('couldnotdeleteratings', 'rating'),
@@ -353,6 +365,7 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
         $PAGE->navbar->add(get_string('delete', 'forum'));
         $PAGE->set_title($course->shortname);
         $PAGE->set_heading($course->fullname);
+
         if ($replycount) {
             if (!has_capability('mod/forum:deleteanypost', $modcontext)) {
                 print_error("couldnotdeletereplies", "forum",
@@ -806,7 +819,6 @@ if ($edit) {
 
 $PAGE->set_title("$course->shortname: $strdiscussionname ".format_string($toppost->subject));
 $PAGE->set_heading($course->fullname);
-$PAGE->set_focuscontrol($mform_post->focus($forcefocus));
 
 echo $OUTPUT->header();
 
@@ -837,7 +849,7 @@ if (!empty($parent)) {
         if ($forum->type != 'qanda' || forum_user_can_see_discussion($forum, $discussion, $modcontext)) {
             $forumtracked = forum_tp_is_tracked($forum);
             $posts = forum_get_all_discussion_posts($discussion->id, "created ASC", $forumtracked);
-            forum_print_posts_threaded($course, $cm, $forum, $discussion, $parent, 0, false, false, $forumtracked, $posts);
+            forum_print_posts_threaded($course, $cm, $forum, $discussion, $parent, 0, false, $forumtracked, $posts);
         }
     }
 } else {

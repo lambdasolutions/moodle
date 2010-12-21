@@ -109,6 +109,8 @@ class page_requirements_manager {
     protected $M_yui_loader;
     /** some config vars exposed in JS, please no secret stuff there */
     protected $M_cfg;
+    /** stores debug backtraces from when JS modules were included in the page */
+    protected $debug_moduleloadstacktraces = array();
 
     /**
      * Page requirements constructor.
@@ -257,6 +259,12 @@ class page_requirements_manager {
                 }
             }
             $this->M_yui_loader->modules[$name] = $module;
+            if (debugging('', DEBUG_DEVELOPER)) {
+                if (!array_key_exists($name, $this->debug_moduleloadstacktraces)) {
+                    $this->debug_moduleloadstacktraces[$name] = array();
+                }
+                $this->debug_moduleloadstacktraces[$name][] = format_backtrace(debug_backtrace());
+            }
         }
     }
 
@@ -363,7 +371,7 @@ class page_requirements_manager {
                     throw new coding_exception('Attempt to require a JavaScript file that does not exist.', $url);
                 }
             }
-            if (!empty($CFG->cachejs) and !empty($CFG->jsrev) and strpos($url, '/lib/editor/') !== 0) {
+            if (!empty($CFG->cachejs) and !empty($CFG->jsrev) and strpos($url, '/lib/editor/') !== 0 and substr($url, -3) === '.js') {
                 return new moodle_url($CFG->httpswwwroot.'/lib/javascript.php', array('file'=>$url, 'rev'=>$CFG->jsrev));
             } else {
                 return new moodle_url($CFG->httpswwwroot.$url);
@@ -445,6 +453,11 @@ class page_requirements_manager {
                                     'fullpath' => '/group/module.js',
                                     'requires' => array('node', 'overlay', 'event-mouseenter'));
                     break;
+                case 'core_question_engine':
+                    $module = array('name'     => 'core_question_engine',
+                                    'fullpath' => '/question/qengine.js',
+                                    'requires' => array('node', 'event'));
+                    break;
                 case 'core_rating':
                     $module = array('name'     => 'core_rating',
                                     'fullpath' => '/rating/module.js',
@@ -492,6 +505,14 @@ class page_requirements_manager {
             throw new coding_exception('Missing YUI3 module details.');
         }
 
+        // Don't load this module if we already have, no need to!
+        if ($this->js_module_loaded($module['name'])) {
+            if (debugging('', DEBUG_DEVELOPER)) {
+                $this->debug_moduleloadstacktraces[$module['name']][] = format_backtrace(debug_backtrace());
+            }
+            return;
+        }
+
         $module['fullpath'] = $this->js_fix_url($module['fullpath'])->out(false);
         // add all needed strings
         if (!empty($module['strings'])) {
@@ -504,11 +525,52 @@ class page_requirements_manager {
         }
         unset($module['strings']);
 
+        // Process module requirements and attempt to load each. This allows
+        // moodle modules to require each other.
+        if (!empty($module['requires'])){
+            foreach ($module['requires'] as $requirement) {
+                $rmodule = $this->find_module($requirement);
+                if (is_array($rmodule)) {
+                    $this->js_module($rmodule);
+                }
+            }
+        }
+
         if ($this->headdone) {
             $this->extramodules[$module['name']] = $module;
         } else {
             $this->M_yui_loader->modules[$module['name']] = $module;
         }
+        if (debugging('', DEBUG_DEVELOPER)) {
+            if (!array_key_exists($module['name'], $this->debug_moduleloadstacktraces)) {
+                $this->debug_moduleloadstacktraces[$module['name']] = array();
+            }
+            $this->debug_moduleloadstacktraces[$module['name']][] = format_backtrace(debug_backtrace());
+        }
+    }
+
+    /**
+     * Returns true if the module has already been loaded.
+     *
+     * @param string|array $modulename
+     * @return bool True if the module has already been loaded
+     */
+    protected function js_module_loaded($module) {
+        if (is_string($module)) {
+            $modulename = $module;
+        } else {
+            $modulename = $module['name'];
+        }
+        return array_key_exists($modulename, $this->M_yui_loader->modules) ||
+               array_key_exists($modulename, $this->extramodules);
+    }
+
+    /**
+     * Returns the stacktraces from loading js modules.
+     * @return array
+     */
+    public function get_loaded_modules() {
+        return $this->debug_moduleloadstacktraces;
     }
 
     /**
@@ -724,14 +786,41 @@ class page_requirements_manager {
      * equivalent in the current language.
      *
      * The arguments to this function are just like the arguments to get_string
-     * except that $component is not optional, and there are limitations on how you
-     * use $a. Because each string is only stored once in the JavaScript (based
-     * on $identifier and $module) you cannot get the same string with two different
-     * values of $a. If you try, an exception will be thrown.
+     * except that $component is not optional, and there are some aspects to consider
+     * when the string contains {$a} placeholder.
      *
-     * If you do need the same string expanded with different $a values, then
-     * the solution is to put them in your own data structure (e.g. and array)
-     * that you pass to JavaScript with {@link data_for_js()}.
+     * If the string does not contain any {$a} placeholder, you can simply use
+     * M.str.component.identifier to obtain it. If you prefer, you can call
+     * M.util.get_string(identifier, component) to get the same result.
+     *
+     * If you need to use {$a} placeholders, there are two options. Either the
+     * placeholder should be substituted in PHP on server side or it should
+     * be substituted in Javascript at client side.
+     *
+     * To substitute the placeholder at server side, just provide the required
+     * value for the placeholder when you require the string. Because each string
+     * is only stored once in the JavaScript (based on $identifier and $module)
+     * you cannot get the same string with two different values of $a. If you try,
+     * an exception will be thrown. Once the placeholder is substituted, you can
+     * use M.str or M.util.get_string() as shown above:
+     *
+     *     // require the string in PHP and replace the placeholder
+     *     $PAGE->requires->string_for_js('fullnamedisplay', 'moodle', $USER);
+     *     // use the result of the substitution in Javascript
+     *     alert(M.str.moodle.fullnamedisplay);
+     *
+     * To substitute the placeholder at client side, use M.util.get_string()
+     * function. It implements the same logic as {@see get_string()}:
+     *
+     *     // require the string in PHP but keep {$a} as it is
+     *     $PAGE->requires->string_for_js('fullnamedisplay', 'moodle');
+     *     // provide the values on the fly in Javascript
+     *     user = { firstname : 'Harry', lastname : 'Potter' }
+     *     alert(M.util.get_string('fullnamedisplay', 'moodle', user);
+     *
+     * If you do need the same string expanded with different $a values in PHP
+     * on server side, then the solution is to put them in your own data structure
+     * (e.g. and array) that you pass to JavaScript with {@link data_for_js()}.
      *
      * @param string $identifier the desired string.
      * @param string $module the language file to look in.

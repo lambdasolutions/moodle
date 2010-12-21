@@ -26,6 +26,7 @@
  * Class implementing the subplugins support for moodle2 restore
  *
  * TODO: Finish phpdocs
+ * TODO: Make this subclass of restore_plugin
  * TODO: Add support for declaring decode_contents (not decode_rules)
  */
 abstract class restore_subplugin {
@@ -62,6 +63,23 @@ abstract class restore_subplugin {
             }
         }
         return $paths;
+    }
+
+    /**
+     * after_execute dispatcher for any restore_subplugin class
+     *
+     * This method will dispatch execution to the corresponding
+     * after_execute_xxx() method when available, with xxx
+     * being the connection point of the instance, so subplugin
+     * classes with multiple connection points will support
+     * multiple after_execute methods, one for each connection point
+     */
+    public function launch_after_execute_methods() {
+        // Check if the after_execute method exists and launch it
+        $afterexecute = 'after_execute_' . basename($this->connectionpoint->get_path());
+        if (method_exists($this, $afterexecute)) {
+            $this->$afterexecute();
+        }
     }
 
 // Protected API starts here

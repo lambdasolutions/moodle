@@ -47,7 +47,6 @@ class moodle_user_external extends external_api {
                             'email'       => new external_value(PARAM_EMAIL, 'A valid and unique email address'),
                             'auth'        => new external_value(PARAM_SAFEDIR, 'Auth plugins include manual, ldap, imap, etc', VALUE_DEFAULT, 'manual', NULL_NOT_ALLOWED),
                             'idnumber'    => new external_value(PARAM_RAW, 'An arbitrary ID code number perhaps from the institution', VALUE_DEFAULT, ''),
-                            'emailstop'   => new external_value(PARAM_NUMBER, 'Email is blocked: 1 is blocked and 0 otherwise', VALUE_DEFAULT, 0),
                             'lang'        => new external_value(PARAM_SAFEDIR, 'Language code such as "en", must exist on server', VALUE_DEFAULT, $CFG->lang, NULL_NOT_ALLOWED),
                             'theme'       => new external_value(PARAM_SAFEDIR, 'Theme name such as "standard", must exist on server', VALUE_OPTIONAL),
                             'timezone'    => new external_value(PARAM_ALPHANUMEXT, 'Timezone code such as Australia/Perth, or 99 for default', VALUE_OPTIONAL),
@@ -255,7 +254,6 @@ class moodle_user_external extends external_api {
                             'email'       => new external_value(PARAM_EMAIL, 'A valid and unique email address', VALUE_OPTIONAL, '',NULL_NOT_ALLOWED),
                             'auth'        => new external_value(PARAM_SAFEDIR, 'Auth plugins include manual, ldap, imap, etc', VALUE_OPTIONAL, '', NULL_NOT_ALLOWED),
                             'idnumber'    => new external_value(PARAM_RAW, 'An arbitrary ID code number perhaps from the institution', VALUE_OPTIONAL),
-                            'emailstop'   => new external_value(PARAM_NUMBER, 'Email is blocked: 1 is blocked and 0 otherwise', VALUE_OPTIONAL),
                             'lang'        => new external_value(PARAM_SAFEDIR, 'Language code such as "en", must exist on server', VALUE_OPTIONAL, '', NULL_NOT_ALLOWED),
                             'theme'       => new external_value(PARAM_SAFEDIR, 'Theme name such as "standard", must exist on server', VALUE_OPTIONAL),
                             'timezone'    => new external_value(PARAM_ALPHANUMEXT, 'Timezone code such as Australia/Perth, or 99 for default', VALUE_OPTIONAL),
@@ -321,9 +319,6 @@ class moodle_user_external extends external_api {
             }
         }
 
-
-
-
         $transaction->allow_commit();
 
         return null;
@@ -363,10 +358,6 @@ class moodle_user_external extends external_api {
         //they are "user" related
         require_once($CFG->dirroot . "/user/profile/lib.php");
 
-        $context = get_context_instance(CONTEXT_SYSTEM);
-        require_capability('moodle/user:viewdetails', $context);
-        self::validate_context($context);
-
         $params = self::validate_parameters(self::get_users_by_id_parameters(),
                 array('userids'=>$userids));
 
@@ -376,6 +367,10 @@ class moodle_user_external extends external_api {
         $users = user_get_users_by_id($params['userids']);
         $result = array();
         foreach ($users as $user) {
+
+            $context = get_context_instance(CONTEXT_USER, $user->id);
+            require_capability('moodle/user:viewalldetails', $context);
+            self::validate_context($context);
 
             if (empty($user->deleted)) {
 
@@ -391,12 +386,12 @@ class moodle_user_external extends external_api {
                 $userarray['auth'] = $user->auth;
                 $userarray['confirmed'] = $user->confirmed;
                 $userarray['idnumber'] = $user->idnumber;
-                $userarray['emailstop'] = $user->emailstop;
                 $userarray['lang'] = $user->lang;
                 $userarray['theme'] = $user->theme;
                 $userarray['timezone'] = $user->timezone;
                 $userarray['mailformat'] = $user->mailformat;
                 $userarray['description'] = $user->description;
+                $userarray['descriptionformat'] = $user->descriptionformat;
                 $userarray['city'] = $user->city;
                 $userarray['country'] = $user->country;
                 $userarray['customfields'] = array();
@@ -429,12 +424,12 @@ class moodle_user_external extends external_api {
                     'auth'        => new external_value(PARAM_SAFEDIR, 'Auth plugins include manual, ldap, imap, etc'),
                     'confirmed'   => new external_value(PARAM_NUMBER, 'Active user: 1 if confirmed, 0 otherwise'),
                     'idnumber'    => new external_value(PARAM_RAW, 'An arbitrary ID code number perhaps from the institution'),
-                    'emailstop'   => new external_value(PARAM_NUMBER, 'Email is blocked: 1 is blocked and 0 otherwise'),
                     'lang'        => new external_value(PARAM_SAFEDIR, 'Language code such as "en", must exist on server'),
                     'theme'       => new external_value(PARAM_SAFEDIR, 'Theme name such as "standard", must exist on server'),
                     'timezone'    => new external_value(PARAM_ALPHANUMEXT, 'Timezone code such as Australia/Perth, or 99 for default'),
                     'mailformat'  => new external_value(PARAM_INTEGER, 'Mail format code is 0 for plain text, 1 for HTML etc'),
-                    'description' => new external_value(PARAM_TEXT, 'User profile description, as HTML'),
+                    'description' => new external_value(PARAM_RAW, 'User profile description'),
+                    'descriptionformat' => new external_value(PARAM_INT, 'User profile description format'),
                     'city'        => new external_value(PARAM_NOTAGS, 'Home city of the user'),
                     'country'     => new external_value(PARAM_ALPHA, 'Home country code of the user, such as AU or CZ'),
                     'customfields' => new external_multiple_structure(

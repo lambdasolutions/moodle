@@ -74,10 +74,23 @@ function resourcelib_try_file_migration($filepath, $cmid, $courseid, $component,
         return false;
     }
 
-    $pathnamehash = sha1("/$coursecontext->id/course/legacy/0".$filepath);
-    if (!$file = $fs->get_file_by_hash($pathnamehash)) {
-        return false;
-    }
+    $fullpath = rtrim("/$coursecontext->id/course/legacy/0".$filepath, '/');
+    do {
+        if (!$file = $fs->get_file_by_hash(sha1($fullpath))) {
+            if ($file = $fs->get_file_by_hash(sha1("$fullpath/.")) and $file->is_directory()) {
+                if ($file = $fs->get_file_by_hash(sha1("$fullpath/index.htm"))) {
+                    break;
+                }
+                if ($file = $fs->get_file_by_hash(sha1("$fullpath/index.html"))) {
+                    break;
+                }
+                if ($file = $fs->get_file_by_hash(sha1("$fullpath/Default.htm"))) {
+                    break;
+                }
+            }
+            return false;
+        }
+    } while (false);
 
     // copy and keep the same path, name, etc.
     $file_record = array('contextid'=>$context->id, 'component'=>$component, 'filearea'=>$filearea, 'itemid'=>$itemid);
@@ -197,7 +210,7 @@ function resourcelib_embed_mp3($fullurl, $title, $clicktoopen) {
     $code = <<<OET
 <div class="resourcecontent resourcemp3">
   <span class="resourcemediaplugin resourcemediaplugin_mp3" id="$id"></span>
-  <noscript>
+  <noscript><div>
     <object width="251" height="25" id="nonjsmp3plugin" name="undefined" data="$playerpath" type="application/x-shockwave-flash">
     <param name="movie" value="$playerpath" />
     <param name="allowfullscreen" value="false" />
@@ -212,7 +225,7 @@ function resourcelib_embed_mp3($fullurl, $title, $clicktoopen) {
                                                    "autoPlay": false},
                                            "content":{"url":"$playerpath"}}}' />
     </object>
-  </noscript>
+  </div></noscript>
 </div>
 OET;
     $PAGE->requires->js('/lib/flowplayer.js');
@@ -238,7 +251,7 @@ function resourcelib_embed_flashvideo($fullurl, $title, $clicktoopen) {
     $code = <<<EOT
 <div class="resourcecontent resourceflv">
   <span class="mediaplugin mediaplugin_flv" id="$id"></span>
-  <noscript>
+  <noscript><div>
     <object width="800" height="600" id="undefined" name="undefined" data="$playerpath" type="application/x-shockwave-flash">
     <param name="movie" value="$playerpath" />
     <param name="allowfullscreen" value="true" />
@@ -247,7 +260,7 @@ function resourcelib_embed_flashvideo($fullurl, $title, $clicktoopen) {
                                                    "autoPlay": false},
                                            "content":{"url":"$playerpath"}}}' />
     </object>
-  </noscript>
+  </div></noscript>
 </div>
 EOT;
 
@@ -474,8 +487,9 @@ EOT;
   </object>
 </div>
 EOT;
-        //$PAGE->requires->js_init_call('M.util.init_maximised_embed', array('resourceobject'), true);
     }
+
+    $PAGE->requires->js_init_call('M.util.init_maximised_embed', array('resourceobject'), true);
 
     return $code;
 }

@@ -18,9 +18,10 @@
 /**
  * Functions used by some stages of number of errors grading upgrade
  *
- * @package   workshopform_numerrors
- * @copyright 2010 David Mudrak <david.mudrak@gmail.com>
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    workshopform
+ * @subpackage numerrors
+ * @copyright  2010 David Mudrak <david.mudrak@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once($CFG->libdir.'/gradelib.php'); // grade_floatval() called here
@@ -92,6 +93,10 @@ function workshopform_numerrors_upgrade_legacy() {
         $rs = $DB->get_recordset_sql($sql, $params);
         $newassessmentids = workshop_upgrade_assessment_id_mappings();
         foreach ($rs as $old) {
+            if (!isset($newassessmentids[$old->assessmentid])) {
+                // orphaned grade - the assessment was removed but the grade remained
+                continue;
+            }
             if (!isset($newelementids[$old->workshopid]) or !isset($newelementids[$old->workshopid][$old->elementno])) {
                 // orphaned grade - the assessment form element has been removed after the grade was recorded
                 continue;

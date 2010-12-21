@@ -1591,28 +1591,31 @@ function data_get_post_actions() {
 }
 
 /**
- * @global object
- * @global object
  * @param string $name
  * @param int $dataid
  * @param int $fieldid
  * @return bool
  */
-function data_fieldname_exists($name, $dataid, $fieldid=0) {
-    global $CFG, $DB;
+function data_fieldname_exists($name, $dataid, $fieldid = 0) {
+    global $DB;
 
-    if(!is_numeric($name)) {
-        $like = $DB->sql_like('df.name', $name, false);
+    if (!is_numeric($name)) {
+        $like = $DB->sql_like('df.name', ':name', false);
     } else {
-        $like = "df.name = $name";
+        $like = "df.name = :name";
     }
+    $params = array('name'=>$name);
     if ($fieldid) {
+        $params['dataid']   = $dataid;
+        $params['fieldid1'] = $fieldid;
+        $params['fieldid2'] = $fieldid;
         return $DB->record_exists_sql("SELECT * FROM {data_fields} df
-                                        WHERE ".$like." AND df.dataid = ?
-                                              AND ((df.id < ?) OR (df.id > ?))", array($dataid, $fieldid, $fieldid));
+                                        WHERE $like AND df.dataid = :dataid
+                                              AND ((df.id < :fieldid1) OR (df.id > :fieldid2))", $params);
     } else {
+        $params['dataid']   = $dataid;
         return $DB->record_exists_sql("SELECT * FROM {data_fields} df
-                                        WHERE ".$like." AND df.dataid = ?", array($dataid));
+                                        WHERE $like AND df.dataid = :dataid", $params);
     }
 }
 
@@ -2014,6 +2017,27 @@ abstract class data_preset_importer {
     public function get_directory() {
         return basename($this->directory);
     }
+
+    /**
+     * Retreive the contents of a file. That file may either be in a conventional directory of the Moodle file storage
+     * @param file_storage $filestorage. should be null if using a conventional directory
+     * @param stored_file $fileobj the directory to look in. null if using a conventional directory
+     * @param string $dir the directory to look in. null if using the Moodle file storage
+     * @param string $filename the name of the file we want
+     * @return string the contents of the file
+     */
+    public function data_preset_get_file_contents(&$filestorage, &$fileobj, $dir, $filename) {
+        if(empty($filestorage) || empty($fileobj)) {
+            if (substr($dir, -1)!='/') {
+                $dir .= '/';
+            }
+            return file_get_contents($dir.$filename);
+        } else {
+            $file = $filestorage->get_file(DATA_PRESET_CONTEXT, DATA_PRESET_COMPONENT, DATA_PRESET_FILEAREA, 0, $fileobj->get_filepath(), $filename);
+            return $file->get_content();
+        }
+
+    }
     /**
      * Gets the preset settings
      * @global moodle_database $DB
@@ -2022,8 +2046,31 @@ abstract class data_preset_importer {
     public function get_preset_settings() {
         global $DB;
 
+        $fs = $fileobj = null;
         if (!is_directory_a_preset($this->directory)) {
-            print_error('invalidpreset', 'data', '', $this->directory);
+            //maybe the user requested a preset stored in the Moodle file storage
+
+            $fs = get_file_storage();
+            $files = $fs->get_area_files(DATA_PRESET_CONTEXT, DATA_PRESET_COMPONENT, DATA_PRESET_FILEAREA);
+
+            //preset name to find will be the final element of the directory
+            $presettofind = end(explode('/',$this->directory));
+
+            //now go through the available files available and see if we can find it
+            foreach ($files as $file) {
+                if (($file->is_directory() && $file->get_filepath()=='/') || !$file->is_directory()) {
+                    continue;
+                }
+                $presetname = trim($file->get_filepath(), '/');
+                if ($presetname==$presettofind) {
+                    $this->directory = $presetname;
+                    $fileobj = $file;
+                }
+            }
+
+            if (empty($fileobj)) {
+                print_error('invalidpreset', 'data', '', $this->directory);
+            }
         }
 
         $allowed_settings = array(
@@ -2047,7 +2094,7 @@ abstract class data_preset_importer {
 
 
         /* Grab XML */
-        $presetxml = file_get_contents($this->directory.'/preset.xml');
+        $presetxml = $this->data_preset_get_file_contents($fs, $fileobj, $this->directory,'preset.xml');
         $parsedxml = xmlize($presetxml, 0);
 
         /* First, do settings. Put in user friendly array. */
@@ -2079,19 +2126,19 @@ abstract class data_preset_importer {
             $result->importfields[] = $f;
         }
         /* Now add the HTML templates to the settings array so we can update d */
-        $result->settings->singletemplate     = file_get_contents($this->directory."/singletemplate.html");
-        $result->settings->listtemplate       = file_get_contents($this->directory."/listtemplate.html");
-        $result->settings->listtemplateheader = file_get_contents($this->directory."/listtemplateheader.html");
-        $result->settings->listtemplatefooter = file_get_contents($this->directory."/listtemplatefooter.html");
-        $result->settings->addtemplate        = file_get_contents($this->directory."/addtemplate.html");
-        $result->settings->rsstemplate        = file_get_contents($this->directory."/rsstemplate.html");
-        $result->settings->rsstitletemplate   = file_get_contents($this->directory."/rsstitletemplate.html");
-        $result->settings->csstemplate        = file_get_contents($this->directory."/csstemplate.css");
-        $result->settings->jstemplate         = file_get_contents($this->directory."/jstemplate.js");
+        $result->settings->singletemplate     = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"singletemplate.html");
+        $result->settings->listtemplate       = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"listtemplate.html");
+        $result->settings->listtemplateheader = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"listtemplateheader.html");
+        $result->settings->listtemplatefooter = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"listtemplatefooter.html");
+        $result->settings->addtemplate        = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"addtemplate.html");
+        $result->settings->rsstemplate        = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"rsstemplate.html");
+        $result->settings->rsstitletemplate   = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"rsstitletemplate.html");
+        $result->settings->csstemplate        = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"csstemplate.css");
+        $result->settings->jstemplate         = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"jstemplate.js");
 
         //optional
         if (file_exists($this->directory."/asearchtemplate.html")) {
-            $result->settings->asearchtemplate = file_get_contents($this->directory."/asearchtemplate.html");
+            $result->settings->asearchtemplate = $this->data_preset_get_file_contents($fs, $fileobj,$this->directory,"asearchtemplate.html");
         } else {
             $result->settings->asearchtemplate = NULL;
         }
@@ -2105,7 +2152,7 @@ abstract class data_preset_importer {
      * @return bool
      */
     function import($overwritesettings) {
-        global $DB;
+        global $DB, $CFG;
 
         $params = $this->get_preset_settings();
         $settings = $params->settings;
@@ -2272,15 +2319,16 @@ function data_preset_path($course, $userid, $shortname) {
 
     $userid = (int)$userid;
 
+    $path = null;
     if ($userid > 0 && ($userid == $USER->id || has_capability('mod/data:viewalluserpresets', $context))) {
-        return $CFG->dataroot.'/data/preset/'.$userid.'/'.$shortname;
+        $path = $CFG->dataroot.'/data/preset/'.$userid.'/'.$shortname;
     } else if ($userid == 0) {
-        return $CFG->dirroot.'/mod/data/preset/'.$shortname;
+        $path = $CFG->dirroot.'/mod/data/preset/'.$shortname;
     } else if ($userid < 0) {
-        return $CFG->dataroot.'/temp/data/'.-$userid.'/'.$shortname;
+        $path = $CFG->dataroot.'/temp/data/'.-$userid.'/'.$shortname;
     }
 
-    return 'Does it disturb you that this code will never run?';
+    return $path;
 }
 
 /**
@@ -2364,7 +2412,6 @@ function data_reset_userdata($data) {
 
     // delete entries if requested
     if (!empty($data->reset_data)) {
-        //$DB->delete_records_select('data_ratings', "recordid IN ($allrecordssql)", array($data->courseid));
         $DB->delete_records_select('comments', "itemid IN ($allrecordssql) AND commentarea='database_entry'", array($data->courseid));
         $DB->delete_records_select('data_content', "recordid IN ($allrecordssql)", array($data->courseid));
         $DB->delete_records_select('data_records', "dataid IN ($alldatassql)", array($data->courseid));
@@ -2406,7 +2453,6 @@ function data_reset_userdata($data) {
                 if (array_key_exists($record->userid, $notenrolled) or !$record->userexists or $record->userdeleted
                   or !is_enrolled($course_context, $record->userid)) {
                     //delete ratings
-                    //$DB->delete_records('data_ratings', array('recordid'=>$record->id));
                     if (!$cm = get_coursemodule_from_instance('data', $record->dataid)) {
                         continue;
                     }
@@ -2439,7 +2485,6 @@ function data_reset_userdata($data) {
 
     // remove all ratings
     if (!empty($data->reset_data_ratings)) {
-        //$DB->delete_records_select('data_ratings', "recordid IN ($allrecordssql)", array($data->courseid));
         if ($datas = $DB->get_records_sql($alldatassql, array($data->courseid))) {
             foreach ($datas as $dataid=>$unused) {
                 if (!$cm = get_coursemodule_from_instance('data', $dataid)) {
@@ -2687,16 +2732,10 @@ function data_pluginfile($course, $cm, $context, $filearea, $args, $forcedownloa
         return false;
     }
 
-    require_login($course, false, $cm);
+    require_course_login($course, true, $cm);
 
     if ($filearea === 'content') {
         $contentid = (int)array_shift($args);
-
-        if (!$cm = get_coursemodule_from_instance('data', $cm->instance, $course->id)) {
-            return false;
-        }
-
-        require_course_login($course, true, $cm);
 
         if (!$content = $DB->get_record('data_content', array('id'=>$contentid))) {
             return false;
@@ -2714,8 +2753,13 @@ function data_pluginfile($course, $cm, $context, $filearea, $args, $forcedownloa
             return false;
         }
 
+        if ($data->id != $cm->instance) {
+            // hacker attempt - context does not match the contentid
+            return false;
+        }
+
         //check if approved
-        if (!$record->approved and !data_isowner($record) and !has_capability('mod/data:approve', $context)) {
+        if ($data->approval and !$record->approved and !data_isowner($record) and !has_capability('mod/data:approve', $context)) {
             return false;
         }
 
@@ -3016,7 +3060,7 @@ function data_presets_export($course, $cm, $data, $tostorage=false) {
         print_error('generateerror', 'data');
     }
 
-    $filelist = array(
+    $filenames = array(
         'preset.xml',
         'singletemplate.html',
         'listtemplateheader.html',
@@ -3030,8 +3074,9 @@ function data_presets_export($course, $cm, $data, $tostorage=false) {
         'asearchtemplate.html'
     );
 
-    foreach ($filelist as $key => $file) {
-        $filelist[$key] = $exportdir . '/' . $filelist[$key];
+    $filelist = array();
+    foreach ($filenames as $filename) {
+        $filelist[$filename] = $exportdir . '/' . $filename;
     }
 
     $exportfile = $exportdir.'.zip';

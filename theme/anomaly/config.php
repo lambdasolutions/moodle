@@ -7,7 +7,7 @@
 
 $THEME->name = 'anomaly';
 
-$THEME->sheets = array('base', 'general', 'layout', 'browser');
+$THEME->sheets = array('base', 'general', 'browser');
 /// This variable is an array containing the names of all the
 /// stylesheet files you want included in this theme, and in what order
 ////////////////////////////////////////////////////////////////////////////////
@@ -36,8 +36,6 @@ $THEME->filter_mediaplugin_colors =
  'iconOverColour=00cc00&trackColour=cccccc&handleColour=ffffff&loaderColour=ffffff&'.
  'waitForPlay=yes';
 /// ...And this controls the small embedded player
-
-$THEME->editor_sheets = array('styles_tinymce');
 
 $THEME->layouts = array(
     // Most pages - if we encounter an unknown or a missing page type, this one is used.
@@ -123,8 +121,15 @@ $THEME->layouts = array(
         'regions' => array(),
         'options' => array('nofooter'=>true, 'nonavbar'=>false, 'noblocks'=>true),
     ),
+    'report' => array(
+        'file' => 'report.php',
+        'regions' => array('side-pre'),
+        'defaultregion' => 'side-pre'
+    ),
 );
 
 $THEME->rendererfactory = 'theme_overridden_renderer_factory';
 $THEME->enable_dock = true;
 //$THEME->javascripts_footer = array('navigation');
+
+$THEME->editor_sheets = array('editor');

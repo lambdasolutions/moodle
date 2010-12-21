@@ -62,7 +62,7 @@ class admin_uploaduser_form2 extends moodleform {
 
         $choices = array(0 => get_string('infilefield', 'auth'), 1 => get_string('createpasswordifneeded', 'auth'));
         $mform->addElement('select', 'uupasswordnew', get_string('uupasswordnew', 'admin'), $choices);
-        $mform->setDefault('uupasswordnew', 0);
+        $mform->setDefault('uupasswordnew', 1);
         $mform->disabledIf('uupasswordnew', 'uutype', 'eq', UU_UPDATE);
 
         $choices = array(0 => get_string('nochanges', 'admin'),
@@ -167,9 +167,6 @@ class admin_uploaduser_form2 extends moodleform {
         $choices = array(0 => get_string('emaildisplayno'), 1 => get_string('emaildisplayyes'), 2 => get_string('emaildisplaycourse'));
         $mform->addElement('select', 'maildisplay', get_string('emaildisplay'), $choices);
         $mform->setDefault('maildisplay', 2);
-
-        $choices = array(0 => get_string('emailenable'), 1 => get_string('emaildisable'));
-        $mform->addElement('select', 'emailstop', get_string('emailactive'), $choices);
 
         $choices = array(0 => get_string('textformat'), 1 => get_string('htmlformat'));
         $mform->addElement('select', 'mailformat', get_string('emailformat'), $choices);
@@ -317,6 +314,10 @@ class admin_uploaduser_form2 extends moodleform {
                     break;
 
                 case UU_ADDNEW:
+                    if (empty($data['uupasswordnew'])) {
+                        $errors['uupasswordnew'] = get_string('missingfield', 'error', 'password');
+                    }
+                    break;
                 case UU_ADDINC:
                     if (empty($data['uupasswordnew'])) {
                         $errors['uupasswordnew'] = get_string('missingfield', 'error', 'password');

@@ -29,15 +29,21 @@ require_once($CFG->dirroot.'/'.$CFG->admin.'/report/customlang/filter_form.php')
 require_login(SITEID, false);
 require_capability('report/customlang:edit', get_system_context());
 
+$lng                    = required_param('lng', PARAM_LANG);
 $currentpage            = optional_param('p', 0, PARAM_INT);
 $translatorsubmitted    = optional_param('translatorsubmitted', 0, PARAM_BOOL);
 
 $PAGE->set_pagelayout('standard');
-$PAGE->set_url('/admin/report/customlang/edit.php');
+$PAGE->set_url('/admin/report/customlang/edit.php', array('lng' => $lng));
 navigation_node::override_active_url(new moodle_url('/admin/report/customlang/index.php'));
 $PAGE->set_title(get_string('pluginname', 'report_customlang'));
 $PAGE->set_heading(get_string('pluginname', 'report_customlang'));
-//$PAGE->requires->js_init_call('M.report_customlang.init_translator', array(), true);
+$PAGE->requires->js_init_call('M.report_customlang.init_editor', array(), true);
+
+if (empty($lng)) {
+    // PARAM_LANG validation failed
+    print_error('missingparameter');
+}
 
 // pre-output processing
 $filter     = new report_customlang_filter_form($PAGE->url, null, 'post', '', array('class'=>'filterform'));
@@ -60,13 +66,13 @@ if ($translatorsubmitted) {
     if ($checkin === false) {
         $nexturl = $PAGE->url;
     } else {
-        $nexturl = new moodle_url('/admin/report/customlang/index.php', array('action'=>'checkin', 'sesskey'=>sesskey()));
+        $nexturl = new moodle_url('/admin/report/customlang/index.php', array('action'=>'checkin', 'lng' => $lng, 'sesskey'=>sesskey()));
     }
 
     if (!is_array($strings)) {
         $strings = array();
     }
-    $current = $DB->get_records_list('customlang', 'id', array_keys($strings));
+    $current = $DB->get_records_list('report_customlang', 'id', array_keys($strings));
     $now = time();
 
     foreach ($strings as $recordid => $customization) {
@@ -77,7 +83,7 @@ if ($translatorsubmitted) {
             $current[$recordid]->modified = 1;
             $current[$recordid]->outdated = 0;
             $current[$recordid]->timecustomized = null;
-            $DB->update_record('customlang', $current[$recordid]);
+            $DB->update_record('report_customlang', $current[$recordid]);
             continue;
         }
 
@@ -90,7 +96,7 @@ if ($translatorsubmitted) {
             $current[$recordid]->modified = 1;
             $current[$recordid]->outdated = 0;
             $current[$recordid]->timecustomized = $now;
-            $DB->update_record('customlang', $current[$recordid]);
+            $DB->update_record('report_customlang', $current[$recordid]);
             continue;
         }
     }
@@ -100,13 +106,13 @@ if ($translatorsubmitted) {
     }
     if (!empty($updates)) {
         list($sql, $params) = $DB->get_in_or_equal($updates);
-        $DB->set_field_select('customlang', 'outdated', 0, "local IS NOT NULL AND id $sql", $params);
+        $DB->set_field_select('report_customlang', 'outdated', 0, "local IS NOT NULL AND id $sql", $params);
     }
 
     redirect($nexturl);
 }
 
-$translator = new report_customlang_translator($PAGE->url, current_language(), $filterdata, $currentpage);
+$translator = new report_customlang_translator($PAGE->url, $lng, $filterdata, $currentpage);
 
 // output starts here
 $output     = $PAGE->get_renderer('report_customlang');

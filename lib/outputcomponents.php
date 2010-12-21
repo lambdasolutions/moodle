@@ -338,6 +338,27 @@ class pix_icon implements renderable {
     }
 }
 
+/**
+ * Data structure representing an emoticon image
+ *
+ * @since     Moodle 2.0
+ */
+class pix_emoticon extends pix_icon implements renderable {
+
+    /**
+     * Constructor
+     * @param string $pix short icon name
+     * @param string $alt alternative text
+     * @param string $component emoticon image provider
+     * @param array $attributes explicit HTML attributes
+     */
+    public function __construct($pix, $alt, $component = 'moodle', array $attributes = array()) {
+        if (empty($attributes['class'])) {
+            $attributes['class'] = 'emoticon';
+        }
+        parent::__construct($pix, $alt, $component, $attributes);
+    }
+}
 
 /**
  * Data structure representing a simple form with only one button.
@@ -630,17 +651,25 @@ class url_select implements renderable {
      */
     var $helpicon = null;
     /**
+     * @var string If set, makes button visible with given name for button
+     */
+    var $showbutton = null;
+    /**
      * Constructor
      * @param array $urls list of options
      * @param string $selected selected element
      * @param array $nothing
      * @param string $formid
+     * @param string $showbutton Set to text of button if it should be visible
+     *   or null if it should be hidden (hidden version always has text 'go')
      */
-    public function __construct(array $urls, $selected='', $nothing=array(''=>'choosedots'), $formid=null) {
-        $this->urls     = $urls;
-        $this->selected = $selected;
-        $this->nothing  = $nothing;
-        $this->formid   = $formid;
+    public function __construct(array $urls, $selected='', $nothing=array(''=>'choosedots'),
+            $formid=null, $showbutton=null) {
+        $this->urls       = $urls;
+        $this->selected   = $selected;
+        $this->nothing    = $nothing;
+        $this->formid     = $formid;
+        $this->showbutton = $showbutton;
     }
 
     /**
@@ -1373,6 +1402,8 @@ class html_writer {
         $text = trim($text);
         $label = self::tag('label', $text, $attributes);
 
+        /*
+        // TODO $colonize disabled for now yet - see MDL-12192 for details
         if (!empty($text) and $colonize) {
             // the $text may end with the colon already, though it is bad string definition style
             $colon = get_string('labelsep', 'langconfig');
@@ -1386,6 +1417,7 @@ class html_writer {
                 }
             }
         }
+        */
 
         return $label;
     }
@@ -2191,6 +2223,30 @@ class custom_menu_item implements renderable {
     public function has_children() {
         return (count($this->children) > 0);
     }
+
+    /**
+     * Sets the text for the node
+     * @param string $text
+     */
+    public function set_text($text) {
+        $this->text = (string)$text;
+    }
+
+    /**
+     * Sets the title for the node
+     * @param string $title
+     */
+    public function set_title($title) {
+        $this->title = (string)$title;
+    }
+
+    /**
+     * Sets the url for the node
+     * @param moodle_url $url
+     */
+    public function set_url(moodle_url $url) {
+        $this->url = $url;
+    }
 }
 
 /**
@@ -2286,9 +2342,13 @@ class custom_menu extends custom_menu_item {
             if (preg_match('/^(\-*)/', $line, $match) && $lastchild != null && $lastdepth !== null) {
                 $depth = strlen($match[1]);
                 if ($depth < $lastdepth) {
-                    if ($lastdepth > 1) {
-                        $depth = $lastdepth - 1;
-                        $lastchild = $lastchild->get_parent()->get_parent()->add($bits[0], $bits[1], $bits[2], $bits[3]);
+                    $difference = $lastdepth - $depth;
+                    if ($lastdepth > 1 && $lastdepth != $difference) {
+                        $tempchild = $lastchild->get_parent();
+                        for ($i =0; $i < $difference; $i++) {
+                            $tempchild = $tempchild->get_parent();
+                        }
+                        $lastchild = $tempchild->add($bits[0], $bits[1], $bits[2], $bits[3]);
                     } else {
                         $depth = 0;
                         $lastchild = new custom_menu_item($bits[0], $bits[1], $bits[2], $bits[3]);
@@ -2332,100 +2392,5 @@ class custom_menu extends custom_menu_item {
             return 0;
         }
         return ($itema > $itemb) ? +1 : -1;
-    }
-}
-
-/**
- * Image gallery component
- *
- * This is the image gallery component that can be used to display several images
- * and if JavaScript is enabled uses the gallery-lightbox YUI module to display
- * them within a lightbox with appropriate controls and such.
- *
- * Lib / YUI Module location: lib/gallery/20100601/
- *
- * @copyright 2010 Sam Hemelryk
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since     Moodle 2.0
- */
-class image_gallery implements renderable {
-
-    /**
-     * Used to ensure we only initialise the lightbox once... it is shared
-     * @var bool
-     */
-    protected static $jsinit = false;
-    /**
-     * An array of images
-     * @var array
-     */
-    public $images = array();
-    /**
-     * The grouping to apply in the lightbox
-     * @var string
-     */
-    public $grouping = null;
-
-    /**
-     * If set to true only the first image is visible.
-     */
-    public $displayfirstimageonly = false;
-
-    /**
-     * Constructs an image gallery component
-     * @param array $images
-     * @param string $grouping
-     */
-    public function __construct(array $images=null, $grouping=null) {
-        $this->grouping = $grouping;
-        if (is_array($images)) {
-            foreach ($images as $image) {
-                $image = (array)$image;
-                if (!array_key_exists('imageurl', $image)) {
-                    throw new coding_exception('Image gallery images must specify a url for every image');
-                }
-                if (!array_key_exists('thumburl', $image)) {
-                    throw new coding_exception('Image gallery images must specify a url for every image');
-                }
-                if (!array_key_exists('title', $image)) {
-                    throw new coding_exception('Image gallery images must specify a title for every image');
-                }
-                if (!array_key_exists('alt', $image)) {
-                    $image['alt'] = null;
-                }
-                if (!array_key_exists('attributes', $image)) {
-                    $image['attributes'] = null;
-                }
-                $this->add_image($image['thumburl'], $image['imageurl'], $image['title'], $image['alt'], $image['attributes']);
-            }
-        }
-    }
-    /**
-     * Adds an image to the gallery
-     *
-     * @param moodle_url|string $thumburl
-     * @param moodle_url|string $imageurl
-     * @param string $title
-     * @param string $alt
-     * @param array $attributes
-     */
-    public function add_image($thumburl, $imageurl, $title, $alt=null, array $attributes=null) {
-        $image = new stdClass;
-        $image->link = array('id'=>'imagelink'.(count($this->images)+1), 'class'=>'imagelink');
-        $image->thumb = array('id'=>'imagethumb'.(count($this->images)+1), 'class'=>'imagethumb');
-        if (is_array($attributes)) {
-            $image->link = $attributes;
-        }
-        $image->link['href'] = new moodle_url($imageurl);
-        $image->link['title'] = $title;
-        $image->link['rel'] = 'lightbox';
-        if ($this->grouping !== null) {
-            $image->link['rel'] .= "[{$this->grouping}]";
-        }
-
-        $image->thumb['src'] = new moodle_url($thumburl);
-        $image->thumb['alt'] = $alt;
-
-        $this->images[] = $image;
     }
 }

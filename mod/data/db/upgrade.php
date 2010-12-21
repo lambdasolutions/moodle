@@ -84,7 +84,7 @@ function xmldb_data_upgrade($oldversion) {
                     JOIN {data} d            ON d.id = r.dataid
                     JOIN {modules} m         ON m.name = 'data'
                     JOIN {course_modules} cm ON (cm.module = m.id AND cm.instance = d.id)
-                   WHERE c.content <> '$empty' AND c.content IS NOT NULL
+                   WHERE ".$DB->sql_compare_text('c.content', 2)." <> '$empty' AND c.content IS NOT NULL
                          AND (f.type = 'file' OR f.type = 'picture')";
 
         $count = $DB->count_records_sql("SELECT COUNT('x') $sqlfrom");
@@ -295,6 +295,22 @@ function xmldb_data_upgrade($oldversion) {
         }
 
         upgrade_mod_savepoint(true, 2010042800, 'data');
+    }
+
+    //rerun the upgrade see MDL-24470
+    if ($oldversion < 2010100101) {
+        // Upgrade all the data->notification currently being
+        // NULL to 0
+        $sql = "UPDATE {data} SET notification=0 WHERE notification IS NULL";
+        $DB->execute($sql);
+
+        $table = new xmldb_table('data');
+        $field = new xmldb_field('notification', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'editany');
+        // First step, Set NOT NULL
+        $dbman->change_field_notnull($table, $field);
+        // Second step, Set default to 0
+        $dbman->change_field_default($table, $field);
+        upgrade_mod_savepoint(true, 2010100101, 'data');
     }
 
     return true;

@@ -148,7 +148,7 @@ class enrol_meta_handler {
         //note: do not test if plugin enabled, we want to keep removing previously linked courses
 
         // look for unenrolment candidates - it may be possible that user has multiple enrolments...
-        $sql = "SELECT DISTINCT e.*
+        $sql = "SELECT e.*
                   FROM {enrol} e
                   JOIN {user_enrolments} ue ON (ue.enrolid = e.id AND ue.userid = :userid)
                   JOIN {enrol} pe ON (pe.courseid = e.customint1 AND pe.enrol <> 'meta' AND pe.courseid = :courseid)
@@ -156,14 +156,13 @@ class enrol_meta_handler {
                  WHERE pue.id IS NULL";
         $params = array('courseid'=>$ue->courseid, 'userid'=>$ue->userid);
 
-        if (!$enrols = $DB->get_records_sql($sql, $params)) {
-            return true;
-        }
+        $rs = $DB->get_recordset_sql($sql, $params);
 
         $plugin = enrol_get_plugin('meta');
-        foreach ($enrols as $enrol) {
+        foreach ($rs as $enrol) {
             $plugin->unenrol_user($enrol, $ue->userid);
         }
+        $rs->close();
 
         return true;
     }
@@ -271,6 +270,7 @@ function enrol_meta_sync($courseid = NULL) {
         list($enabled, $params) = $DB->get_in_or_equal($enabled, SQL_PARAMS_NAMED, 'e00');
         $sql = "SELECT DISTINCT pra.roleid, pra.userid, c.id AS contextid, e.id AS enrolid
                   FROM {role_assignments} pra
+                  JOIN {user} u ON (u.id = pra.userid AND u.deleted = 0)
                   JOIN {context} pc ON (pc.id = pra.contextid AND pc.contextlevel = :coursecontext AND pra.component $enabled)
                   JOIN {enrol} e ON (e.customint1 = pc.instanceid AND e.enrol = 'meta' AND e.status = :statusenabled $onecourse)
                   JOIN {context} c ON (c.contextlevel = pc.contextlevel AND c.instanceid = e.courseid)

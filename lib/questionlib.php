@@ -121,16 +121,6 @@ define('QUESTION_ADAPTIVE', 1);
 /**#@-*/
 
 /**#@+
- * Options used in forms that move files.
- */
-define('QUESTION_FILENOTHINGSELECTED', 0);
-define('QUESTION_FILEDONOTHING', 1);
-define('QUESTION_FILECOPY', 2);
-define('QUESTION_FILEMOVE', 3);
-define('QUESTION_FILEMOVELINKSONLY', 4);
-/**#@-*/
-
-/**#@+
  * Options for whether flags are shown/editable when rendering questions.
  */
 define('QUESTION_FLAGSHIDDEN', 0);
@@ -576,7 +566,12 @@ function delete_attempt($attemptid) {
 function delete_question($questionid) {
     global $QTYPES, $DB;
 
-    if (!$question = $DB->get_record('question', array('id'=>$questionid))) {
+    $question = $DB->get_record_sql('
+            SELECT q.*, qc.contextid
+            FROM {question} q
+            JOIN {question_categories} qc ON qc.id = q.category
+            WHERE q.id = ?', array($questionid));
+    if (!$question) {
         // In some situations, for example if this was a child of a
         // Cloze question that was previously deleted, the question may already
         // have gone. In this case, just do nothing.
@@ -590,12 +585,8 @@ function delete_question($questionid) {
 
     // delete questiontype-specific data
     question_require_capability_on($question, 'edit');
-    if ($question) {
-        if (isset($QTYPES[$question->qtype])) {
-            $QTYPES[$question->qtype]->delete_question($questionid);
-        }
-    } else {
-        echo "Question with id $questionid does not exist.<br />";
+    if (isset($QTYPES[$question->qtype])) {
+        $QTYPES[$question->qtype]->delete_question($questionid, $question->contextid);
     }
 
     if ($states = $DB->get_records('question_states', array('question'=>$questionid))) {
@@ -607,11 +598,11 @@ function delete_question($questionid) {
         }
     }
 
-    // delete entries from all other question tables
+    // Delete entries from all other question tables
     // It is important that this is done only after calling the questiontype functions
-    $DB->delete_records("question_answers", array("question"=>$questionid));
-    $DB->delete_records("question_states", array("question"=>$questionid));
-    $DB->delete_records("question_sessions", array("questionid"=>$questionid));
+    $DB->delete_records('question_answers', array('question' => $questionid));
+    $DB->delete_records('question_states', array('question' => $questionid));
+    $DB->delete_records('question_sessions', array('questionid' => $questionid));
 
     // Now recursively delete all child questions
     if ($children = $DB->get_records('question', array('parent' => $questionid), '', 'id,qtype')) {
@@ -624,8 +615,6 @@ function delete_question($questionid) {
 
     // Finally delete the question record itself
     $DB->delete_records('question', array('id'=>$questionid));
-
-    return;
 }
 
 /**
@@ -645,7 +634,7 @@ function question_delete_course($course, $feedback=true) {
     //Cache some strings
     $strcatdeleted = get_string('unusedcategorydeleted', 'quiz');
     $coursecontext = get_context_instance(CONTEXT_COURSE, $course->id);
-    $categoriescourse = $DB->get_records('question_categories', array('contextid'=>$coursecontext->id), 'parent', 'id, parent, name');
+    $categoriescourse = $DB->get_records('question_categories', array('contextid'=>$coursecontext->id), 'parent', 'id, parent, name, contextid');
 
     if ($categoriescourse) {
 
@@ -718,7 +707,7 @@ function question_delete_course_category($category, $newcategory, $feedback=true
                     // added to a course, and then that course is moved to another category (MDL-14802).
                     $questionids = $DB->get_records_menu('question', array('category'=>$category->id), '', 'id,1');
                     if (!empty($questionids)) {
-                        if (!$rescueqcategory = question_save_from_deletion(implode(',', array_keys($questionids)),
+                        if (!$rescueqcategory = question_save_from_deletion(array_keys($questionids),
                                 get_parent_contextid($context), print_context_name($context), $rescueqcategory)) {
                             return false;
                        }
@@ -809,7 +798,7 @@ function question_delete_activity($cm, $feedback=true) {
     //Cache some strings
     $strcatdeleted = get_string('unusedcategorydeleted', 'quiz');
     $modcontext = get_context_instance(CONTEXT_MODULE, $cm->id);
-    if ($categoriesmods = $DB->get_records('question_categories', array('contextid'=>$modcontext->id), 'parent', 'id, parent, name')){
+    if ($categoriesmods = $DB->get_records('question_categories', array('contextid'=>$modcontext->id), 'parent', 'id, parent, name, contextid')){
         //Sort categories following their tree (parent-child) relationships
         //this will make the feedback more readable
         $categoriesmods = sort_categories_by_tree($categoriesmods);
@@ -854,30 +843,55 @@ function question_delete_activity($cm, $feedback=true) {
 function question_move_questions_to_category($questionids, $newcategoryid) {
     global $DB, $QTYPES;
 
-    $ids = explode(',', $questionids);
-    foreach ($ids as $questionid) {
-        $questionid = (int)$questionid;
-        $params = array();
-        $params[] = $questionid;
-        $sql = 'SELECT q.*, c.id AS contextid, c.contextlevel, c.instanceid, c.path, c.depth
-                  FROM {question} q, {question_categories} qc, {context} c
-                 WHERE q.category=qc.id AND q.id=? AND qc.contextid=c.id';
-        $question = $DB->get_record_sql($sql, $params);
-        $category = $DB->get_record('question_categories', array('id'=>$newcategoryid));
-        // process files
-        $QTYPES[$question->qtype]->move_files($question, $category);
+    $newcontextid = $DB->get_field('question_categories', 'contextid',
+            array('id' => $newcategoryid));
+    list($questionidcondition, $params) = $DB->get_in_or_equal($questionids);
+    $questions = $DB->get_records_sql("
+            SELECT q.id, q.qtype, qc.contextid
+              FROM {question} q
+              JOIN {question_categories} qc ON q.category = qc.id
+             WHERE  q.id $questionidcondition", $params);
+    foreach ($questions as $question) {
+        if ($newcontextid != $question->contextid) {
+            $QTYPES[$question->qtype]->move_files($question->id,
+                    $question->contextid, $newcontextid);
+        }
     }
 
-
     // Move the questions themselves.
-    $DB->set_field_select('question', 'category', $newcategoryid, "id IN ($questionids)");
+    $DB->set_field_select('question', 'category', $newcategoryid, "id $questionidcondition", $params);
 
     // Move any subquestions belonging to them.
-    $DB->set_field_select('question', 'category', $newcategoryid, "parent IN ($questionids)");
+    $DB->set_field_select('question', 'category', $newcategoryid, "parent $questionidcondition", $params);
 
     // TODO Deal with datasets.
 
     return true;
+}
+
+/**
+ * This function helps move a question cateogry to a new context by moving all
+ * the files belonging to all the questions to the new context.
+ * Also moves subcategories.
+ * @param integer $categoryid the id of the category being moved.
+ * @param integer $oldcontextid the old context id.
+ * @param integer $newcontextid the new context id.
+ */
+function question_move_category_to_context($categoryid, $oldcontextid, $newcontextid) {
+    global $DB, $QTYPES;
+
+    $questionids = $DB->get_records_menu('question',
+            array('category' => $categoryid), '', 'id,qtype');
+    foreach ($questionids as $questionid => $qtype) {
+        $QTYPES[$qtype]->move_files($questionid, $oldcontextid, $newcontextid);
+    }
+
+    $subcatids = $DB->get_records_menu('question_categories',
+            array('parent' => $categoryid), '', 'id,1');
+    foreach ($subcatids as $subcatid => $notused) {
+        $DB->set_field('question_categories', 'contextid', $newcontextid, array('id' => $subcatid));
+        question_move_category_to_context($subcatid, $oldcontextid, $newcontextid);
+    }
 }
 
 /**
@@ -1027,7 +1041,8 @@ function question_preload_states($attemptid) {
     // array index in the array returned by $DB->get_records_sql
     $statefields = 'n.questionid as question, s.id, s.attempt, ' .
             's.seq_number, s.answer, s.timestamp, s.event, s.grade, s.raw_grade, ' .
-            's.penalty, n.sumpenalty, n.manualcomment, n.flagged, n.id as questionsessionid';
+            's.penalty, n.sumpenalty, n.manualcomment, n.manualcommentformat, ' .
+            'n.flagged, n.id as questionsessionid';
 
     // Load the newest states for the questions
     $sql = "SELECT $statefields
@@ -1131,6 +1146,7 @@ function question_load_states(&$questions, &$states, $cmoptions, $attempt, $last
             $states[$qid]->penalty = 0;
             $states[$qid]->sumpenalty = 0;
             $states[$qid]->manualcomment = '';
+            $states[$qid]->manualcommentformat = FORMAT_HTML;
             $states[$qid]->flagged = 0;
 
             // Prevent further changes to the session from incrementing the
@@ -1217,7 +1233,8 @@ function question_load_specific_state($question, $cmoptions, $attempt, $stateid)
     global $DB;
     // Load specified states for the question.
     // sess.sumpenalty is probably wrong here shoul really be a sum of penalties from before the one we are asking for.
-    $sql = 'SELECT st.*, sess.sumpenalty, sess.manualcomment, sess.flagged, sess.id as questionsessionid
+    $sql = 'SELECT st.*, sess.sumpenalty, sess.manualcomment, sess.manualcommentformat,
+                        sess.flagged, sess.id as questionsessionid
               FROM {question_states} st, {question_sessions} sess
              WHERE st.id = ?
                AND st.attempt = ?
@@ -1231,7 +1248,8 @@ function question_load_specific_state($question, $cmoptions, $attempt, $stateid)
     restore_question_state($question, $state);
 
     // Load the most recent graded states for the questions before the specified one.
-    $sql = 'SELECT st.*, sess.sumpenalty, sess.manualcomment, sess.flagged, sess.id as questionsessionid
+    $sql = 'SELECT st.*, sess.sumpenalty, sess.manualcomment, sess.manualcommentformat,
+                        sess.flagged, sess.id as questionsessionid
               FROM {question_states} st, {question_sessions} sess
              WHERE st.seq_number <= ?
                AND st.attempt = ?
@@ -1267,8 +1285,6 @@ function restore_question_state(&$question, &$state) {
 
     // initialise response to the value in the answer field
     $state->responses = array('' => $state->answer);
-    unset($state->answer);
-    $state->manualcomment = isset($state->manualcomment) ? $state->manualcomment : '';
 
     // Set the changed field to false; any code which changes the
     // question session must set this to true and must increment
@@ -1278,8 +1294,7 @@ function restore_question_state(&$question, &$state) {
     $state->changed = false;
 
     // Load the question type specific data
-    return $QTYPES[$question->qtype]
-            ->restore_session_and_responses($question, $state);
+    return $QTYPES[$question->qtype]->restore_session_and_responses($question, $state);
 
 }
 
@@ -1332,6 +1347,7 @@ function save_question_session($question, $state) {
         $session->newgraded = $state->id;
         $session->sumpenalty = $state->sumpenalty;
         $session->manualcomment = $state->manualcomment;
+        $session->manualcommentformat = $state->manualcommentformat;
         $session->flagged = !empty($state->newflaggedstate);
         $DB->insert_record('question_sessions', $session);
     } else {
@@ -1341,8 +1357,7 @@ function save_question_session($question, $state) {
             $session->newgraded = $state->id;
             $session->sumpenalty = $state->sumpenalty;
             $session->manualcomment = $state->manualcomment;
-        } else {
-            $session->manualcomment = $session->manualcomment;
+            $session->manualcommentformat = $state->manualcommentformat;
         }
         $session->flagged = !empty($state->newflaggedstate);
         $DB->update_record('question_sessions', $session);
@@ -1554,7 +1569,7 @@ function regrade_question_in_attempt($question, $attempt, $cmoptions, $verbose=f
                 }
                 if (!$dryrun){
                     $error = question_process_comment($question, $replaystate, $attempt,
-                            $replaystate->manualcomment, $states[$j]->grade);
+                            $replaystate->manualcomment, $replaystate->manualcommentformat, $states[$j]->grade);
                     if (is_string($error)) {
                          echo $OUTPUT->notification($error);
                     }
@@ -1849,37 +1864,11 @@ function print_question_icon($question, $return = false) {
 }
 
 /**
-* Returns a html link to the question image if there is one
-*
- * @global object
- * @global object
-* @return string The html image tag or the empy string if there is no image.
-* @param object $question The question object
-*/
-function get_question_image($question) {
-    global $CFG, $DB;
-    $img = '';
-
-    if (!$category = $DB->get_record('question_categories', array('id'=>$question->category))) {
-        print_error('invalidcategory');
-    }
-    $coursefilesdir = get_filesdir_from_context(get_context_instance_by_id($category->contextid));
-
-    if ($question->image) {
-
-        if (substr(strtolower($question->image), 0, 7) == 'http://') {
-            $img .= $question->image;
-
-        } else {
-            require_once($CFG->libdir .'/filelib.php');
-            $img = get_file_url("$coursefilesdir/{$question->image}");
-        }
-    }
-    return $img;
-}
-
-/**
- * @global array
+ * @param $question
+ * @param $state
+ * @param $prefix
+ * @param $cmoptions
+ * @param $caption
  */
 function question_print_comment_fields($question, $state, $prefix, $cmoptions, $caption = '') {
     global $QTYPES;
@@ -1939,7 +1928,7 @@ function question_print_comment_fields($question, $state, $prefix, $cmoptions, $
  * @return mixed true on success, a string error message if a problem is detected
  *         (for example score out of range).
  */
-function question_process_comment($question, &$state, &$attempt, $comment, $grade) {
+function question_process_comment($question, &$state, &$attempt, $comment, $commentformat, $grade) {
     global $DB;
 
     $grade = trim($grade);
@@ -1954,6 +1943,7 @@ function question_process_comment($question, &$state, &$attempt, $comment, $grad
     // Update the comment and save it in the database
     $comment = trim($comment);
     $state->manualcomment = $comment;
+    $state->manualcommentformat = $commentformat;
     $state->newflaggedstate = $state->flagged;
     $DB->set_field('question_sessions', 'manualcomment', $comment, array('attemptid'=>$attempt->uniqueid, 'questionid'=>$question->id));
 
@@ -2265,8 +2255,9 @@ function sort_categories_by_tree(&$categories, $id = 0, $level = 1) {
     //If level = 1, we have finished, try to look for non processed categories (bad parent) and sort them too
     if ($level == 1) {
         foreach ($keys as $key) {
-            //If not processed and it's a good candidate to start (because its parent doesn't exist in the course)
-            if (!isset($categories[$key]->processed) && !$DB->record_exists('question_categories', array('course'=>$categories[$key]->course, 'id'=>$categories[$key]->parent))) {
+            // If not processed and it's a good candidate to start (because its parent doesn't exist in the course)
+            if (!isset($categories[$key]->processed) && !$DB->record_exists(
+                    'question_categories', array('contextid'=>$categories[$key]->contextid, 'id'=>$categories[$key]->parent))) {
                 $children[$key] = $categories[$key];
                 $categories[$key]->processed = true;
                 $children = $children + sort_categories_by_tree($categories, $children[$key]->id, $level+1);
@@ -2631,47 +2622,29 @@ function get_import_export_formats( $type ) {
 
 
 /**
-* Create default export filename
-*
-* @return string   default export filename
-* @param object $course
-* @param object $category
+* Create a reasonable default file name for exporting questions from a particular
+* category.
+* @param object $course the course the questions are in.
+* @param object $category the question category.
+* @return string the filename.
 */
-function default_export_filename($course,$category) {
-    //Take off some characters in the filename !!
-    $takeoff = array(" ", ":", "/", "\\", "|");
-    $export_word = str_replace($takeoff,"_",moodle_strtolower(get_string("exportfilename","quiz")));
-    //If non-translated, use "export"
-    if (substr($export_word,0,1) == "[") {
-        $export_word= "export";
+function question_default_export_filename($course, $category) {
+    // We build a string that is an appropriate name (questions) from the lang pack,
+    // then the corse shortname, then the question category name, then a timestamp. 
+
+    $base = clean_filename(get_string('exportfilename', 'question'));
+
+    $dateformat = str_replace(' ', '_', get_string('exportnameformat', 'question'));
+    $timestamp = clean_filename(userdate(time(), $dateformat, 99, false));
+
+    $shortname = clean_filename($course->shortname);
+    if ($shortname == '' || $shortname == '_' ) {
+        $shortname = $course->id;
     }
 
-    //Calculate the date format string
-    $export_date_format = str_replace(" ","_",get_string("exportnameformat","quiz"));
-    //If non-translated, use "%Y%m%d-%H%M"
-    if (substr($export_date_format,0,1) == "[") {
-        $export_date_format = "%%Y%%m%%d-%%H%%M";
-    }
+    $categoryname = clean_filename(format_string($category->name));
 
-    //Calculate the shortname
-    $export_shortname = clean_filename($course->shortname);
-    if (empty($export_shortname) or $export_shortname == '_' ) {
-        $export_shortname = $course->id;
-    }
-
-    //Calculate the category name
-    $export_categoryname = clean_filename($category->name);
-
-    //Calculate the final export filename
-    //The export word
-    $export_name = $export_word."-";
-    //The shortname
-    $export_name .= moodle_strtolower($export_shortname)."-";
-    //The category name
-    $export_name .= moodle_strtolower($export_categoryname)."-";
-    //The date format
-    $export_name .= userdate(time(),$export_date_format,99,false);
-    //Extension is supplied by format later.
+    return "{$base}-{$shortname}-{$categoryname}-{$timestamp}";
 
     return $export_name;
 }
@@ -2778,13 +2751,13 @@ function question_has_capability_on($question, $cap, $cachecat = -1){
     static $questions = array();
     static $categories = array();
     static $cachedcat = array();
-    if ($cachecat != -1 && (array_search($cachecat, $cachedcat)===FALSE)){
-        $questions += $DB->get_records('question', array('category'=>$cachecat));
+    if ($cachecat != -1 && array_search($cachecat, $cachedcat) === false) {
+        $questions += $DB->get_records('question', array('category' => $cachecat));
         $cachedcat[] = $cachecat;
     }
     if (!is_object($question)){
         if (!isset($questions[$question])){
-            if (!$questions[$question] = $DB->get_record('question', array('id'=>$question), 'id,category,createdby')) {
+            if (!$questions[$question] = $DB->get_record('question', array('id' => $question), 'id,category,createdby')) {
                 print_error('questiondoesnotexist', 'question');
             }
         }
@@ -2796,11 +2769,12 @@ function question_has_capability_on($question, $cap, $cachecat = -1){
         }
     }
     $category = $categories[$question->category];
+    $context = get_context_instance_by_id($category->contextid);
 
     if (array_search($cap, $question_questioncaps)!== FALSE){
-        if (!has_capability('moodle/question:'.$cap.'all', get_context_instance_by_id($category->contextid))){
+        if (!has_capability('moodle/question:'.$cap.'all', $context)){
             if ($question->createdby == $USER->id){
-                return has_capability('moodle/question:'.$cap.'mine', get_context_instance_by_id($category->contextid));
+                return has_capability('moodle/question:'.$cap.'mine', $context);
             } else {
                 return false;
             }
@@ -2808,7 +2782,7 @@ function question_has_capability_on($question, $cap, $cachecat = -1){
             return true;
         }
     } else {
-        return has_capability('moodle/question:'.$cap, get_context_instance_by_id($category->contextid));
+        return has_capability('moodle/question:'.$cap, $context);
     }
 
 }
@@ -2824,124 +2798,13 @@ function question_require_capability_on($question, $cap){
 }
 
 /**
- * @global object
- */
-function question_file_links_base_url($courseid){
-    global $CFG;
-    $baseurl = preg_quote("$CFG->wwwroot/file.php", '!');
-    $baseurl .= '('.preg_quote('?file=', '!').')?';//may or may not
-                                     //be using slasharguments, accept either
-    $baseurl .= "/$courseid/";//course directory
-    return $baseurl;
-}
-
-/**
- * Find all course / site files linked to in a piece of html.
- * @global object
- * @param string html the html to search
- * @param int course search for files for courseid course or set to siteid for
- *              finding site files.
- * @return array files with keys being files.
- */
-function question_find_file_links_from_html($html, $courseid){
-    global $CFG;
-    $baseurl = question_file_links_base_url($courseid);
-    $searchfor = '!'.
-                   '(<\s*(a|img)\s[^>]*(href|src)\s*=\s*")'.$baseurl.'([^"]*)"'.
-                   '|'.
-                   '(<\s*(a|img)\s[^>]*(href|src)\s*=\s*\')'.$baseurl.'([^\']*)\''.
-                  '!i';
-    $matches = array();
-    $no = preg_match_all($searchfor, $html, $matches);
-    if ($no){
-        $rawurls = array_filter(array_merge($matches[5], $matches[10]));//array_filter removes empty elements
-        //remove any links that point somewhere they shouldn't
-        foreach (array_keys($rawurls) as $rawurlkey){
-            if (!$cleanedurl = question_url_check($rawurls[$rawurlkey])){
-                unset($rawurls[$rawurlkey]);
-            } else {
-                $rawurls[$rawurlkey] = $cleanedurl;
-            }
-
-        }
-        $urls = array_flip($rawurls);// array_flip removes duplicate files
-                                            // and when we merge arrays will continue to automatically remove duplicates
-    } else {
-        $urls = array();
-    }
-    return $urls;
-}
-
-/**
- * Check that url doesn't point anywhere it shouldn't
- *
- * @global object
- * @param $url string relative url within course files directory
- * @return mixed boolean false if not OK or cleaned URL as string if OK
- */
-function question_url_check($url){
-    global $CFG;
-    if ((substr(strtolower($url), 0, strlen($CFG->moddata)) == strtolower($CFG->moddata)) ||
-            (substr(strtolower($url), 0, 10) == 'backupdata')){
-        return false;
-    } else {
-        return clean_param($url, PARAM_PATH);
-    }
-}
-
-/**
- * Find all course / site files linked to in a piece of html.
- *
- * @global object
- * @param string html the html to search
- * @param int course search for files for courseid course or set to siteid for
- *              finding site files.
- * @return array files with keys being files.
- */
-function question_replace_file_links_in_html($html, $fromcourseid, $tocourseid, $url, $destination, &$changed){
-    global $CFG;
-    require_once($CFG->libdir .'/filelib.php');
-    $tourl = get_file_url("$tocourseid/$destination");
-    $fromurl = question_file_links_base_url($fromcourseid).preg_quote($url, '!');
-    $searchfor = array('!(<\s*(a|img)\s[^>]*(href|src)\s*=\s*")'.$fromurl.'(")!i',
-                   '!(<\s*(a|img)\s[^>]*(href|src)\s*=\s*\')'.$fromurl.'(\')!i');
-    $newhtml = preg_replace($searchfor, '\\1'.$tourl.'\\5', $html);
-    if ($newhtml != $html){
-        $changed = true;
-    }
-    return $newhtml;
-}
-
-/**
- * @global object
- */
-function get_filesdir_from_context($context){
-    global $DB;
-
-    switch ($context->contextlevel){
-        case CONTEXT_COURSE :
-            $courseid = $context->instanceid;
-            break;
-        case CONTEXT_MODULE :
-            $courseid = $DB->get_field('course_modules', 'course', array('id'=>$context->instanceid));
-            break;
-        case CONTEXT_COURSECAT :
-        case CONTEXT_SYSTEM :
-            $courseid = SITEID;
-            break;
-        default :
-            print_error('invalidcontext');
-    }
-    return $courseid;
-}
-/**
  * Get the real state - the correct question id and answer - for a random
  * question.
  * @param object $state with property answer.
  * @return mixed return integer real question id or false if there was an
  * error..
  */
-function question_get_real_state($state){
+function question_get_real_state($state) {
     global $OUTPUT;
     $realstate = clone($state);
     $matches = array();
@@ -3270,10 +3133,73 @@ function quiz_rewrite_question_urls($text, $file, $contextid, $component, $filea
 function question_pluginfile($course, $context, $component, $filearea, $args, $forcedownload) {
     global $DB, $CFG;
 
+    list($context, $course, $cm) = get_context_info_array($context->id);
+    require_login($course, false, $cm);
+
+    if ($filearea === 'export') {
+        require_once($CFG->dirroot . '/question/editlib.php');
+        $contexts = new question_edit_contexts($context);
+        // check export capability
+        $contexts->require_one_edit_tab_cap('export');
+        $category_id = (int)array_shift($args);
+        $format      = array_shift($args);
+        $cattofile   = array_shift($args);
+        $contexttofile = array_shift($args);
+        $filename    = array_shift($args);
+
+        // load parent class for import/export
+        require_once($CFG->dirroot . '/question/format.php');
+        require_once($CFG->dirroot . '/question/editlib.php');
+        require_once($CFG->dirroot . '/question/format/' . $format . '/format.php');
+
+        $classname = 'qformat_' . $format;
+        if (!class_exists($classname)) {
+            send_file_not_found();
+        }
+
+        $qformat = new $classname();
+
+        if (!$category = $DB->get_record('question_categories', array('id' => $category_id))) {
+            send_file_not_found();
+        }
+
+        $qformat->setCategory($category);
+        $qformat->setContexts($contexts->having_one_edit_tab_cap('export'));
+        $qformat->setCourse($course);
+
+        if ($cattofile == 'withcategories') {
+            $qformat->setCattofile(true);
+        } else {
+            $qformat->setCattofile(false);
+        }
+
+        if ($contexttofile == 'withcontexts') {
+            $qformat->setContexttofile(true);
+        } else {
+            $qformat->setContexttofile(false);
+        }
+
+        if (!$qformat->exportpreprocess()) {
+            send_file_not_found();
+            print_error('exporterror', 'question', $thispageurl->out());
+        }
+
+        // export data to moodle file pool
+        if (!$content = $qformat->exportprocess(true)) {
+            send_file_not_found();
+        }
+
+        //DEBUG
+        //echo '<textarea cols=90 rows=20>';
+        //echo $content;
+        //echo '</textarea>';
+        //die;
+        send_file($content, $filename, 0, 0, true, true, $qformat->mime_type());
+    }
+
     $attemptid = (int)array_shift($args);
     $questionid = (int)array_shift($args);
 
-    require_login($course, false);
 
     if ($attemptid === 0) {
         // preview
@@ -3320,4 +3246,20 @@ function question_check_file_access($question, $state, $options, $contextid, $co
     global $QTYPES;
     return $QTYPES[$question->qtype]->check_file_access($question, $state, $options, $contextid, $component,
             $filearea, $args, $forcedownload);
+}
+
+/**
+ * Create url for question export
+ *
+ * @param int $contextid, current context
+ * @param int $categoryid, categoryid
+ * @param string $format
+ * @param string $withcategories
+ * @param string $ithcontexts
+ * @param moodle_url export file url
+ */
+function question_make_export_url($contextid, $categoryid, $format, $withcategories, $withcontexts, $filename) {
+    global $CFG;
+    $urlbase = "$CFG->httpswwwroot/pluginfile.php";
+    return moodle_url::make_file_url($urlbase, "/$contextid/question/export/{$categoryid}/{$format}/{$withcategories}/{$withcontexts}/{$filename}", true);
 }

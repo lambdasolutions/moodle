@@ -1845,17 +1845,21 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
     if ($oldversion < 2009050618) {
     /// And block instances with visible = 0, copy that information to block_positions
         $DB->execute("INSERT INTO {block_positions} (blockinstanceid, contextid, pagetype, subpage, visible, region, weight)
-                SELECT id, contextid,
-                CASE WHEN pagetypepattern = 'course-view-*' THEN
-                        (SELECT " . $DB->sql_concat("'course-view-'", 'format') . "
-                        FROM {course}
-                        JOIN {context} ON {course}.id = {context}.instanceid
-                        WHERE {context}.id = contextid)
-                    ELSE pagetypepattern END,
-                CASE WHEN subpagepattern IS NULL THEN ''
-                    ELSE subpagepattern END,
-                0, defaultregion, defaultweight
-                FROM {block_instances} WHERE visible = 0 AND pagetypepattern <> 'admin-*'");
+                SELECT bi.id, bi.contextid,
+                       CASE WHEN bi.pagetypepattern = 'course-view-*'
+                           THEN (SELECT " . $DB->sql_concat("'course-view-'", 'c.format') . "
+                                   FROM {course} c
+                                   JOIN {context} ctx ON c.id = ctx.instanceid
+                                  WHERE ctx.id = bi.contextid)
+                           ELSE bi.pagetypepattern END,
+                       CASE WHEN bi.subpagepattern IS NULL
+                           THEN ''
+                           ELSE bi.subpagepattern END,
+                       0, bi.defaultregion, bi.defaultweight
+                  FROM {block_instances} bi
+                 WHERE bi.visible = 0 AND bi.pagetypepattern <> 'admin-*' AND bi.pagetypepattern IS NOT NULL");
+        // note: MDL-25031 all block instances should have a pagetype pattern, NULL is not allowed,
+        //       if we manage to find out how NULLs get there we should fix them before this step
 
     /// Main savepoint reached
         upgrade_main_savepoint(true, 2009050618);
@@ -2389,6 +2393,12 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
     if ($oldversion < 2009110401) {
         $table = new xmldb_table('user');
+
+        // Change the precision of the description field first up.
+        // This may grow!
+        $field = new xmldb_field('description', XMLDB_TYPE_TEXT, 'big', null, null, null, null, 'url');
+        $dbman->change_field_precision($table, $field);
+
         $field = new xmldb_field('descriptionformat', XMLDB_TYPE_INTEGER, '2', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, '0', 'description');
         // Check that the field doesn't already exists
         if (!$dbman->field_exists($table, $field)) {
@@ -2845,9 +2855,16 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
             $role->archetype = substr($role->capability, $substart);
             unset($role->capability);
             if ($role->archetype === 'admin') {
+                $i = '';
+                if ($DB->record_exists('role', array('shortname'=>'manager'))) {
+                    $i = 2;
+                    while($DB->record_exists('role', array('shortname'=>'manager'.$i))) {
+                        $i++;
+                    }
+                }
                 $role->archetype = 'manager';
                 if ($role->shortname === 'admin') {
-                    $role->shortname   = 'manager';
+                    $role->shortname   = 'manager'.$i;
                     $role->name        = get_string('manager', 'role');
                     $role->description = get_string('managerdescription', 'role');
                 }
@@ -3616,7 +3633,7 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
                 // No default exist there yet, let's put a few into My Moodle so it's useful.
 
                 $blockinstance = new stdClass;
-                $blockinstance->parentcontextid = SITEID;
+                $blockinstance->parentcontextid = SYSCONTEXTID;
                 $blockinstance->showinsubcontexts = 0;
                 $blockinstance->pagetypepattern = 'my-index';
                 $blockinstance->subpagepattern = $mypage->id;
@@ -4288,18 +4305,20 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         $syscontext = get_context_instance(CONTEXT_SYSTEM);
         $params = array('syscontext'=>$syscontext->id, 'participate'=>'moodle/course:participate');
         $roles = $DB->get_fieldset_sql("SELECT DISTINCT roleid FROM {role_capabilities} WHERE contextid = :syscontext AND capability = :participate AND permission = 1", $params);
-        list($sqlroles, $params) = $DB->get_in_or_equal($roles, SQL_PARAMS_NAMED, 'r00');
+        if ($roles) {
+            list($sqlroles, $params) = $DB->get_in_or_equal($roles, SQL_PARAMS_NAMED, 'r00');
 
-        $sql = "INSERT INTO {user_enrolments} (status, enrolid, userid, timestart, timeend, modifierid, timecreated, timemodified)
+            $sql = "INSERT INTO {user_enrolments} (status, enrolid, userid, timestart, timeend, modifierid, timecreated, timemodified)
 
-                SELECT 0, e.id, ra.userid, MIN(ra.timestart), MIN(ra.timeend), 0, MIN(ra.timemodified), MAX(ra.timemodified)
-                  FROM {role_assignments} ra
-                  JOIN {context} c ON (c.id = ra.contextid AND c.contextlevel = 50)
-                  JOIN {enrol} e ON (e.enrol = ra.enrol AND e.courseid = c.instanceid)
-                  JOIN {user} u ON u.id = ra.userid
-                 WHERE u.deleted = 0 AND ra.roleid $sqlroles
-              GROUP BY e.id, ra.userid";
-        $DB->execute($sql, $params);
+                    SELECT 0, e.id, ra.userid, MIN(ra.timestart), MIN(ra.timeend), 0, MIN(ra.timemodified), MAX(ra.timemodified)
+                      FROM {role_assignments} ra
+                      JOIN {context} c ON (c.id = ra.contextid AND c.contextlevel = 50)
+                      JOIN {enrol} e ON (e.enrol = ra.enrol AND e.courseid = c.instanceid)
+                      JOIN {user} u ON u.id = ra.userid
+                     WHERE u.deleted = 0 AND ra.roleid $sqlroles
+                  GROUP BY e.id, ra.userid";
+            $DB->execute($sql, $params);
+        }
 
         upgrade_main_savepoint(true, 2010061900.20);
     }
@@ -4910,6 +4929,19 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
             $dbman->add_field($table, $field);
         }
 
+    /// Upgrading the text formats in some question types depends on the
+    /// questiontextformat field, but the question type upgrade only runs
+    /// after the code below has messed around with the questiontextformat
+    /// value. Therefore, we need to create a new column to store the old value.
+    /// The column should be dropped in Moodle 2.1.
+    /// Define field oldquestiontextformat to be added to question
+        $field = new xmldb_field('oldquestiontextformat', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'generalfeedback');
+
+    /// Conditionally launch add field oldquestiontextformat
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
     /// Define field infoformat to be added to question_categories
         $table = new xmldb_table('question_categories');
         $field = new xmldb_field('infoformat', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'info');
@@ -4952,66 +4984,6 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
     /// updating question image
     if ($oldversion < 2010080901) {
         $fs = get_file_storage();
-        $rs = $DB->get_recordset('question');
-        $textlib = textlib_get_instance();
-        foreach ($rs as $question) {
-            if (empty($question->image)) {
-                continue;
-            }
-            if (!$category = $DB->get_record('question_categories', array('id'=>$question->category))) {
-                continue;
-            }
-            $categorycontext = get_context_instance_by_id($category->contextid);
-            // question files are stored in course level
-            // so we have to find course context
-            switch ($categorycontext->contextlevel){
-                case CONTEXT_COURSE :
-                    $context = $categorycontext;
-                    break;
-                case CONTEXT_MODULE :
-                    $courseid = $DB->get_field('course_modules', 'course', array('id'=>$categorycontext->instanceid));
-                    $context = get_context_instance(CONTEXT_COURSE, $courseid);
-                    break;
-                case CONTEXT_COURSECAT :
-                case CONTEXT_SYSTEM :
-                    $context = get_system_context();
-                    break;
-                default :
-                    continue;
-            }
-            if ($textlib->substr($textlib->strtolower($question->image), 0, 7) == 'http://') {
-                // it is a link, appending to existing question text
-                $question->questiontext .= ' <img src="' . $question->image . '" />';
-                // update question record
-                $DB->update_record('question', $question);
-            } else {
-                $filename = basename($question->image);
-                $filepath = dirname($question->image);
-                if (empty($filepath) or $filepath == '.' or $filepath == '/') {
-                    $filepath = '/';
-                } else {
-                    // append /
-                    $filepath = '/'.trim($filepath, './@#$ ').'/';
-                }
-
-                // course files already moved to file pool by previous upgrade block
-                // so we just create copy from course_legacy area
-                if ($image = $fs->get_file($context->id, 'course', 'legacy', 0, $filepath, $filename)) {
-                    // move files to file pool
-                    $file_record = array(
-                        'contextid'=>$category->contextid,
-                        'component'=>'question',
-                        'filearea'=>'questiontext',
-                        'itemid'=>$question->id
-                    );
-                    $fs->create_file_from_storedfile($file_record, $image);
-                    $question->questiontext .= ' <img src="@@PLUGINFILE@@' . $filepath . $filename . '" />';
-                    // update question record
-                    $DB->update_record('question', $question);
-                }
-            }
-        }
-        $rs->close();
 
         // Define field image to be dropped from question
         $table = new xmldb_table('question');
@@ -5019,47 +4991,140 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         // Conditionally launch drop field image
         if ($dbman->field_exists($table, $field)) {
+
+            $rs = $DB->get_recordset('question');
+            $textlib = textlib_get_instance();
+
+            foreach ($rs as $question) {
+                if (empty($question->image)) {
+                    continue;
+                }
+                if (!$category = $DB->get_record('question_categories', array('id'=>$question->category))) {
+                    continue;
+                }
+                $categorycontext = get_context_instance_by_id($category->contextid);
+                // question files are stored in course level
+                // so we have to find course context
+                switch ($categorycontext->contextlevel){
+                    case CONTEXT_COURSE :
+                        $context = $categorycontext;
+                        break;
+                    case CONTEXT_MODULE :
+                        $courseid = $DB->get_field('course_modules', 'course', array('id'=>$categorycontext->instanceid));
+                        $context = get_context_instance(CONTEXT_COURSE, $courseid);
+                        break;
+                    case CONTEXT_COURSECAT :
+                    case CONTEXT_SYSTEM :
+                        $context = get_system_context();
+                        break;
+                    default :
+                        continue;
+                }
+                if ($textlib->substr($textlib->strtolower($question->image), 0, 7) == 'http://') {
+                    // it is a link, appending to existing question text
+                    $question->questiontext .= ' <img src="' . $question->image . '" />';
+                    $question->image = '';
+                    // update question record
+                    $DB->update_record('question', $question);
+                } else {
+                    $filename = basename($question->image);
+                    $filepath = dirname($question->image);
+                    if (empty($filepath) or $filepath == '.' or $filepath == '/') {
+                        $filepath = '/';
+                    } else {
+                        // append /
+                        $filepath = '/'.trim($filepath, './@#$ ').'/';
+                    }
+
+                    // course files already moved to file pool by previous upgrade block
+                    // so we just create copy from course_legacy area
+                    if ($image = $fs->get_file($context->id, 'course', 'legacy', 0, $filepath, $filename)) {
+                        // move files to file pool
+                        $file_record = array(
+                            'contextid'=>$category->contextid,
+                            'component'=>'question',
+                            'filearea'=>'questiontext',
+                            'itemid'=>$question->id
+                        );
+                        $fs->create_file_from_storedfile($file_record, $image);
+                        $question->questiontext .= ' <img src="@@PLUGINFILE@@' . $filepath . $filename . '" />';
+                        $question->image = '';
+                        // update question record
+                        $DB->update_record('question', $question);
+                    }
+                }
+            }
+            $rs->close();
+
             $dbman->drop_field($table, $field);
         }
 
-        // fix fieldformat
-        $sql = 'SELECT a.*, q.qtype FROM {question_answers} a, {question} q WHERE a.question = q.id';
-        $rs = $DB->get_recordset_sql($sql);
+        // Update question_answers.
+        // In question_answers.feedback was previously always treated as
+        // FORMAT_HTML in calculated, multianswer, multichoice, numerical,
+        // shortanswer and truefalse; and
+        // FORMAT_MOODLE in essay (despite being edited using the HTML editor)
+        // So essay feedback needs to be converted to HTML unless $CFG->texteditors == 'textarea'.
+        // For all question types except multichoice,
+        // question_answers.answer is FORMAT_PLAIN and does not need to be changed.
+        // For multichoice, question_answers.answer is FORMAT_MOODLE, and should
+        // stay that way, at least for now.
+        $rs = $DB->get_recordset_sql('
+                SELECT qa.*, q.qtype
+                FROM {question_answers} qa
+                JOIN {question} q ON qa.question = q.id');
         foreach ($rs as $record) {
-            // generalfeedback should use questiontext format
+            // Convert question_answers.answer
+            if ($record->qtype !== 'multichoice') {
+                $record->answerformat = FORMAT_PLAIN;
+            } else {
+                $record->answerformat = FORMAT_MOODLE;
+            }
+
+            // Convert question_answers.feedback
             if ($CFG->texteditors !== 'textarea') {
-                if (!empty($record->feedback)) {
-                    $record->feedback = text_to_html($record->feedback);
+                if ($record->qtype == 'essay') {
+                    $record->feedback = text_to_html($record->feedback, false, false, true);
                 }
                 $record->feedbackformat = FORMAT_HTML;
             } else {
                 $record->feedbackformat = FORMAT_MOODLE;
-                $record->answerformat = FORMAT_MOODLE;
             }
-            unset($record->qtype);
+
             $DB->update_record('question_answers', $record);
         }
         $rs->close();
 
-        $rs = $DB->get_recordset('question');
-        foreach ($rs as $record) {
-            if ($CFG->texteditors !== 'textarea') {
-                if (!empty($record->questiontext)) {
-                    $record->questiontext = text_to_html($record->questiontext);
-                }
+        // In the question table, the code previously used questiontextformat
+        // for both question text and general feedback. We need to copy the
+        // values into the new column.
+        // Then we need to convert FORMAT_MOODLE to FORMAT_HTML (depending on
+        // $CFG->texteditors).
+        $DB->execute('
+                UPDATE {question}
+                SET generalfeedbackformat = questiontextformat');
+        // Also save the old questiontextformat, so that plugins that need it
+        // can access it.
+        $DB->execute('
+                UPDATE {question}
+                SET oldquestiontextformat = questiontextformat');
+        // Now covert FORMAT_MOODLE content, if necssary.
+        if ($CFG->texteditors !== 'textarea') {
+            $rs = $DB->get_recordset('question', array('questiontextformat'=>FORMAT_MOODLE));
+            foreach ($rs as $record) {
+                $record->questiontext = text_to_html($record->questiontext, false, false, true);
                 $record->questiontextformat = FORMAT_HTML;
-                // conver generalfeedback text to html
-                if (!empty($record->generalfeedback)) {
-                    $record->generalfeedback = text_to_html($record->generalfeedback);
-                }
-            } else {
-                $record->questiontextformat = FORMAT_MOODLE;
+                $record->generalfeedback = text_to_html($record->generalfeedback, false, false, true);
+                $record->generalfeedbackformat = FORMAT_HTML;
+                $DB->update_record('question', $record);
             }
-            // generalfeedbackformat should be the save as questiontext format
-            $record->generalfeedbackformat = $record->questiontextformat;
-            $DB->update_record('question', $record);
+            $rs->close();
         }
-        $rs->close();
+
+        // In the past, question_sessions.manualcommentformat was always treated
+        // as FORMAT_HTML.
+        $DB->set_field('question_sessions', 'manualcommentformat', FORMAT_HTML);
+
         // Main savepoint reached
         upgrade_main_savepoint(true, 2010080901);
     }
@@ -5267,6 +5332,150 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
         upgrade_main_savepoint(true, 2010092000);
     }
 
+    if ($oldversion < 2010101300) {
+        // Fix MDL-24641 : the registered language should not be empty otherwise cron will fail
+        $registeredhubs = $DB->get_records('registration_hubs', array('confirmed' => 1));
+        if (!empty($registeredhubs)) {
+            foreach ($registeredhubs as $hub) {
+                $cleanhuburl = clean_param($hub->huburl, PARAM_ALPHANUMEXT);
+                $sitelanguage = get_config('hub', 'site_language_' . $cleanhuburl);
+                if (empty($sitelanguage)) {
+                    set_config('site_language_' . $cleanhuburl, current_language(), 'hub');
+                }
+            }
+        }
+        upgrade_main_savepoint(true, 2010101300);
+    }
+
+    //MDL-24721 -add hidden column to grade_categories. This was done previously but it wasn't included in
+    //install.xml so there are 2.0 sites that are missing it.
+    if ($oldversion < 2010101900) {
+        $table = new xmldb_table('grade_categories');
+        $field = new xmldb_field('hidden', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, 0);
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_main_savepoint(true, 2010101900);
+    }
+
+    // new format of the emoticons setting
+    if ($oldversion < 2010102300) {
+        unset($CFG->emoticons);
+        $DB->delete_records('config', array('name' => 'emoticons'));
+        $DB->delete_records('cache_text'); // changed md5 hash calculation
+        upgrade_main_savepoint(true, 2010102300);
+    }
+
+    //MDL-24771
+    if ($oldversion < 2010102601) {
+
+        $fieldnotification = new xmldb_field('notification', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, 0, 'smallmessage');
+        $fieldcontexturl = new xmldb_field('contexturl', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'notification');
+        $fieldcontexturlname = new xmldb_field('contexturlname', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'contexturl');
+        $fieldstoadd = array($fieldnotification, $fieldcontexturl, $fieldcontexturlname);
+
+        $tablestomodify = array(new xmldb_table('message'), new xmldb_table('message_read'));
+
+        foreach($tablestomodify as $table) {
+            foreach($fieldstoadd as $field) {
+                if (!$dbman->field_exists($table, $field)) {
+                    $dbman->add_field($table, $field);
+                }
+            }
+        }
+
+        upgrade_main_savepoint(true, 2010102601);
+    }
+
+    // MDL-24694 needs increasing size of user_preferences.name(varchar[50]) field due to
+    // long preferences names for messaging which need components parts within the name
+    // eg: 'message_provider_mod_assignment_assignments_loggedin'
+    if ($oldversion < 2010102602) {
+
+        // Define index userid-name (unique) to be dropped form user_preferences
+        $table = new xmldb_table('user_preferences');
+        $index = new xmldb_index('userid-name', XMLDB_INDEX_UNIQUE, array('userid', 'name'));
+
+        // Conditionally launch drop index userid-name
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Changing precision of field name on table user_preferences to (255)
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'userid');
+
+        // Launch change of precision for field name
+        $dbman->change_field_precision($table, $field);
+
+        // Conditionally launch add index userid-name
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010102602);
+    }
+
+    if ($oldversion < 2010102700) {
+
+        $table = new xmldb_table('post');
+        $field = new xmldb_field('uniquehash', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'content');
+        // Launch change of precision for field name
+        $dbman->change_field_precision($table, $field);
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010102700);
+    }
+
+    if ($oldversion < 2010110200) {
+
+        // fix tags itemtype for wiki
+        $sql = "UPDATE {tag_instance}
+                SET itemtype = 'wiki_pages'
+                WHERE itemtype = 'wiki_page'";
+        $DB->execute($sql);
+
+        echo $OUTPUT->notification('Updating tags itemtype', 'notifysuccess');
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2010110200);
+    }
+
+    //remove forum_logblocked from config. No longer required after user->emailstop was removed
+    if ($oldversion < 2010110500) {
+        unset_config('forum_logblocked');
+        upgrade_main_savepoint(true, 2010110500);
+    }
+
+    if ($oldversion < 2010110800) {
+        // convert $CFG->disablecourseajax to $CFG->enablecourseajax
+        $disabledcourseajax = get_config('disablecourseajax', 0);
+        if ($disabledcourseajax) {
+            set_config('enablecourseajax', 0);
+        } else {
+            set_config('enablecourseajax', 1);
+        }
+        unset_config('disablecourseajax');
+
+        upgrade_main_savepoint(true, 2010110800);
+    }
+
+    if ($oldversion < 2010111000) {
+
+        // Clean up the old scheduled backup settings that are no longer relevant
+        update_fix_automated_backup_config();
+        upgrade_main_savepoint(true, 2010111000);
+    }
+
+    if ($oldversion < 2010111702) {
+
+        // Clean up the old experimental split restore no loger used
+        unset_config('experimentalsplitrestore');
+
+        upgrade_main_savepoint(true, 2010111702);
+    }
 
     return true;
 }
@@ -5274,3 +5483,5 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 //TODO: Cleanup before the 2.0 release - we do not want to drag along these dev machine fixes forever
 // 1/ drop block_pinned_old table here and in install.xml
 // 2/ drop block_instance_old table here and in install.xml
+
+//TODO: AFTER 2.0 remove the column user->emailstop and the user preference "message_showmessagewindow"

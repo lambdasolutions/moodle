@@ -90,12 +90,8 @@ class moodle_phpmailer extends PHPMailer {
     /**
      * Replaced function to fix tz bug:
      * http://tracker.moodle.org/browse/MDL-12596
-     *
-     * PLEASE NOTE: intentionally not declared this function public in 
-     * order that we keep compatibiltiy with previous versions of phpmailer 
-     * where it was declared private.
      */
-    static function RFCDate() {
+    public static function RFCDate() {
         $tz = date('Z');
         $tzs = ($tz < 0) ? '-' : '+';
         $tz = abs($tz);
@@ -103,5 +99,32 @@ class moodle_phpmailer extends PHPMailer {
         $result = sprintf("%s %s%04d", date('D, j M Y H:i:s'), $tzs, $tz);
 
         return $result;
+    }
+
+    /**
+     * This is a temporary replacement of the parent::EncodeQP() that does not
+     * call quoted_printable_encode() even if it is available. See MDL-23240 for details
+     *
+     * @see parent::EncodeQP() for full documentation
+     */
+    public function EncodeQP($string, $line_max = 76, $space_conv = false) {
+        //if (function_exists('quoted_printable_encode')) { //Use native function if it's available (>= PHP5.3)
+        //    return quoted_printable_encode($string);
+        //}
+        $filters = stream_get_filters();
+        if (!in_array('convert.*', $filters)) { //Got convert stream filter?
+            return $this->EncodeQPphp($string, $line_max, $space_conv); //Fall back to old implementation
+        }
+        $fp = fopen('php://temp/', 'r+');
+        $string = preg_replace('/\r\n?/', $this->LE, $string); //Normalise line breaks
+        $params = array('line-length' => $line_max, 'line-break-chars' => $this->LE);
+        $s = stream_filter_append($fp, 'convert.quoted-printable-encode', STREAM_FILTER_READ, $params);
+        fputs($fp, $string);
+        rewind($fp);
+        $out = stream_get_contents($fp);
+        stream_filter_remove($s);
+        $out = preg_replace('/^\./m', '=2E', $out); //Encode . if it is first char on a line, workaround for bug in Exchange
+        fclose($fp);
+        return $out;
     }
 }

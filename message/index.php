@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * A page displaying the user's contacts. Similar to index.php but not a popup.
+ * A page displaying the user's contacts and messages
  *
  * @package   moodlecore
  * @copyright 2010 Andrew Davis
@@ -49,48 +49,27 @@ $removecontact  = optional_param('removecontact',  0, PARAM_INT); // removing a 
 $blockcontact   = optional_param('blockcontact',   0, PARAM_INT); // blocking a contact
 $unblockcontact = optional_param('unblockcontact', 0, PARAM_INT); // unblocking a contact
 
+//for search
+$advancedsearch = optional_param('advanced', 0, PARAM_INT);
+
+//if they have numerous contacts or are viewing course participants we might need to page through them
+$page = optional_param('page', 0, PARAM_INT);
+
 $url = new moodle_url('/message/index.php');
 
-if ($usergroup !== 0) {
-    $url->param('usergroup', $usergroup);
-}
 if ($user2id !== 0) {
     $url->param('id', $user2id);
 }
 
-/*if ($addcontact !== 0) {
-    $url->param('addcontact', $addcontact);
+if ($usergroup !== 0) {
+    if ($user2id !== 0 && $usergroup==VIEW_SEARCH) {
+        //if theyve searched and selected a user change the view back to contacts so the search button is displayed
+        $usergroup = VIEW_CONTACTS;
+    }
+    $url->param('usergroup', $usergroup);
 }
-if ($removecontact !== 0) {
-    $url->param('removecontact', $removecontact);
-}
-if ($blockcontact !== 0) {
-    $url->param('blockcontact', $blockcontact);
-}
-if ($unblockcontact !== 0) {
-    $url->param('unblockcontact', $unblockcontact);
-}*/
 
 $PAGE->set_url($url);
-
-/// Process any contact maintenance requests there may be
-if ($addcontact and confirm_sesskey()) {
-    add_to_log(SITEID, 'message', 'add contact', 'history.php?user1='.$addcontact.'&amp;user2='.$USER->id, $addcontact);
-    message_add_contact($addcontact);
-    redirect($CFG->wwwroot . '/message/index.php?usergroup=contacts&id='.$addcontact);
-}
-if ($removecontact and confirm_sesskey()) {
-    add_to_log(SITEID, 'message', 'remove contact', 'history.php?user1='.$removecontact.'&amp;user2='.$USER->id, $removecontact);
-    message_remove_contact($removecontact);
-}
-if ($blockcontact and confirm_sesskey()) {
-    add_to_log(SITEID, 'message', 'block contact', 'history.php?user1='.$blockcontact.'&amp;user2='.$USER->id, $blockcontact);
-    message_block_contact($blockcontact);
-}
-if ($unblockcontact and confirm_sesskey()) {
-    add_to_log(SITEID, 'message', 'unblock contact', 'history.php?user1='.$unblockcontact.'&amp;user2='.$USER->id, $unblockcontact);
-    message_unblock_contact($unblockcontact);
-}
 
 $PAGE->set_context(get_context_instance(CONTEXT_USER, $USER->id));
 $PAGE->navigation->extend_for_user($USER);
@@ -122,6 +101,30 @@ if (!empty($user2id)) {
 }
 unset($user2id);
 
+//the current user isnt involved in this discussion at all
+if ($user1->id!=$USER->id && $user2->id!=$USER->id && !has_capability('moodle/site:readallmessages', $context)) {
+    print_error('accessdenied','admin');
+}
+
+/// Process any contact maintenance requests there may be
+if ($addcontact and confirm_sesskey()) {
+    add_to_log(SITEID, 'message', 'add contact', 'index.php?user1='.$addcontact.'&amp;user2='.$USER->id, $addcontact);
+    message_add_contact($addcontact);
+    redirect($CFG->wwwroot . '/message/index.php?usergroup=contacts&id='.$addcontact);
+}
+if ($removecontact and confirm_sesskey()) {
+    add_to_log(SITEID, 'message', 'remove contact', 'index.php?user1='.$removecontact.'&amp;user2='.$USER->id, $removecontact);
+    message_remove_contact($removecontact);
+}
+if ($blockcontact and confirm_sesskey()) {
+    add_to_log(SITEID, 'message', 'block contact', 'index.php?user1='.$blockcontact.'&amp;user2='.$USER->id, $blockcontact);
+    message_block_contact($blockcontact);
+}
+if ($unblockcontact and confirm_sesskey()) {
+    add_to_log(SITEID, 'message', 'unblock contact', 'index.php?user1='.$unblockcontact.'&amp;user2='.$USER->id, $unblockcontact);
+    message_unblock_contact($unblockcontact);
+}
+
 //was a message sent? Do NOT allow someone looking at someone else's messages to send them.
 $messageerror = null;
 if ($currentuser && !empty($user2) && has_capability('moodle/site:sendmessage', $context)) {
@@ -146,25 +149,19 @@ if ($currentuser && !empty($user2) && has_capability('moodle/site:sendmessage', 
         $defaultmessage->id = $user2->id;
         $defaultmessage->message = '';
 
+        //Check if the current user has sent a message
         $data = $mform->get_data();
-        if (!empty($data) && !empty($data->message)) {   /// Current user has just sent a message
+        if (!empty($data) && !empty($data->message)) {
             if (!confirm_sesskey()) {
                 print_error('invalidsesskey');
             }
 
-            /// Save it to the database...
-            $messageid = message_post_message($user1, $user2, $data->message, FORMAT_PLAIN, 'direct');
+            $messageid = message_post_message($user1, $user2, $data->message, FORMAT_MOODLE, 'direct');
             if (!empty($messageid)) {
                 redirect($CFG->wwwroot . '/message/index.php?usergroup='.$usergroup.'&id='.$user2->id);
             }
         }
     }
-}
-if (!empty($messageerror)) {
-    echo $OUTPUT->header();
-    echo $OUTPUT->heading($messageerror, 1);
-    echo $OUTPUT->footer();
-    exit;
 }
 
 $strmessages = get_string('messages', 'message');
@@ -187,78 +184,107 @@ $countunread = 0; //count of unread messages from $user2
 $countunreadtotal = 0; //count of unread messages from all users
 
 //we're dealing with unread messages early so the contact list will accurately reflect what is read/unread
+$viewingnewmessages = false;
 if (!empty($user2)) {
     //are there any unread messages from $user2
     $countunread = message_count_unread_messages($user1, $user2);
     if ($countunread>0) {
         //mark the messages we're going to display as read
         message_mark_messages_read($user1->id, $user2->id);
+         if($usergroup==VIEW_UNREAD_MESSAGES) {
+             $viewingnewmessages = true;
+         }
     }
 }
 $countunreadtotal = message_count_unread_messages($user1);
+
+if ($countunreadtotal==0 && $usergroup==VIEW_UNREAD_MESSAGES && empty($user2)) {
+    //default to showing the search
+    $usergroup = VIEW_SEARCH;
+}
 
 $blockedusers = message_get_blocked_users($user1, $user2);
 $countblocked = count($blockedusers);
 
 list($onlinecontacts, $offlinecontacts, $strangers) = message_get_contacts($user1, $user2);
 
-message_print_contact_selector($countunreadtotal, $usergroup, $user1, $user2, $blockedusers, $onlinecontacts, $offlinecontacts, $strangers, $showcontactactionlinks);
+message_print_contact_selector($countunreadtotal, $usergroup, $user1, $user2, $blockedusers, $onlinecontacts, $offlinecontacts, $strangers, $showcontactactionlinks, $page);
 
 echo html_writer::start_tag('div', array('class'=>'messagearea mdl-align'));
     if (!empty($user2)) {
 
         echo html_writer::start_tag('div', array('class'=>'mdl-left messagehistory'));
 
-            $historyclass = 'visible';
-            $recentclass = 'hiddenelement';//cant just use hidden as mform adds that class to its fieldset
+            $visible = 'visible';
+            $hidden = 'hiddenelement'; //cant just use hidden as mform adds that class to its fieldset for something else
+
+            $recentlinkclass = $recentlabelclass = $historylinkclass = $historylabelclass = $visible;
             if ($history==MESSAGE_HISTORY_ALL) {
                 $displaycount = 0;
 
-                $historyclass = 'hiddenelement';
-                $recentclass = 'visible';
+                $recentlabelclass = $historylinkclass = $hidden;
+            } else if($viewingnewmessages) {
+                //if user is viewing new messages only show them the new messages
+                $displaycount = $countunread;
+
+                $recentlabelclass = $historylabelclass = $hidden;
             } else {
-                //default to only showing a few messages unless explicitly told not to
+                //default to only showing the last few messages
                 $displaycount = MESSAGE_SHORTVIEW_LIMIT;
 
                 if ($countunread>MESSAGE_SHORTVIEW_LIMIT) {
                     $displaycount = $countunread;
                 }
+
+                $recentlinkclass = $historylabelclass = $hidden;
             }
 
             $messagehistorylink =  html_writer::start_tag('div', array('class'=>'mdl-align messagehistorytype'));
                 $messagehistorylink .= html_writer::link($PAGE->url->out(false).'&history='.MESSAGE_HISTORY_ALL,
                     get_string('messagehistoryfull','message'),
-                    array('class'=>$historyclass));
+                    array('class'=>$historylinkclass));
 
-                $messagehistorylink .=  html_writer::start_tag('span', array('class'=>$recentclass));
+                $messagehistorylink .=  html_writer::start_tag('span', array('class'=>$historylabelclass));
                     $messagehistorylink .= get_string('messagehistoryfull','message');
                 $messagehistorylink .= html_writer::end_tag('span');
 
                 $messagehistorylink .= '&nbsp;|&nbsp;'.html_writer::link($PAGE->url->out(false).'&history='.MESSAGE_HISTORY_SHORT,
                     get_string('mostrecent','message'),
-                    array('class'=>$recentclass));
+                    array('class'=>$recentlinkclass));
 
-                $messagehistorylink .=  html_writer::start_tag('span', array('class'=>$historyclass));
+                $messagehistorylink .=  html_writer::start_tag('span', array('class'=>$recentlabelclass));
                     $messagehistorylink .= get_string('mostrecent','message');
                 $messagehistorylink .= html_writer::end_tag('span');
 
+                if ($viewingnewmessages) {
+                    $messagehistorylink .=  '&nbsp;|&nbsp;'.html_writer::start_tag('span');//, array('class'=>$historyclass)
+                        $messagehistorylink .= get_string('unreadnewmessages','message',$displaycount);
+                    $messagehistorylink .= html_writer::end_tag('span');
+                }
+
             $messagehistorylink .= html_writer::end_tag('div');
 
-            message_print_message_history($user1, $user2, $search, $displaycount, $messagehistorylink);
+            message_print_message_history($user1, $user2, $search, $displaycount, $messagehistorylink, $viewingnewmessages);
         echo html_writer::end_tag('div');
 
         //send message form
         if ($currentuser && has_capability('moodle/site:sendmessage', $context)) {
             echo html_writer::start_tag('div', array('class'=>'mdl-align messagesend'));
-                $mform = new send_form();
-                $defaultmessage = new stdClass;
-                $defaultmessage->id = $user2->id;
-                $defaultmessage->message = '';
-                //$defaultmessage->messageformat = FORMAT_MOODLE;
-                $mform->set_data($defaultmessage);
-                $mform->display();
+                if (!empty($messageerror)) {
+                    echo $OUTPUT->heading($messageerror, 3);
+                } else {
+                    $mform = new send_form();
+                    $defaultmessage = new stdClass;
+                    $defaultmessage->id = $user2->id;
+                    $defaultmessage->message = '';
+                    //$defaultmessage->messageformat = FORMAT_MOODLE;
+                    $mform->set_data($defaultmessage);
+                    $mform->display();
+                }
             echo html_writer::end_tag('div');
         }
+    } else if ($usergroup==VIEW_SEARCH) {
+        message_print_search($advancedsearch, $user1);
     }
 echo html_writer::end_tag('div');
 

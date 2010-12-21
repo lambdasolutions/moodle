@@ -376,11 +376,7 @@ class quiz_overview_report extends quiz_default_report {
             // Set up the table
             $table->define_baseurl($reporturl->out(true, $displayoptions));
 
-            $table->collapsible(false);
-
-            $table->column_suppress('picture');
-            $table->column_suppress('fullname');
-            $table->column_suppress('idnumber');
+            $table->collapsible(true);
 
             $table->no_sorting('feedbacktext');
 
@@ -402,14 +398,14 @@ class quiz_overview_report extends quiz_default_report {
                      $imageurl = "{$CFG->wwwroot}/mod/quiz/report/overview/overviewgraph.php?id={$quiz->id}&amp;groupid=$currentgroup";
                      $graphname = get_string('overviewreportgraphgroup', 'quiz_overview', groups_get_group_name($currentgroup));
                      echo $OUTPUT->heading($graphname);
-                     echo '<div class="mdl-align"><img src="'.$imageurl.'" alt="'.$graphname.'" /></div>';
+                     echo '<div class="graph"><img src="'.$imageurl.'" alt="'.$graphname.'" /></div>';
                 }
             }
             if ($DB->record_exists('quiz_grades', array('quiz'=> $quiz->id))) {
                  $graphname = get_string('overviewreportgraph', 'quiz_overview');
                  $imageurl = $CFG->wwwroot.'/mod/quiz/report/overview/overviewgraph.php?id='.$quiz->id;
                  echo $OUTPUT->heading($graphname);
-                 echo '<div class="mdl-align"><img src="'.$imageurl.'" alt="'.$graphname.'" /></div>';
+                 echo '<div class="graph"><img src="'.$imageurl.'" alt="'.$graphname.'" /></div>';
             }
         }
         return true;

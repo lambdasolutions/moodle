@@ -71,13 +71,23 @@ class webservice_test extends UnitTestCase {
             'moodle_group_get_groups' => false,
             'moodle_course_get_courses' => false,
             'moodle_user_get_users_by_id' => false,
-            'moodle_enrol_get_enrolled_users' => false
+            'moodle_enrol_get_enrolled_users' => false,
+            'moodle_group_get_course_groups' => false,
+            'moodle_group_get_groupmembers' => false
         );
 
         ////// WRITE DB tests ////
         $this->writetests = array(
             'moodle_user_create_users' => false,
             'moodle_course_create_courses' => false,
+            'moodle_user_delete_users' => false,
+            'moodle_user_update_users' => false,
+            'moodle_role_assign' => false,
+            'moodle_role_unassign' => false,
+            'moodle_group_add_groupmembers' => false,
+            'moodle_group_delete_groupmembers' => false,
+            'moodle_group_create_groups' => false,
+            'moodle_group_delete_groups' => false
         );
 
         //performance testing: number of time the web service are run
@@ -92,6 +102,11 @@ class webservice_test extends UnitTestCase {
 
     function testRun() {
         global $CFG;
+
+        if (!$this->testrest and !$this->testxmlrpc and !$this->testsoap) {
+            print_r("Web service unit tests are not run as not setup.
+                (see /webservice/simpletest/testwebservice.php)");
+        }
 
         if (!empty($this->testtoken)) {
 
@@ -158,7 +173,9 @@ class webservice_test extends UnitTestCase {
 
                 require_once($CFG->dirroot . "/webservice/soap/lib.php");
                 $soapclient = new webservice_soap_client($CFG->wwwroot
-                                . '/webservice/soap/server.php', $this->testtoken);
+                                . '/webservice/soap/server.php', $this->testtoken,
+                        array("features" => SOAP_WAIT_ONE_WAY_CALLS)); //force SOAP synchronous mode
+                                                                     //when function return null
                 $soapclient->setWsdlCache(false);
 
                 for ($i = 1; $i <= $this->iteration; $i = $i + 1) {
@@ -201,7 +218,7 @@ class webservice_test extends UnitTestCase {
 
     function moodle_user_get_users_by_id($client) {
         global $DB;
-        $dbusers = $DB->get_records('user');
+        $dbusers = $DB->get_records('user', array('deleted' => 0));
         $userids = array();
         foreach ($dbusers as $dbuser) {
             $userids[] = $dbuser->id;
@@ -454,7 +471,6 @@ class webservice_test extends UnitTestCase {
         $user1->email = 'testemail1@moodle.com';
         $user1->auth = 'manual';
         $user1->idnumber = 'testidnumber1';
-        $user1->emailstop = 1;
         $user1->lang = 'en';
         $user1->theme = 'standard';
         $user1->timezone = 99;
@@ -522,7 +538,6 @@ class webservice_test extends UnitTestCase {
         $this->assertEqual($dbuser1->email, $user1->email);
         $this->assertEqual($dbuser1->auth, $user1->auth);
         $this->assertEqual($dbuser1->idnumber, $user1->idnumber);
-        $this->assertEqual($dbuser1->emailstop, $user1->emailstop);
         $this->assertEqual($dbuser1->lang, $user1->lang);
         $this->assertEqual($dbuser1->theme, $user1->theme);
         $this->assertEqual($dbuser1->timezone, $user1->timezone);
@@ -569,6 +584,822 @@ class webservice_test extends UnitTestCase {
         //delete users from DB
         $DB->delete_records_list('user', 'id',
                 array($dbuser1->id, $dbuser2->id));
+    }
+
+    function moodle_user_delete_users($client) {
+        global $DB, $CFG;
+
+        //Set test data
+        //a full user: user1
+        $user1 = new stdClass();
+        $user1->username = 'veryimprobabletestusername1';
+        $user1->password = 'testpassword1';
+        $user1->firstname = 'testfirstname1';
+        $user1->lastname = 'testlastname1';
+        $user1->email = 'testemail1@moodle.com';
+        $user1->auth = 'manual';
+        $user1->idnumber = 'testidnumber1';
+        $user1->lang = 'en';
+        $user1->theme = 'standard';
+        $user1->timezone = 99;
+        $user1->mailformat = 0;
+        $user1->description = 'Hello World!';
+        $user1->city = 'testcity1';
+        $user1->country = 'au';
+        $preferencename1 = 'preference1';
+        $preferencename2 = 'preference2';
+        $user1->preferences = array(
+            array('type' => $preferencename1, 'value' => 'preferencevalue1'),
+            array('type' => $preferencename2, 'value' => 'preferencevalue2'));
+        $customfieldname1 = 'testdatacustom1';
+        $customfieldname2 = 'testdatacustom2';
+        $user1->customfields = array(
+            array('type' => $customfieldname1, 'value' => 'customvalue'),
+            array('type' => $customfieldname2, 'value' => 'customvalue2'));
+        //a small user: user2
+        $user2 = new stdClass();
+        $user2->username = 'veryimprobabletestusername2';
+        $user2->password = 'testpassword2';
+        $user2->firstname = 'testfirstname2';
+        $user2->lastname = 'testlastname2';
+        $user2->email = 'testemail1@moodle.com';
+        $users = array($user1, $user2);
+
+        //can run this test only if test usernames don't exist
+        $searchusers = $DB->get_records_list('user', 'username',
+                array($user1->username, $user1->username));
+        if (count($searchusers) == 0) {
+            //create two users
+            require_once($CFG->dirroot."/user/lib.php");
+            require_once($CFG->dirroot."/user/profile/lib.php");
+            $user1->id = user_create_user($user1);
+            // custom fields
+            if(!empty($user1->customfields)) {
+                foreach($user1->customfields as $customfield) {
+                    $user1->{"profile_field_".$customfield['type']} = $customfield['value'];
+                }
+                profile_save_data((object) $user1);
+            }
+            //preferences
+            if (!empty($user1->preferences)) {
+                foreach($user1->preferences as $preference) {
+                    set_user_preference($preference['type'], $preference['value'],$user1->id);
+                }
+            }
+            $user2->id = user_create_user($user2);
+
+            //create the custom fields
+            $customfield = new stdClass();
+            $customfield->shortname = $customfieldname1;
+            $customfield->name = $customfieldname1;
+            $customfield->datatype = 'text';
+            $DB->insert_record('user_info_field', $customfield);
+            $customfield = new stdClass();
+            $customfield->shortname = $customfieldname2;
+            $customfield->name = $customfieldname2;
+            $customfield->datatype = 'text';
+            $DB->insert_record('user_info_field', $customfield);
+
+            //search for them => TEST they exists
+            $searchusers = $DB->get_records_list('user', 'username',
+                    array($user1->username, $user2->username));
+            $this->assertEqual(count($users), count($searchusers));
+
+            //delete the users by webservice
+            $function = 'moodle_user_delete_users';
+            $params = array('users' => array($user1->id, $user2->id));
+            $client->call($function, $params);
+
+            //search for them => TESTS they don't exists
+            $searchusers = $DB->get_records_list('user', 'username',
+                    array($user1->username, $user2->username));
+           
+            $this->assertTrue(empty($searchusers));
+
+            //unset preferences
+            $DB->delete_records('user_preferences', array('userid' => $user1->id));
+
+            //clear custom fields data
+            $DB->delete_records('user_info_data', array('userid' => $user1->id));
+
+            //delete custom fields
+            $DB->delete_records_list('user_info_field', 'shortname',
+                    array($customfieldname1, $customfieldname2));
+
+            //delete users from DB
+            $DB->delete_records_list('user', 'id',
+                    array($user1->id, $user2->id));
+        }
+    }
+
+    function moodle_user_update_users($client) {
+        global $DB, $CFG;
+
+        //Set test data
+        //a full user: user1
+        $user1 = new stdClass();
+        $user1->username = 'veryimprobabletestusername1';
+        $user1->password = 'testpassword1';
+        $user1->firstname = 'testfirstname1';
+        $user1->lastname = 'testlastname1';
+        $user1->email = 'testemail1@moodle.com';
+        $user1->auth = 'manual';
+        $user1->idnumber = 'testidnumber1';
+        $user1->lang = 'en';
+        $user1->theme = 'standard';
+        $user1->timezone = 99;
+        $user1->mailformat = 0;
+        $user1->description = 'Hello World!';
+        $user1->city = 'testcity1';
+        $user1->country = 'au';
+        $preferencename1 = 'preference1';
+        $preferencename2 = 'preference2';
+        $user1->preferences = array(
+            array('type' => $preferencename1, 'value' => 'preferencevalue1'),
+            array('type' => $preferencename2, 'value' => 'preferencevalue2'));
+        $customfieldname1 = 'testdatacustom1';
+        $customfieldname2 = 'testdatacustom2';
+        $user1->customfields = array(
+            array('type' => $customfieldname1, 'value' => 'customvalue'),
+            array('type' => $customfieldname2, 'value' => 'customvalue2'));
+        //a small user: user2
+        $user2 = new stdClass();
+        $user2->username = 'veryimprobabletestusername2';
+        $user2->password = 'testpassword2';
+        $user2->firstname = 'testfirstname2';
+        $user2->lastname = 'testlastname2';
+        $user2->email = 'testemail1@moodle.com';
+        $users = array($user1, $user2);
+
+        //can run this test only if test usernames don't exist
+        $searchusers = $DB->get_records_list('user', 'username',
+                array($user1->username, $user1->username));
+        if (count($searchusers) == 0) {
+            //create two users
+            require_once($CFG->dirroot."/user/lib.php");
+            require_once($CFG->dirroot."/user/profile/lib.php");
+            $user1->id = user_create_user($user1);
+            //unset field created by user_create_user
+            unset($user1->timemodified);
+            unset($user1->timecreated);
+
+            // custom fields
+            if(!empty($user1->customfields)) {
+                foreach($user1->customfields as $customfield) {
+                    $customuser1->id = $user1->id;
+                    $customuser1->{"profile_field_".$customfield['type']} = $customfield['value'];
+                }
+                profile_save_data((object) $customuser1);
+            }
+            //preferences
+            if (!empty($user1->preferences)) {
+                foreach($user1->preferences as $preference) {
+                    set_user_preference($preference['type'], $preference['value'],$user1->id);
+                }
+            }
+            $user2->id = user_create_user($user2);
+            unset($user2->timemodified);
+            unset($user2->timecreated);
+
+             //create the custom fields
+            $customfield = new stdClass();
+            $customfield->shortname = $customfieldname1;
+            $customfield->name = $customfieldname1;
+            $customfield->datatype = 'text';
+            $DB->insert_record('user_info_field', $customfield);
+            $customfield = new stdClass();
+            $customfield->shortname = $customfieldname2;
+            $customfield->name = $customfieldname2;
+            $customfield->datatype = 'text';
+            $DB->insert_record('user_info_field', $customfield);
+            
+            //search for them => TEST they exists
+            $searchusers = $DB->get_records_list('user', 'username',
+                    array($user1->username, $user2->username));
+            $this->assertEqual(count($users), count($searchusers));
+
+            //update the test data
+            $user1->username = 'veryimprobabletestusername1_updated';
+            $user1->password = 'testpassword1_updated';
+            $user1->firstname = 'testfirstname1_updated';
+            $user1->lastname = 'testlastname1_updated';
+            $user1->email = 'testemail1_updated@moodle.com';
+            $user1->auth = 'manual';
+            $user1->idnumber = 'testidnumber1_updated';
+            $user1->lang = 'en';
+            $user1->theme = 'standard';
+            $user1->timezone = 98;
+            $user1->mailformat = 1;
+            $user1->description = 'Hello World!_updated';
+            $user1->city = 'testcity1_updated';
+            $user1->country = 'au';
+            $preferencename1 = 'preference1';
+            $preferencename2 = 'preference2';
+            $user1->preferences = array(
+            array('type' => $preferencename1, 'value' => 'preferencevalue1_updated'),
+            array('type' => $preferencename2, 'value' => 'preferencevalue2_updated'));
+            $customfieldname1 = 'testdatacustom1';
+            $customfieldname2 = 'testdatacustom2';
+            $user1->customfields = array(
+            array('type' => $customfieldname1, 'value' => 'customvalue_updated'),
+            array('type' => $customfieldname2, 'value' => 'customvalue2_updated'));
+            $user2->username = 'veryimprobabletestusername2_updated';
+            $user2->password = 'testpassword2_updated';
+            $user2->firstname = 'testfirstname2_updated';
+            $user2->lastname = 'testlastname2_updated';
+            $user2->email = 'testemail1_updated@moodle.com';
+            $users = array($user1, $user2);
+            
+            //update the users by web service
+            $function = 'moodle_user_update_users';
+            $params = array('users' => $users);
+            $client->call($function, $params);
+
+            //compare DB user with the test data
+            $dbuser1 = $DB->get_record('user', array('username' => $user1->username));
+            $this->assertEqual($dbuser1->firstname, $user1->firstname);
+            $this->assertEqual($dbuser1->password,
+                    hash_internal_user_password($user1->password));
+            $this->assertEqual($dbuser1->lastname, $user1->lastname);
+            $this->assertEqual($dbuser1->email, $user1->email);
+            $this->assertEqual($dbuser1->auth, $user1->auth);
+            $this->assertEqual($dbuser1->idnumber, $user1->idnumber);
+            $this->assertEqual($dbuser1->lang, $user1->lang);
+            $this->assertEqual($dbuser1->theme, $user1->theme);
+            $this->assertEqual($dbuser1->timezone, $user1->timezone);
+            $this->assertEqual($dbuser1->mailformat, $user1->mailformat);
+            $this->assertEqual($dbuser1->description, $user1->description);
+            $this->assertEqual($dbuser1->city, $user1->city);
+            $this->assertEqual($dbuser1->country, $user1->country);
+            $user1preference1 = get_user_preferences($user1->preferences[0]['type'],
+                            null, $dbuser1->id);
+            $this->assertEqual($user1->preferences[0]['value'], $user1preference1);
+            $user1preference2 = get_user_preferences($user1->preferences[1]['type'],
+                            null, $dbuser1->id);
+            $this->assertEqual($user1->preferences[1]['value'], $user1preference2);
+            require_once($CFG->dirroot . "/user/profile/lib.php");
+            $customfields = profile_user_record($dbuser1->id);
+
+            $customfields = (array) $customfields;
+            $customfieldname1 = $user1->customfields[0]['type'];
+            $customfieldname2 = $user1->customfields[1]['type'];
+            $this->assertEqual($customfields[$customfieldname1],
+                    $user1->customfields[0]['value']);
+            $this->assertEqual($customfields[$customfieldname2],
+                    $user1->customfields[1]['value']);
+
+            $dbuser2 = $DB->get_record('user', array('username' => $user2->username));
+            $this->assertEqual($dbuser2->firstname, $user2->firstname);
+            $this->assertEqual($dbuser2->password,
+                    hash_internal_user_password($user2->password));
+            $this->assertEqual($dbuser2->lastname, $user2->lastname);
+            $this->assertEqual($dbuser2->email, $user2->email);
+
+            //unset preferences
+            $DB->delete_records('user_preferences', array('userid' => $dbuser1->id));
+
+            //clear custom fields data
+            $DB->delete_records('user_info_data', array('userid' => $dbuser1->id));
+
+            //delete custom fields
+            $DB->delete_records_list('user_info_field', 'shortname',
+                    array($customfieldname1, $customfieldname2));
+
+            //delete users from DB
+            $DB->delete_records_list('user', 'id',
+                    array($dbuser1->id, $dbuser2->id));
+
+        }
+    }
+
+    function moodle_role_assign($client) {
+        global $DB, $CFG;
+
+        $searchusers = $DB->get_records_list('user', 'username',
+                array('veryimprobabletestusername2'));
+        $searchroles = $DB->get_records_list('role', 'shortname',
+                array('role1thatshouldnotexist', 'role2thatshouldnotexist'));
+
+        if (empty($searchusers) and empty($searchroles)) {
+
+            //create a temp user
+            $user = new stdClass();
+            $user->username = 'veryimprobabletestusername2';
+            $user->password = 'testpassword2';
+            $user->firstname = 'testfirstname2';
+            $user->lastname = 'testlastname2';
+            $user->email = 'testemail1@moodle.com';
+            require_once($CFG->dirroot."/user/lib.php");
+            $user->id = user_create_user($user);
+
+            //create two roles
+            $role1->id = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+            $role2->id = create_role('role2thatshouldnotexist', 'role2thatshouldnotexist', '');
+
+            //assign user to role by webservice
+            $context = get_system_context();
+            $assignments = array(
+                array('roleid' => $role1->id, 'userid' => $user->id, 'contextid' => $context->id),
+                array('roleid' => $role2->id, 'userid' => $user->id, 'contextid' => $context->id)
+            );
+
+            $function = 'moodle_role_assign';
+            $params = array('assignments' => $assignments);
+            $client->call($function, $params);
+
+            //check that the assignment work
+            $roles = get_user_roles($context, $user->id, false);
+            foreach ($roles as $role) {
+                $this->assertTrue(($role->roleid == $role1->id) or ($role->roleid == $role2->id) );
+            }
+
+            //unassign roles from user
+            role_unassign($role1->id, $user->id, $context->id, '', NULL);
+            role_unassign($role2->id, $user->id, $context->id, '', NULL);
+
+            //delete user from DB
+            $DB->delete_records('user', array('id' => $user->id));
+
+            //delete the two role from DB
+            delete_role($role1->id);
+            delete_role($role2->id);
+        }
+    }
+
+    function moodle_role_unassign($client) {
+        global $DB, $CFG;
+
+        $searchusers = $DB->get_records_list('user', 'username',
+                array('veryimprobabletestusername2'));
+        $searchroles = $DB->get_records_list('role', 'shortname',
+                array('role1thatshouldnotexist', 'role2thatshouldnotexist'));
+
+        if (empty($searchusers) and empty($searchroles)) {
+
+            //create a temp user
+            $user = new stdClass();
+            $user->username = 'veryimprobabletestusername2';
+            $user->password = 'testpassword2';
+            $user->firstname = 'testfirstname2';
+            $user->lastname = 'testlastname2';
+            $user->email = 'testemail1@moodle.com';
+            require_once($CFG->dirroot."/user/lib.php");
+            $user->id = user_create_user($user);
+
+            //create two roles
+            $role1->id = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+            $role2->id = create_role('role2thatshouldnotexist', 'role2thatshouldnotexist', '');
+        
+            //assign roles from user
+            $context = get_system_context();
+            role_assign($role1->id, $user->id, $context->id);
+            role_assign($role2->id, $user->id, $context->id);
+
+            //check that the local assignment work
+            $roles = get_user_roles($context, $user->id, false);
+            foreach ($roles as $role) {
+                $this->assertTrue(($role->roleid == $role1->id) or ($role->roleid == $role2->id) );
+            }
+
+            //unassign user to role by webservice          
+            $assignments = array(
+                array('roleid' => $role1->id, 'userid' => $user->id, 'contextid' => $context->id),
+                array('roleid' => $role2->id, 'userid' => $user->id, 'contextid' => $context->id)
+            );
+            $function = 'moodle_role_unassign';
+            $params = array('assignments' => $assignments);
+            $client->call($function, $params);
+
+            //check that the web service unassignment work
+            $roles = get_user_roles($context, $user->id, false);
+            $this->assertTrue(empty($roles));
+
+            //delete user from DB
+            $DB->delete_records('user', array('id' => $user->id));
+
+            //delete the two role from DB
+            delete_role($role1->id);
+            delete_role($role2->id);
+        }
+
+    }
+
+    /**
+     * READ ONLY test
+     * TODO: find a better solution that running web service for each course
+     * in the system
+     * For each courses, test the number of groups
+     * @param object $client
+     */
+    function moodle_group_get_course_groups($client) {
+        global $DB;
+
+        $courses = $DB->get_records('course');
+        foreach($courses as $course) {
+            $coursegroups = groups_get_all_groups($course->id);
+            $function = 'moodle_group_get_course_groups';
+            $params = array('courseid' => $course->id);
+            $groups = $client->call($function, $params);
+            $this->assertEqual(count($groups), count($coursegroups));
+        }
+    }
+
+
+    /**
+     * READ ONLY test
+     * Test that the same number of members are returned
+     * for each existing group in the system
+     * @param object $client
+     */
+    function moodle_group_get_groupmembers($client) {
+        global $DB;
+
+        $groups = $DB->get_records('groups');
+        $groupids = array();
+        foreach ($groups as $group) {
+            $groupids[] = $group->id;
+        }
+        $function = 'moodle_group_get_groupmembers';
+        $params = array('groupids' => $groupids);
+        $groupsmembers = $client->call($function, $params);
+
+        foreach($groupsmembers as $groupmembers) {
+            $dbgroupmembers = groups_get_members($groupmembers['groupid']);
+            unset($groups[$groupmembers['groupid']]);
+            $this->assertEqual(count($dbgroupmembers), count($groupmembers['userids']));
+        }
+
+        //check that all existing groups have been returned by the web service function
+        $this->assertTrue(empty($groups));
+       
+        
+    }
+
+    function moodle_group_add_groupmembers($client) {
+        global $DB, $CFG;
+
+        //create category
+        $category = new stdClass();
+        $category->name = 'tmpcategoryfortest123';
+        $category->id = $DB->insert_record('course_categories', $category);
+
+        //create a course
+        $course = new stdClass();
+        $course->fullname = 'tmpcoursefortest123';
+        $course->shortname = 'tmpcoursefortest123';
+        $course->idnumber = 'tmpcoursefortest123';
+        $course->category = $category->id;
+        $course->id = $DB->insert_record('course', $course);
+
+        //create a role
+        $role1->id = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+
+        //create a user
+        $user = new stdClass();
+        $user->username = 'veryimprobabletestusername2';
+        $user->password = 'testpassword2';
+        $user->firstname = 'testfirstname2';
+        $user->lastname = 'testlastname2';
+        $user->email = 'testemail1@moodle.com';
+        $user->mnethostid = $CFG->mnet_localhost_id;
+        require_once($CFG->dirroot."/user/lib.php");
+        $user->id = user_create_user($user);
+
+        //create course context
+        $context = get_context_instance(CONTEXT_COURSE, $course->id, MUST_EXIST);
+
+        //enrol the user in the course with the created role
+        role_assign($role1->id, $user->id, $context->id);
+        $enrol = new stdClass();
+        $enrol->courseid = $course->id;
+        $enrol->roleid = $role1->id;
+        $enrol->id = $DB->insert_record('enrol', $enrol);
+        $enrolment = new stdClass();
+        $enrolment->userid = $user->id;
+        $enrolment->enrolid = $enrol->id;
+        $enrolment->id = $DB->insert_record('user_enrolments', $enrolment);
+
+        //create a group in the course
+        $group = new stdClass();
+        $group->courseid = $course->id;
+        $group->name = 'tmpgroufortest123';
+        $group->id = $DB->insert_record('groups', $group);
+
+        //WEBSERVICE CALL
+        $function = 'moodle_group_add_groupmembers';
+        $params = array('members' => array(array('groupid' => $group->id, 'userid' => $user->id)));
+        $groupsmembers = $client->call($function, $params);
+
+        //CHECK TEST RESULT
+        require_once($CFG->libdir . '/grouplib.php');
+        $groupmembers = groups_get_members($group->id);
+        $this->assertEqual(count($groupmembers), 1);
+        $this->assertEqual($groupmembers[$user->id]->id, $user->id);
+
+        //remove the members from the group
+        require_once($CFG->dirroot . "/group/lib.php");
+        groups_remove_member($group->id, $user->id);
+
+        //delete the group
+        $DB->delete_records('groups', array('id' => $group->id));
+
+        //unenrol the user
+        $DB->delete_records('user_enrolments', array('id' => $enrolment->id));
+        $DB->delete_records('enrol', array('id' => $enrol->id));
+        role_unassign($role1->id, $user->id, $context->id);
+
+        //delete course context
+        delete_context(CONTEXT_COURSE, $course->id);
+
+        //delete the user
+        $DB->delete_records('user', array('id' => $user->id));
+
+        //delete the role
+        delete_role($role1->id);
+
+        //delete the course
+        $DB->delete_records('course', array('id' => $course->id));
+
+        //delete the category
+        $DB->delete_records('course_categories', array('id' => $category->id));
+        
+    }
+
+    function moodle_group_delete_groupmembers($client) {
+        global $DB, $CFG;
+
+        //create category
+        $category = new stdClass();
+        $category->name = 'tmpcategoryfortest123';
+        $category->id = $DB->insert_record('course_categories', $category);
+
+        //create a course
+        $course = new stdClass();
+        $course->fullname = 'tmpcoursefortest123';
+        $course->shortname = 'tmpcoursefortest123';
+        $course->idnumber = 'tmpcoursefortest123';
+        $course->category = $category->id;
+        $course->id = $DB->insert_record('course', $course);
+
+        //create a role
+        $role1->id = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+
+        //create a user
+        $user = new stdClass();
+        $user->username = 'veryimprobabletestusername2';
+        $user->password = 'testpassword2';
+        $user->firstname = 'testfirstname2';
+        $user->lastname = 'testlastname2';
+        $user->email = 'testemail1@moodle.com';
+        $user->mnethostid = $CFG->mnet_localhost_id;
+        require_once($CFG->dirroot."/user/lib.php");
+        $user->id = user_create_user($user);
+
+        //create course context
+        $context = get_context_instance(CONTEXT_COURSE, $course->id, MUST_EXIST);
+
+        //enrol the user in the course with the created role
+        role_assign($role1->id, $user->id, $context->id);
+        $enrol = new stdClass();
+        $enrol->courseid = $course->id;
+        $enrol->roleid = $role1->id;
+        $enrol->id = $DB->insert_record('enrol', $enrol);
+        $enrolment = new stdClass();
+        $enrolment->userid = $user->id;
+        $enrolment->enrolid = $enrol->id;
+        $enrolment->id = $DB->insert_record('user_enrolments', $enrolment);
+
+        //create a group in the course
+        $group = new stdClass();
+        $group->courseid = $course->id;
+        $group->name = 'tmpgroufortest123';
+        $group->id = $DB->insert_record('groups', $group);
+
+        //add group member
+        require_once($CFG->dirroot . "/group/lib.php");
+        groups_add_member($group->id, $user->id);
+        $groupmembers = groups_get_members($group->id);
+        $this->assertEqual(count($groupmembers), 1);
+
+        //WEB SERVICE CALL - remove the members from the group
+        $function = 'moodle_group_delete_groupmembers';
+        $params = array('members' => array(array('groupid' => $group->id, 'userid' => $user->id)));
+        $client->call($function, $params);
+
+        require_once($CFG->libdir . '/grouplib.php');
+        $groupmembers = groups_get_members($group->id);
+        $this->assertEqual(count($groupmembers), 0);
+
+        //delete the group
+        $DB->delete_records('groups', array('id' => $group->id));
+
+        //unenrol the user
+        $DB->delete_records('user_enrolments', array('id' => $enrolment->id));
+        $DB->delete_records('enrol', array('id' => $enrol->id));
+        role_unassign($role1->id, $user->id, $context->id);
+
+        //delete course context
+        delete_context(CONTEXT_COURSE, $course->id);
+
+        //delete the user
+        $DB->delete_records('user', array('id' => $user->id));
+
+        //delete the role
+        delete_role($role1->id);
+
+        //delete the course
+        $DB->delete_records('course', array('id' => $course->id));
+
+        //delete the category
+        $DB->delete_records('course_categories', array('id' => $category->id));
+
+    }
+
+    function moodle_group_create_groups($client) {
+        global $DB, $CFG;
+
+        //create category
+        $category = new stdClass();
+        $category->name = 'tmpcategoryfortest123';
+        $category->id = $DB->insert_record('course_categories', $category);
+
+        //create a course
+        $course = new stdClass();
+        $course->fullname = 'tmpcoursefortest123';
+        $course->shortname = 'tmpcoursefortest123';
+        $course->idnumber = 'tmpcoursefortest123';
+        $course->category = $category->id;
+        $course->id = $DB->insert_record('course', $course);
+
+        //create a role
+        $role1->id = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+
+        //create a user
+        $user = new stdClass();
+        $user->username = 'veryimprobabletestusername2';
+        $user->password = 'testpassword2';
+        $user->firstname = 'testfirstname2';
+        $user->lastname = 'testlastname2';
+        $user->email = 'testemail1@moodle.com';
+        $user->mnethostid = $CFG->mnet_localhost_id;
+        require_once($CFG->dirroot."/user/lib.php");
+        $user->id = user_create_user($user);
+
+        //create course context
+        $context = get_context_instance(CONTEXT_COURSE, $course->id, MUST_EXIST);
+
+        //enrol the user in the course with the created role
+        role_assign($role1->id, $user->id, $context->id);
+        $enrol = new stdClass();
+        $enrol->courseid = $course->id;
+        $enrol->roleid = $role1->id;
+        $enrol->id = $DB->insert_record('enrol', $enrol);
+        $enrolment = new stdClass();
+        $enrolment->userid = $user->id;
+        $enrolment->enrolid = $enrol->id;
+        $enrolment->id = $DB->insert_record('user_enrolments', $enrolment);
+
+        require_once($CFG->dirroot . "/group/lib.php");
+        $groups = groups_get_all_groups($course->id);
+        $this->assertEqual(count($groups), 0);
+
+        //WEBSERVICE CALL - create a group in the course
+        $group = new stdClass();
+        $group->courseid = $course->id;
+        $group->name = 'tmpgroufortest123';
+        $group->enrolmentkey = '';
+        $group->description = '';
+        $group2 = new stdClass();
+        $group2->courseid = $course->id;
+        $group2->name = 'tmpgroufortest1233';
+        $group2->enrolmentkey = '';
+        $group2->description = '';
+        $paramgroups = array($group, $group2);
+        $function = 'moodle_group_create_groups';
+        $params = array('groups' => $paramgroups);
+        $createdgroups = $client->call($function, $params);
+
+        $groups = groups_get_all_groups($course->id);
+        $this->assertEqual(count($groups), count($paramgroups));
+
+        //delete the group
+        foreach ($groups as $dbgroup) {
+            $DB->delete_records('groups', array('id' => $dbgroup->id));
+        }
+
+        //unenrol the user
+        $DB->delete_records('user_enrolments', array('id' => $enrolment->id));
+        $DB->delete_records('enrol', array('id' => $enrol->id));
+        role_unassign($role1->id, $user->id, $context->id);
+
+        //delete course context
+        delete_context(CONTEXT_COURSE, $course->id);
+
+        //delete the user
+        $DB->delete_records('user', array('id' => $user->id));
+
+        //delete the role
+        delete_role($role1->id);
+
+        //delete the course
+        $DB->delete_records('course', array('id' => $course->id));
+
+        //delete the category
+        $DB->delete_records('course_categories', array('id' => $category->id));
+
+    }
+
+    function moodle_group_delete_groups($client) {
+        global $DB, $CFG;
+
+        //create category
+        $category = new stdClass();
+        $category->name = 'tmpcategoryfortest123';
+        $category->id = $DB->insert_record('course_categories', $category);
+
+        //create a course
+        $course = new stdClass();
+        $course->fullname = 'tmpcoursefortest123';
+        $course->shortname = 'tmpcoursefortest123';
+        $course->idnumber = 'tmpcoursefortest123';
+        $course->category = $category->id;
+        $course->id = $DB->insert_record('course', $course);
+
+        //create a role
+        $role1->id = create_role('role1thatshouldnotexist', 'role1thatshouldnotexist', '');
+
+        //create a user
+        $user = new stdClass();
+        $user->username = 'veryimprobabletestusername2';
+        $user->password = 'testpassword2';
+        $user->firstname = 'testfirstname2';
+        $user->lastname = 'testlastname2';
+        $user->email = 'testemail1@moodle.com';
+        $user->mnethostid = $CFG->mnet_localhost_id;
+        require_once($CFG->dirroot."/user/lib.php");
+        $user->id = user_create_user($user);
+
+        //create course context
+        $context = get_context_instance(CONTEXT_COURSE, $course->id, MUST_EXIST);
+
+        //enrol the user in the course with the created role
+        role_assign($role1->id, $user->id, $context->id);
+        $enrol = new stdClass();
+        $enrol->courseid = $course->id;
+        $enrol->roleid = $role1->id;
+        $enrol->id = $DB->insert_record('enrol', $enrol);
+        $enrolment = new stdClass();
+        $enrolment->userid = $user->id;
+        $enrolment->enrolid = $enrol->id;
+        $enrolment->id = $DB->insert_record('user_enrolments', $enrolment);
+
+        //create a group in the course
+        $group = new stdClass();
+        $group->courseid = $course->id;
+        $group->name = 'tmpgroufortest123';
+        $group->enrolmentkey = '';
+        $group->description = '';
+        $group->id = $DB->insert_record('groups', $group);
+        $group2 = new stdClass();
+        $group2->courseid = $course->id;
+        $group2->name = 'tmpgroufortest1233';
+        $group2->enrolmentkey = '';
+        $group2->description = '';
+        $group2->id = $DB->insert_record('groups', $group2);
+        $paramgroups = array($group, $group2);
+
+        require_once($CFG->dirroot . "/group/lib.php");
+        $groups = groups_get_all_groups($course->id);
+        $this->assertEqual(2, count($groups));
+
+        //WEBSERVICE CALL -  delete the group
+        $function = 'moodle_group_delete_groups';
+        $params = array('groupids' => array($group->id, $group2->id));
+        $client->call($function, $params);
+
+        $groups = groups_get_all_groups($course->id);
+        $this->assertEqual(0, count($groups));
+
+        //unenrol the user
+        $DB->delete_records('user_enrolments', array('id' => $enrolment->id));
+        $DB->delete_records('enrol', array('id' => $enrol->id));
+        role_unassign($role1->id, $user->id, $context->id);
+
+        //delete course context
+        delete_context(CONTEXT_COURSE, $course->id);
+
+        //delete the user
+        $DB->delete_records('user', array('id' => $user->id));
+
+        //delete the role
+        delete_role($role1->id);
+
+        //delete the course
+        $DB->delete_records('course', array('id' => $course->id));
+
+        //delete the category
+        $DB->delete_records('course_categories', array('id' => $category->id));
+
     }
 
 }

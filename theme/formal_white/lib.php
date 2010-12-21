@@ -70,6 +70,7 @@ function formalwhite_set_regionwidth($css, $regionwidth) {
     }
     $css = str_replace($tag, $replacement.'px', $css);
     $css = str_replace($doubletag, ($replacement*2).'px', $css);
+    $css = str_replace($tag, ($replacement+10).'px', $css);
     return $css;
 }
 
