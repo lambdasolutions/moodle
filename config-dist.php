@@ -33,6 +33,7 @@ $CFG = new stdClass();
 
 $CFG->aspellpath  = '/usr/bin/aspell';
 $CFG->pathtodu    = '/usr/bin/du';
+$CFG->pathtodot   = '/usr/bin/dot';
 
 //=========================================================================
 // 1. DATABASE SETUP
