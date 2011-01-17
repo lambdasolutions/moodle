@@ -61,11 +61,10 @@ defined('MOODLE_INTERNAL') || die();
 
     //Print the Your progress icon if the track completion is enabled
     $completioninfo = new completion_info($course);
-    $completioninfo->print_help_icon();
+    echo $completioninfo->display_help_icon();
 
     echo $OUTPUT->heading(get_string('weeklyoutline'), 2, 'headingblock header outline');
 
-    echo "<span id='maincontent'></span>";
     // Note, an ordered list would confuse - "1" could be the clipboard or summary.
     echo "<ul class='weeks'>\n";
 

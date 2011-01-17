@@ -100,8 +100,8 @@ if (empty($pending)) {
 /// Build a table of all the requests.
     $table = new html_table();
     $table->attributes['class'] = 'pendingcourserequests generaltable';
-    $table->align = array('center', 'center', 'center', 'center', 'center', 'center', 'center');
-    $table->head = array('&nbsp;', get_string('shortname'), get_string('fullname'),
+    $table->align = array('center', 'center', 'center', 'center', 'center', 'center');
+    $table->head = array(get_string('shortname'), get_string('fullname'),
             get_string('requestedby'), get_string('summary'), get_string('requestreason'), get_string('action'));
 
     foreach ($pending as $course) {

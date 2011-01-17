@@ -1039,10 +1039,19 @@ function fix_course_sortorder() {
             HAVING cc.coursecount <> COUNT(c.id)";
 
     if ($updatecounts = $DB->get_records_sql($sql)) {
+        // categories with more courses than MAX_COURSES_IN_CATEGORY
+        $categories = array();
         foreach ($updatecounts as $cat) {
             $cat->coursecount = $cat->newcount;
+            if ($cat->coursecount >= MAX_COURSES_IN_CATEGORY) {
+                $categories[] = $cat->id;
+            }
             unset($cat->newcount);
             $DB->update_record_raw('course_categories', $cat, true);
+        }
+        if (!empty($categories)) {
+            $str = implode(', ', $categories);
+            debugging("The number of courses (category id: $str) has reached MAX_COURSES_IN_CATEGORY (" . MAX_COURSES_IN_CATEGORY . "), it will cause a sorting performance issue, please increase the value of MAX_COURSES_IN_CATEGORY in lib/datalib.php file. See tracker issue: MDL-25669", DEBUG_DEVELOPER);
         }
     }
 
@@ -1695,6 +1704,7 @@ function add_to_log($courseid, $module, $action, $url='', $info='', $cm=0, $user
 
             $lasttime = get_config('admin', 'lastloginserterrormail');
             if(empty($lasttime) || time() - $lasttime > 60*60*24) { // limit to 1 email per day
+                //using email directly rather than messaging as they may not be able to log in to access a message
                 mail($CFG->supportemail, $subject, $message);
                 set_config('lastloginserterrormail', time(), 'admin');
             }

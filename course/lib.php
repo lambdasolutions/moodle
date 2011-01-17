@@ -2110,7 +2110,7 @@ function print_category_info($category, $depth=0, $showcourses = false) {
         echo '<div class="categorylist">';
         $html = '';
         $cat = html_writer::link(new moodle_url('/course/category.php', array('id'=>$category->id)), format_string($category->name), $catlinkcss);
-        $cat .= html_writer::tag('span', '('.count($courses).')', array('title'=>get_string('numberofcourses'), 'class'=>'numberofcourse'));
+        $cat .= html_writer::tag('span', ' ('.count($courses).')', array('title'=>get_string('numberofcourses'), 'class'=>'numberofcourse'));
 
         if ($depth > 0) {
             for ($i=0; $i< $depth; $i++) {
@@ -4074,8 +4074,7 @@ class course_request {
      */
     protected function notify($touser, $fromuser, $name='courserequested', $subject, $message) {
         $eventdata = new stdClass();
-        $eventdata->modulename        = 'moodle';
-        $eventdata->component         = 'course';
+        $eventdata->component         = 'moodle';
         $eventdata->name              = $name;
         $eventdata->userfrom          = $fromuser;
         $eventdata->userto            = $touser;
@@ -4084,6 +4083,7 @@ class course_request {
         $eventdata->fullmessageformat = FORMAT_PLAIN;
         $eventdata->fullmessagehtml   = '';
         $eventdata->smallmessage      = '';
+        $eventdata->notification      = 1;
         message_send($eventdata);
     }
 }

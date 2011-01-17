@@ -183,6 +183,11 @@ define('PARAM_PERMISSION',   'permission');
 define('PARAM_RAW', 'raw');
 
 /**
+ * PARAM_RAW_TRIMMED like PARAM_RAW but leading and trailing whitespace is stripped.
+ */
+define('PARAM_RAW_TRIMMED', 'raw_trimmed');
+
+/**
  * PARAM_SAFEDIR - safe directory name, suitable for include() and require()
  */
 define('PARAM_SAFEDIR',  'safedir');
@@ -552,6 +557,9 @@ function clean_param($param, $type) {
     switch ($type) {
         case PARAM_RAW:          // no cleaning at all
             return $param;
+
+        case PARAM_RAW_TRIMMED:         // no cleaning, but strip leading and trailing whitespace.
+            return trim($param);
 
         case PARAM_CLEAN:        // General HTML cleaning, try to use more specific type if possible
             // this is deprecated!, please use more specific type instead
@@ -5024,6 +5032,7 @@ function setnew_password_and_mail($user) {
 
     $subject = format_string($site->fullname) .': '. get_string('newusernewpasswordsubj');
 
+    //directly email rather than using the messaging system to ensure its not routed to a popup or jabber
     return email_to_user($user, $supportuser, $subject, $message);
 
 }
@@ -5066,6 +5075,7 @@ function reset_password_and_mail($user) {
 
     $subject  = format_string($site->fullname) .': '. get_string('changedpassword');
 
+    //directly email rather than using the messaging system to ensure its not routed to a popup or jabber
     return email_to_user($user, $supportuser, $subject, $message);
 
 }
@@ -5096,6 +5106,7 @@ function reset_password_and_mail($user) {
 
     $user->mailformat = 1;  // Always send HTML version as well
 
+    //directly email rather than using the messaging system to ensure its not routed to a popup or jabber
     return email_to_user($user, $supportuser, $subject, $message, $messagehtml);
 
 }
@@ -5123,6 +5134,7 @@ function send_password_change_confirmation_email($user) {
     $message = get_string('emailpasswordconfirmation', '', $data);
     $subject = get_string('emailpasswordconfirmationsubject', '', format_string($site->fullname));
 
+    //directly email rather than using the messaging system to ensure its not routed to a popup or jabber
     return email_to_user($user, $supportuser, $subject, $message);
 
 }
@@ -5152,6 +5164,7 @@ function send_password_change_info($user) {
     if (!is_enabled_auth($user->auth) or $user->auth == 'nologin') {
         $message = get_string('emailpasswordchangeinfodisabled', '', $data);
         $subject = get_string('emailpasswordchangeinfosubject', '', format_string($site->fullname));
+        //directly email rather than using the messaging system to ensure its not routed to a popup or jabber
         return email_to_user($user, $supportuser, $subject, $message);
     }
 
@@ -5172,6 +5185,7 @@ function send_password_change_info($user) {
         $subject = get_string('emailpasswordchangeinfosubject', '', format_string($site->fullname));
     }
 
+    //directly email rather than using the messaging system to ensure its not routed to a popup or jabber
     return email_to_user($user, $supportuser, $subject, $message);
 
 }
@@ -7320,6 +7334,48 @@ function get_plugin_list($plugintype) {
 }
 
 /**
+ * Gets a list of all plugin API functions for given plugin type, function
+ * name, and filename.
+ * @param string $plugintype Plugin type, e.g. 'mod' or 'report'
+ * @param string $function Name of function after the frankenstyle prefix;
+ *   e.g. if the function is called report_courselist_hook then this value
+ *   would be 'hook'
+ * @param string $file Name of file that includes function within plugin,
+ *   default 'lib.php'
+ * @return Array of plugin frankenstyle (e.g. 'report_courselist', 'mod_forum')
+ *   to valid, existing plugin function name (e.g. 'report_courselist_hook',
+ *   'forum_hook')
+ */
+function get_plugin_list_with_function($plugintype, $function, $file='lib.php') {
+    global $CFG; // mandatory in case it is referenced by include()d PHP script
+
+    $result = array();
+    // Loop through list of plugins with given type
+    $list = get_plugin_list($plugintype);
+    foreach($list as $plugin => $dir) {
+        $path = $dir . '/' . $file;
+        // If file exists, require it and look for function
+        if (file_exists($path)) {
+            include_once($path);
+            $fullfunction = $plugintype . '_' . $plugin . '_' . $function;
+            if (function_exists($fullfunction)) {
+                // Function exists with standard name. Store, indexed by
+                // frankenstyle name of plugin
+                $result[$plugintype . '_' . $plugin] = $fullfunction;
+            } else if ($plugintype === 'mod') {
+                // For modules, we also allow plugin without full frankenstyle
+                // but just starting with the module name
+                $shortfunction = $plugin . '_' . $function;
+                if (function_exists($shortfunction)) {
+                    $result[$plugintype . '_' . $plugin] = $shortfunction;
+                }
+            }
+        }
+    }
+    return $result;
+}
+
+/**
  * Lists plugin-like directories within specified directory
  *
  * This function was originally used for standard Moodle plugins, please use
@@ -8029,6 +8085,7 @@ function notify_login_failures() {
     /// For each destination, send mail
         mtrace('Emailing admins about '. $count .' failed login attempts');
         foreach ($recip as $admin) {
+            //emailing the admins directly rather than putting these through the messaging system
             email_to_user($admin,get_admin(), $subject, $body);
         }
 
