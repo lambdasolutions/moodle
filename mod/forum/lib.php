@@ -1504,7 +1504,8 @@ function forum_upgrade_grades() {
     $sql = "SELECT f.*, cm.idnumber AS cmidnumber, f.course AS courseid
               FROM {forum} f, {course_modules} cm, {modules} m
              WHERE m.name='forum' AND m.id=cm.module AND cm.instance=f.id";
-    if ($rs = $DB->get_recordset_sql($sql)) {
+    $rs = $DB->get_recordset_sql($sql);
+    if ($rs->valid()) {
         $pbar = new progress_bar('forumupgradegrades', 500, true);
         $i=0;
         foreach ($rs as $forum) {
@@ -1513,8 +1514,8 @@ function forum_upgrade_grades() {
             forum_update_grades($forum, 0, false);
             $pbar->update($i, $count, "Updating Forum grades ($i/$count).");
         }
-        $rs->close();
     }
+    $rs->close();
 }
 
 /**
@@ -7790,4 +7791,36 @@ class forum_existing_subscriber_selector extends forum_subscriber_selector_base 
         return array(get_string("existingsubscribers", 'forum') => $subscribers);
     }
 
+}
+
+/**
+ * Adds information about unread messages, that is only required for the course view page (and
+ * similar), to the course-module object.
+ * @param cm_info $cm Course-module object
+ */
+function forum_cm_info_view(cm_info $cm) {
+    global $CFG;
+
+    // Get tracking status (once per request)
+    static $initialised;
+    static $usetracking, $strunreadpostsone;
+    if (!isset($initialised)) {
+        if ($usetracking = forum_tp_can_track_forums()) {
+            $strunreadpostsone = get_string('unreadpostsone', 'forum');
+        }
+        $initialised = true;
+    }
+
+    if ($usetracking) {
+        if ($unread = forum_tp_count_forum_unread_posts($cm, $cm->get_course())) {
+            $out = '<span class="unread"> <a href="' . $cm->get_url() . '">';
+            if ($unread == 1) {
+                $out .= $strunreadpostsone;
+            } else {
+                $out .= get_string('unreadpostsnumber', 'forum', $unread);
+            }
+            $out .= '</a></span>';
+            $cm->set_after_link($out);
+        }
+    }
 }

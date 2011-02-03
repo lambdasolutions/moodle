@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,18 +15,17 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'quiz_responses', language 'en', branch 'MOODLE_20_STABLE'
+ * This is an empty file which is used in order to prevent
+ * error logs in the serverlog.
  *
- * @package   quiz_responses
- * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Sometimes developer forgets to postprocess files when saving
+ * submitted form data or forget to replace the file placeholders
+ * with the current area information.
+ *
+ * @package    core
+ * @subpackage file
+ * @copyright  2011 Petr Skoda (http://skodak.org)
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-$string['cannotloadoptions'] = 'Could not load question options';
-$string['pagesize'] = 'Page size';
-$string['reportresponses'] = 'Responses';
-$string['responses'] = 'Responses';
-$string['responsesdownload'] = 'Responses download';
-$string['responsesoptions'] = 'Responses options';
-$string['responsesreport'] = 'Responses report';
-$string['responsestitle'] = 'Detailed responses';
+@header('HTTP/1.0 404 not found');

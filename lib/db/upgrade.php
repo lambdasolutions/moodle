@@ -2825,10 +2825,10 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
     if ($oldversion < 2010033102.00) {
         // rename course view capability to participate
-        $params = array('view'=>'moodle/course:view', 'participate'=>'moodle/course:participate');
-        $sql = "UPDATE {role_capabilities} SET capability = :participate WHERE capability = :view";
+        $params = array('viewcap'=>'moodle/course:view', 'participatecap'=>'moodle/course:participate');
+        $sql = "UPDATE {role_capabilities} SET capability = :participatecap WHERE capability = :viewcap";
         $DB->execute($sql, $params);
-        $sql = "UPDATE {capabilities} SET name = :participate WHERE name = :view";
+        $sql = "UPDATE {capabilities} SET name = :participatecap WHERE name = :viewcap";
         $DB->execute($sql, $params);
         // note: the view capability is readded again at the end of upgrade, but with different meaning
         upgrade_main_savepoint(true, 2010033102.00);
@@ -3933,8 +3933,8 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
     if ($oldversion < 2010061900.04) {
         // there is no default course role any more, each enrol plugin has to handle it separately
         if (!empty($CFG->defaultcourseroleid)) {
-            $sql = "UPDATE {course} SET defaultrole = :default WHERE defaultrole = 0";
-            $params = array('default' => $CFG->defaultcourseroleid);
+            $sql = "UPDATE {course} SET defaultrole = :defaultrole WHERE defaultrole = 0";
+            $params = array('defaultrole' => $CFG->defaultcourseroleid);
             $DB->execute($sql, $params);
         }
         unset_config('defaultcourseroleid');
@@ -5991,6 +5991,18 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         // Main savepoint reached
         upgrade_main_savepoint(true, 2011012500);
+    }
+
+    if ($oldversion < 2011012501) {
+        //add the index userfieldidx (not unique) to user_info_data
+        $table = new xmldb_table('user_info_data');
+        $index = new xmldb_index('userfieldidx', XMLDB_INDEX_NOTUNIQUE, array('userid', 'fieldid'));
+
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_main_savepoint(true, 2011012501);
     }
 
     return true;
