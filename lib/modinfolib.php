@@ -40,7 +40,7 @@ if (!defined('MAX_MODINFO_CACHE_SIZE')) {
  * This includes information about the course-modules and the sections on the course. It can also
  * include dynamic data that has been updated for the current user.
  */
-class course_modinfo {
+class course_modinfo extends stdClass {
     // For convenience we store the course object here as it is needed in other parts of code
     private $course;
 
@@ -283,7 +283,7 @@ class course_modinfo {
  * data only using the supplied set functions. Setting the fields directly is not supported
  * and may cause problems later.
  */
-class cm_info {
+class cm_info extends stdClass  {
     /**
      * State: Only basic data from modinfo cache is available.
      */
@@ -488,6 +488,14 @@ class cm_info {
      * @var bool
      */
     public $uservisible;
+
+    /**
+     * Module context - hacky shortcut
+     * @deprecated
+     * @var stdClass
+     */
+    public $context;
+
 
     // New data available only via functions
     ////////////////////////////////////////
@@ -706,7 +714,7 @@ class cm_info {
      */
     public function set_no_view_link() {
         $this->check_not_view_only();
-        $url = null;
+        $this->url = null;
     }
 
     /**
@@ -791,6 +799,7 @@ class cm_info {
         $this->icon             = isset($mod->icon) ? $mod->icon : '';
         $this->iconcomponent    = isset($mod->iconcomponent) ? $mod->iconcomponent : '';
         $this->customdata       = isset($mod->customdata) ? $mod->customdata : '';
+        $this->context          = get_context_instance(CONTEXT_MODULE, $mod->cm);
         $this->state = self::STATE_BASIC;
 
         // This special case handles old label data. Labels used to use the 'name' field for
