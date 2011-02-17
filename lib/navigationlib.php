@@ -1023,7 +1023,7 @@ class global_navigation extends navigation_node {
                 $this->add_course_essentials($coursenode, $course);
                 // Load the course sections into the page
                 $sections = $this->load_course_sections($course, $coursenode);
-                if ($course->id !== SITEID) {
+                if ($course->id != SITEID) {
                     // Find the section for the $CM associated with the page and collect
                     // its section number.
                     if (isset($cm->sectionnum)) {
@@ -1105,7 +1105,7 @@ class global_navigation extends navigation_node {
         }
         // Load each extending user into the navigation.
         foreach ($this->extendforuser as $user) {
-            if ($user->id !== $USER->id) {
+            if ($user->id != $USER->id) {
                 $this->load_for_user($user);
             }
         }
@@ -1384,11 +1384,7 @@ class global_navigation extends navigation_node {
 
         $viewhiddensections = has_capability('moodle/course:viewhiddensections', $this->page->context);
 
-        if (isloggedin() && !isguestuser()) {
-            $activesection = $DB->get_field("course_display", "display", array("userid"=>$USER->id, "course"=>$course->id));
-        } else {
-            $activesection = null;
-        }
+        $activesection = course_get_display($course->id);
 
         $namingfunction = 'callback_'.$courseformat.'_get_section_name';
         $namingfunctionexists = (function_exists($namingfunction));
@@ -1418,7 +1414,7 @@ class global_navigation extends navigation_node {
                 $sectionnode = $coursenode->add($sectionname, $url, navigation_node::TYPE_SECTION, null, $section->id);
                 $sectionnode->nodetype = navigation_node::NODETYPE_BRANCH;
                 $sectionnode->hidden = (!$section->visible);
-                if ($this->page->context->contextlevel != CONTEXT_MODULE && ($sectionnode->isactive || ($activesection != null && $section->section == $activesection))) {
+                if ($this->page->context->contextlevel != CONTEXT_MODULE && ($sectionnode->isactive || ($activesection && $section->section == $activesection))) {
                     $sectionnode->force_open();
                     $this->load_section_activities($sectionnode, $section->section, $modinfo);
                 }
@@ -1517,7 +1513,7 @@ class global_navigation extends navigation_node {
      */
     protected function load_activity($cm, stdClass $course, navigation_node $activity) {
         global $CFG, $DB;
-        
+
         // make sure we have a $cm from get_fast_modinfo as this contains activity access details
         if (!($cm instanceof cm_info)) {
             $modinfo = get_fast_modinfo($course);
@@ -1569,7 +1565,7 @@ class global_navigation extends navigation_node {
         // Get the course set against the page, by default this will be the site
         $course = $this->page->course;
         $baseargs = array('id'=>$user->id);
-        if ($course->id !== SITEID && (!$iscurrentuser || $forceforcontext)) {
+        if ($course->id != SITEID && (!$iscurrentuser || $forceforcontext)) {
             if (array_key_exists($course->id, $this->mycourses)) {
                 $coursenode = $this->mycourses[$course->id]->coursenode;
             } else {
@@ -1857,9 +1853,15 @@ class global_navigation extends navigation_node {
      */
     public function add_course(stdClass $course, $forcegeneric = false) {
         global $CFG;
-        $canviewhidden = has_capability('moodle/course:viewhiddencourses', $this->page->context);
-        if ($course->id !== SITEID && !$canviewhidden && !$course->visible) {
-            return false;
+
+        if ($course->id != SITEID) {
+            if (!$course->visible) {
+                if (is_role_switched($course->id)) {
+                    // user has to be able to access course in order to switch, let's skip the visibility test here
+                } else if (!has_capability('moodle/course:viewhiddencourses', get_context_instance(CONTEXT_COURSE, $course->id))) {
+                    return false;
+                }
+            }
         }
 
         $issite = ($course->id == SITEID);
@@ -2984,7 +2986,7 @@ class settings_navigation extends navigation_node {
             $availableroles = get_switchable_roles($coursecontext);
             if (is_array($availableroles)) {
                 foreach ($availableroles as $key=>$role) {
-                    if ($assumedrole===(int)$key) {
+                    if ($assumedrole == (int)$key) {
                         continue;
                     }
                     $roles[$key] = $role;

@@ -4091,10 +4091,12 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
     }
 
     if ($oldversion < 2010061900.10) {
-        // migrate existing setup of meta courses
+        // migrate existing setup of meta courses, ignore records referencing invalid courses
         $sql = "INSERT INTO {enrol} (enrol, status, courseid, sortorder, customint1)
-                SELECT 'meta', 0, parent_course, 5, child_course
-                  FROM {course_meta}";
+                SELECT 'meta', 0, cm.parent_course, 5, cm.child_course
+                  FROM {course_meta} cm
+                  JOIN {course} p ON p.id = cm.parent_course
+                  JOIN {course} c ON c.id = cm.child_course";
         $DB->execute($sql);
 
         upgrade_main_savepoint(true, 2010061900.10);
@@ -6019,6 +6021,26 @@ WHERE gradeitemid IS NOT NULL AND grademax IS NOT NULL");
 
         // Main savepoint reached
         upgrade_main_savepoint(true, 2011020200.01);
+    }
+
+    if ($oldversion < 2011020900.07) {
+        $DB->delete_records('course_display', array('display' => 0));
+        upgrade_main_savepoint(true, 2011020900.07);
+    }
+
+    if ($oldversion < 2011020900.08) {
+         // Define field secret to be added to registration_hubs
+        $table = new xmldb_table('registration_hubs');
+        $field = new xmldb_field('secret', XMLDB_TYPE_CHAR, '255', null, null, null,
+                $CFG->siteidentifier, 'confirmed');
+
+        // Conditionally launch add field secret
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Main savepoint reached
+        upgrade_main_savepoint(true, 2011020900.08);
     }
 
 
