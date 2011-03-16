@@ -7,7 +7,7 @@ Standards-Version: 3.7.2
 
 Package: moodle-site-feature-kaltura
 Architecture: all
-Depends: moodle-base, ${misc:Depends}, apache2, libapache2-mod-php5 (>=5.2.8), php5-pgsql, cron, php5-cli (>=5.2.8), site-crondispatcher (>= 0.1.2), aspell, php5-curl, php5-xmlrpc, php5-gd, php5-intl
+Depends: moodle-base, ${misc:Depends}, apache2, libapache2-mod-php5 (>=5.2.6), php5-pgsql, cron, php5-cli (>=5.2.6), site-crondispatcher (>= 0.1.2), aspell, php5-curl, php5-xmlrpc, php5-gd
 Recommends: postgresql, postgresql-client, clamav, clamav-daemon
 Suggests: php5-imagick
 Pre-Depends: m4, perl
