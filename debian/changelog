@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-3) unstable; urgency=low
+
+  * Adding local kaltura module
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 22 Mar 2011 11:41:49 +1300
+
 moodle-site-feature-kaltura (2.0.2-20110221-2) unstable; urgency=low
 
   * Changing dependencies so package can be installed on lenny servers
