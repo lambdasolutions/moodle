@@ -21,9 +21,6 @@ class kaltura_jsportal extends jsportal {
 
         foreach ($params as $key => $param) {
             $output .= "main.params['".$key."'] = '" . $param . "';\n";
-//            $output .= "    main.strings['wwwroot']='".$CFG->wwwroot."';\n";
-//            $output .= "    main.strings['sesskey']='".$USER->sesskey."';\n";
-//            $output .= "    main.strings['userid']='".$USER->id."';\n";
         }
         $output .= "$funccall"."\n";
         $output .= "</script>\n";

@@ -25,34 +25,25 @@ function show_wait() {
         document.getElementById(param_div).innerHTML = "Flash player version 9 and above is required. <a href=\"http://get.adobe.com/flashplayer/\">Upgrade your flash version</a>";
     }
 
-    YUI().use("io-base",
+    YUI().use("io",
     function(Y) {
-        var uri = url_checkstatus;
-        var cfg,
-        request;
-
-        cfg = {
+        Y.io(url_checkstatus, {
             sync: false,
             method: "POST",
             data: "entryid=" + entryId,
-        }
-
-        handlers = {
-            success: function(id, o, args) {
-                var data = o.responseText;
-                if (data.substr(0, 2) == "y:") {
-                    document.getElementById(param_div).innerHTML = msg.substr(2);
-                    do_on_wait();
-                } else {
-                    document.getElementById(param_div).innerHTML = txt_document;
+            on: {
+                success: function(id, o, args) {
+                    var data = o.responseText;
+                    if (data.substr(0, 2) == "y:") {
+                        document.getElementById(param_div).innerHTML = msg.substr(2);
+                        do_on_wait();
+                    } else {
+                        document.getElementById(param_div).innerHTML = txt_document;
+                    }
                 }
+                failure: function(id, o, args) {}
             }
-            error: function(id, o, args) {}
-        }
-
-        Y.on("io:success", handlers.success, Y, true)
-        Y.on("io:failure", handlers.error, Y, "Transaction Failed")
-        var req = Y.io(uri, cfg)
+        })
     })
 }
 
@@ -162,83 +153,58 @@ function onContributionWizardAfterAddEntry(param) {
             name = get_field("id_name")
         } catch(ex) {};
 
-        if (divprops != '')
-        {
+        if (divprops != '') {
             document.getElementById(divcw).style.display = "none";
             document.getElementById(divprops).style.display = "block";
         }
-        for (i = 0; i < param.length; i++)
-        {
+        for (i = 0; i < param.length; i++) {
             entryId = (param[i].uniqueID == null ? param[i].entryId: param[i].uniqueID);
             entries += entryId + ",";
         }
 
-        YUI().use("io-base",
+        YUI().use("io",
         function(Y) {
-            var cfg,
-            uri,
-            handlers;
-            cfg = {
+            Y.io(wwwroot + "/local/kaltura/kmix.php", {
                 method: "POST",
-                data = "entries=" + entries + "&name=" + name,
-            }
-            uri = wwwroot + "/local/kaltura/kmix.php"
-
-            handlers = {
-                success: function(id, o, args) {
-                    var msg = o.responseText
-                    if (msg.substr(0, 2) == "y:")
-                    {
-                        entryId = msg.substr(2);
-                        set_page_entry(entryId);
-                        if (divprops != '')
-                        {
-                            show_entry_player(entryId, "light");
-                            update_field(updatefield, entryId, false, '');
+                data: "entries=" + entries + "&name=" + name,
+                on: {
+                    success: function(id, o, args) {
+                        var msg = o.responseText;
+                        if (msg.substr(0, 2) == "y:") {
+                            entryId = msg.substr(2);
+                            set_page_entry(entryId);
+                            if (divprops != '') {
+                                show_entry_player(entryId, "light");
+                                update_field(updatefield, entryId, false, '');
+                            } else {
+                                setTimeout("window.parent.kalturaCloseModalBox();", 0);
+                                update_field(updatefield, entryId, false, 'show_wait');
+                            }
+                        } else {
+                            alert(msg.substr(2));
                         }
-                        else
-                        {
-                            setTimeout("window.parent.kalturaCloseModalBox();", 0);
-                            update_field(updatefield, entryId, false, 'show_wait');
-                        }
-                    }
-                    else
-                    {
-                        alert(msg.substr(2));
-                    }
-                },
-                error: function(i, o, a) {}
-            }
-
-            Y.on("io:success", handlers.success, Y, true)
-            Y.on("io.failure", handlers.error, Y, "Transaction Failed")
-
-            var req = Y.io(uri, cfg)
-        })
-    }
-    else if (type == entrymediatype)
-    {
+                    },
+                    failure: function(i, o, a) {}
+                }
+            });
+        });
+    } else if (type == entrymediatype) {
         entryId = (param[0].uniqueID == null ? param[0].entryId: param[0].uniqueID);
-        if (divprops != '')
-        {
+        if (divprops != '') {
             document.getElementById(divcw).style.display = "none";
             document.getElementById(divprops).style.display = "block";
             set_page_entry(entryId);
             show_entry_player(entryId, "light");
             update_field(updatefield, entryId, false, '');
-        }
-        else
-        {
+        } else {
             setTimeout("window.parent.kalturaCloseModalBox();", 0);
             update_field(updatefield, entryId, false, 'show_wait');
         }
     }
 }
 
-function onContributionWizardClose(modified)
- {
-    if (modified[0] == 0)
-    {
+function onContributionWizardClose(modified) {
+    if (modified[0] == 0) {
         setTimeout("window.parent.kalturaCloseModalBox();", 0);
     }
 }
