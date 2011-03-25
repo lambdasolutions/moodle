@@ -5,7 +5,6 @@ require_once('lib.php');
 $email = optional_param('email', '', PARAM_EMAIL);
 $password = optional_param('password', '', PARAM_RAW);
 
-//$PAGE->requires->yui_module(array('node','io'));
 $PAGE->requires->js('/local/kaltura/js/kvideo.js');
 $PAGE->requires->js('/local/kaltura/js/swfobject.js');
 
