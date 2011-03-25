@@ -9,7 +9,7 @@ function show_wait() {
     var ksoa = new SWFObject(url_pleasewait, "kwait", "140", "105", "9", "#ffffff");
     var txt_document = "<br/>" + main.params['videoconversion'] + '.<br/><br/><a href="javascript:show_wait()">' + main.params['clickhere'] + '</a> ' + main.params['convcheckdone'];
     var entryId = document.getElementById(param_field).value;
-    
+
     ksoa.addParam("allowScriptAccess", "always");
     ksoa.addParam("allowFullScreen", "TRUE");
     ksoa.addParam("allowNetworking", "all");
@@ -25,22 +25,35 @@ function show_wait() {
         document.getElementById(param_div).innerHTML = "Flash player version 9 and above is required. <a href=\"http://get.adobe.com/flashplayer/\">Upgrade your flash version</a>";
     }
 
-    $.ajax({
-        type: "POST",
-        url: url_checkstatus,
-        data: "entryid=" + entryId,
-        success: function(msg) {
-            if (msg.substr(0, 2) == "y:") {
-                document.getElementById(param_div).innerHTML = msg.substr(2);
-                do_on_wait();
-            }
-            else {
-                document.getElementById(param_div).innerHTML = txt_document;
-            }
-        },
-        error: function(msg) {
+    YUI().use("io-base",
+    function(Y) {
+        var uri = url_checkstatus;
+        var cfg,
+        request;
+
+        cfg = {
+            sync: false,
+            method: "POST",
+            data: "entryid=" + entryId,
         }
-    });
+
+        handlers = {
+            success: function(id, o, args) {
+                var data = o.responseText;
+                if (data.substr(0, 2) == "y:") {
+                    document.getElementById(param_div).innerHTML = msg.substr(2);
+                    do_on_wait();
+                } else {
+                    document.getElementById(param_div).innerHTML = txt_document;
+                }
+            }
+            error: function(id, o, args) {}
+        }
+
+        Y.on("io:success", handlers.success, Y, true)
+        Y.on("io:failure", handlers.error, Y, "Transaction Failed")
+        var req = Y.io(uri, cfg)
+    })
 }
 
 function set_entry_type(type) {
@@ -50,40 +63,40 @@ function set_entry_type(type) {
 function get_height() {
 
     var aspecttype_4_3 = main.params['aspecttype_4_3'];
-    var sizelarge   = main.params['sizelarge'];
-    var sizesmall   = main.params['sizesmall'];
-    var sizecustom  = main.params['sizecustom'];
+    var sizelarge = main.params['sizelarge'];
+    var sizesmall = main.params['sizesmall'];
+    var sizecustom = main.params['sizecustom'];
 
     if (get_field("id_dimensions") == aspecttype_4_3) {
         switch (get_field("id_size")) {
-            case sizelarge:
-                return 445;
-                break;
-            case sizesmall:
-                return 340;
-                break;
-            case sizecustom:
-                return parseInt(get_field("id_custom_width")) * 3 / 4 + 65 + 80;
-                break;
-            default:
-                return 445;
-                break;
+        case sizelarge:
+            return 445;
+            break;
+        case sizesmall:
+            return 340;
+            break;
+        case sizecustom:
+            return parseInt(get_field("id_custom_width")) * 3 / 4 + 65 + 80;
+            break;
+        default:
+            return 445;
+            break;
         }
 
     } else {
         switch (get_field("id_size")) {
-            case sizelarge:
-                return 370;
-                break;
-            case sizesmall:
-                return 291;
-                break;
-            case sizecustom:
-                return parseInt(get_field("id_custom_width")) * 9 / 16 + 65 + 80;
-                break;
-            default:
-                return 370;
-                break;
+        case sizelarge:
+            return 370;
+            break;
+        case sizesmall:
+            return 291;
+            break;
+        case sizecustom:
+            return parseInt(get_field("id_custom_width")) * 9 / 16 + 65 + 80;
+            break;
+        default:
+            return 370;
+            break;
         }
 
     }
@@ -91,137 +104,155 @@ function get_height() {
 }
 
 function get_width() {
-    var sizelarge   = main.params['sizelarge'];
-    var sizesmall   = main.params['sizesmall'];
-    var sizecustom  = main.params['sizecustom'];
+    var sizelarge = main.params['sizelarge'];
+    var sizesmall = main.params['sizesmall'];
+    var sizecustom = main.params['sizecustom'];
 
     switch (get_field("id_size")) {
-        case sizelarge:
-            return 450;
-            break;
-        case sizesmall:
-            return 310;
-            break;
-        case sizecustom:
-            return parseInt(get_field("id_custom_width")) + 50;
-            break;
-        default:
-            return 450;
-            break;
+    case sizelarge:
+        return 450;
+        break;
+    case sizesmall:
+        return 310;
+        break;
+    case sizecustom:
+        return parseInt(get_field("id_custom_width")) + 50;
+        break;
+    default:
+        return 450;
+        break;
     }
 }
 
 function onSimpleEditorBackClick(param)
-{
+ {
     var thumburl = main.params['thumburl'];
 
     ts = new Date().getTime();
 
     try {
-        update_img('id_thumb',thumburl  + '?t=' + ts,false,'');
+        update_img('id_thumb', thumburl + '?t=' + ts, false, '');
     }
-    catch (err){}
-    setTimeout("window.parent.kalturaCloseModalBox();",0); 
+    catch(err) {}
+    setTimeout("window.parent.kalturaCloseModalBox();", 0);
 }
 
 function change_entry_player() {
 
-  var design = document.getElementById("slctDesign");
+    var design = document.getElementById("slctDesign");
 
-  show_entry_player(get_page_entry(), design.options[design.selectedIndex].value);
+    show_entry_player(get_page_entry(), design.options[design.selectedIndex].value);
 }
 
 
 function onContributionWizardAfterAddEntry(param) {
-    var wwwroot         = main.params['wwwroot'];
-    var type            = main.params['type'];
-    var entrymixtype    = main.params['entrymixtype'];
-    var divprops        = main.params['divprops'];
-    var divcw           = main.params['divcW'];
-    var updatefield     = main.params['updatefield'];
-    var entrymediatype  = main.params['entrymediatype'];
+    var wwwroot = main.params['wwwroot'];
+    var type = main.params['type'];
+    var entrymixtype = main.params['entrymixtype'];
+    var divprops = main.params['divprops'];
+    var divcw = main.params['divcW'];
+    var updatefield = main.params['updatefield'];
+    var entrymediatype = main.params['entrymediatype'];
 
     if (type == entrymixtype) {
-    
+
         var entries = "";
         var name;
-        try {name = get_field("id_name")}catch(ex){};
+        try {
+            name = get_field("id_name")
+        } catch(ex) {};
 
         if (divprops != '')
         {
             document.getElementById(divcw).style.display = "none";
             document.getElementById(divprops).style.display = "block";
         }
-        for (i=0; i < param.length; i++)
+        for (i = 0; i < param.length; i++)
         {
-            entryId = (param[i].uniqueID == null ? param[i].entryId : param[i].uniqueID);
+            entryId = (param[i].uniqueID == null ? param[i].entryId: param[i].uniqueID);
             entries += entryId + ",";
         }
-		        $.ajax({ 
-		          type: "POST", 
-		          url: wwwroot + "/local/kaltura/kmix.php", 
-		          data: "entries="+entries+ "&name=" + name, 
-		          success: function(msg)
-          { 
-            if (msg.substr(0,2) == "y:")
-            {
-              entryId = msg.substr(2);
-              set_page_entry(entryId);  
-              if (divprops != '')
-              {
-                  show_entry_player(entryId, "light");
-                  update_field(updatefield, entryId, false, '');
-              }
-              else
-              {
-                setTimeout("window.parent.kalturaCloseModalBox();",0);     
-                update_field(updatefield, entryId, false, 'show_wait');
-             }      
+
+        YUI().use("io-base",
+        function(Y) {
+            var cfg,
+            uri,
+            handlers;
+            cfg = {
+                method: "POST",
+                data = "entries=" + entries + "&name=" + name,
             }
-            else
-            {
-              alert(msg.substr(2));
+            uri = wwwroot + "/local/kaltura/kmix.php"
+
+            handlers = {
+                success: function(id, o, args) {
+                    var msg = o.responseText
+                    if (msg.substr(0, 2) == "y:")
+                    {
+                        entryId = msg.substr(2);
+                        set_page_entry(entryId);
+                        if (divprops != '')
+                        {
+                            show_entry_player(entryId, "light");
+                            update_field(updatefield, entryId, false, '');
+                        }
+                        else
+                        {
+                            setTimeout("window.parent.kalturaCloseModalBox();", 0);
+                            update_field(updatefield, entryId, false, 'show_wait');
+                        }
+                    }
+                    else
+                    {
+                        alert(msg.substr(2));
+                    }
+                },
+                error: function(i, o, a) {}
             }
-          },
-          error: function(msg)
-          {
-          }
-		        });           
-        }
+
+            Y.on("io:success", handlers.success, Y, true)
+            Y.on("io.failure", handlers.error, Y, "Transaction Failed")
+
+            var req = Y.io(uri, cfg)
+        })
+    }
     else if (type == entrymediatype)
     {
-        entryId = (param[0].uniqueID == null ? param[0].entryId : param[0].uniqueID);
-        if (divprops!= '')
+        entryId = (param[0].uniqueID == null ? param[0].entryId: param[0].uniqueID);
+        if (divprops != '')
         {
-          document.getElementById(divcw).style.display = "none";
-          document.getElementById(divprops).style.display = "block";
-          set_page_entry(entryId);
-          show_entry_player(entryId, "light");
-          update_field(updatefield, entryId, false, '');
+            document.getElementById(divcw).style.display = "none";
+            document.getElementById(divprops).style.display = "block";
+            set_page_entry(entryId);
+            show_entry_player(entryId, "light");
+            update_field(updatefield, entryId, false, '');
         }
         else
         {
-          setTimeout("window.parent.kalturaCloseModalBox();",0);     
-          update_field(updatefield, entryId, false, 'show_wait');
+            setTimeout("window.parent.kalturaCloseModalBox();", 0);
+            update_field(updatefield, entryId, false, 'show_wait');
         }
     }
 }
 
-function onContributionWizardClose(modified) 
-{
-  if (modified[0] == 0)
-  {
-    setTimeout("window.parent.kalturaCloseModalBox();",0); 
-  }
+function onContributionWizardClose(modified)
+ {
+    if (modified[0] == 0)
+    {
+        setTimeout("window.parent.kalturaCloseModalBox();", 0);
+    }
 }
 
 function gotoEditorWindow(param1) {
-     onPlayerEditClick(param1);
+    onPlayerEditClick(param1);
 }
 
 function onPlayerEditClick(param1) {
     var wwwroot = main.params['wwwroot'];
 
-    kalturaInitModalBox(wwwroot + '/local/kaltura/keditor.php?entry_id=' +param1 , {width:890, height:546});
+    kalturaInitModalBox(wwwroot + '/local/kaltura/keditor.php?entry_id=' + param1, {
+        width: 890,
+        height: 546
+    });
 }
 
