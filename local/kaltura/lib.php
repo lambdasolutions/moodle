@@ -81,20 +81,20 @@ function get_se_wizard($div, $width, $height,$entryId)
 		  $flash_embed = $exp->getMessage();
 	  }
     $flash_embed = '
-	      <div id="'. $div .'" style="width:'.$width.'px;height:'.$height.';">
-    	  <script type="text/javascript">
-        var kso = new SWFObject("'. $url .'", "KalturaSW", "'. $width .'", "'. $height .'", "9", "#ffffff");
-        kso.addParam("flashVars", "'. $params .'");
-        kso.addParam("allowScriptAccess", "always");
-        kso.addParam("allowFullScreen", "TRUE");
-        kso.addParam("allowNetworking", "all");
-        if(kso.installedVer.major >= 9) {
-          kso.write("' . $div . '");
-        } else {
-          document.getElementById("' . $div . '").innerHTML = "Flash player version 9 and above is required. <a href=\"http://get.adobe.com/flashplayer/\">Upgrade your flash version</a>";
-        }
-	   	  </script>
-      ';
+	    <div id="'. $div .'" style="width:'.$width.'px;height:'.$height.';">
+        <script type="text/javascript">
+            var kso = new SWFObject("'. $url .'", "KalturaSW", "'. $width .'", "'. $height .'", "9", "#ffffff");
+            kso.addParam("flashVars", "'. $params .'");
+            kso.addParam("allowScriptAccess", "always");
+            kso.addParam("allowFullScreen", "TRUE");
+            kso.addParam("allowNetworking", "all");
+            if(kso.installedVer.major >= 9) {
+                kso.write("' . $div . '");
+            } else {
+                document.getElementById("' . $div . '").innerHTML = "Flash player version 9 and above is required. <a href=\"http://get.adobe.com/flashplayer/\">Upgrade your flash version</a>";
+            }
+        </script>
+        ';
 
     return $flash_embed;
   }
@@ -118,9 +118,9 @@ function get_se_js_functions($thumbUrl) {
 }
 
 function get_cw_js_functions($type, $divCW, $updateField, $divProps='') {
-    global $CFG, $USER;
+    global $CFG, $USER, $PAGE;
 
-    require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
+    $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
 
     $kalturaprotal = new kaltura_jsportal();
     $output = $kalturaprotal->print_javascript(
@@ -267,10 +267,10 @@ function get_cw_properties_pane($entry,$type)
 
 function get_wait_image($div, $field)
 {
-    global $CFG, $USER;
+    global $CFG, $USER, $PAGE;
 
-    require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
-    require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
+    $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
+    $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
 
    $kalturaprotal = new kaltura_jsportal();
    $javascript = $kalturaprotal->print_javascript(
@@ -292,7 +292,7 @@ function get_wait_image($div, $field)
 
 function embed_kaltura($entryId, $width, $height, $type, $design, $show_links = false)
 {
-  global $CFG;
+  global $CFG, $PAGE;
 //  $client = KalturaHelpers::getKalturaClient();
   $playerId = KalturaHelpers::getPlayer($type, $design);
   $partnerId= KalturaHelpers::getPlatformKey("partner_id","0");
@@ -309,8 +309,8 @@ function embed_kaltura($entryId, $width, $height, $type, $design, $show_links = 
     $kaltura_poweredby = '';
   }
 
-   require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
-   require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
+   $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
+   $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
 
    $kalturaprotal = new kaltura_jsportal();
    $output = $kalturaprotal->print_javascript(
@@ -327,14 +327,6 @@ function embed_kaltura($entryId, $width, $height, $type, $design, $show_links = 
     $html = $output . '
       <div id="'. $div_id .'" class="kaltura_wrapper" style="'. $align . $custom_style .'"'. /*$embed_options['js_events'] . */'>'. $links .'</div>'. $kaltura_poweredby;
       $html .= '<script type="text/javascript">';
-//      $html .= 'function gotoEditorWindow(param1)';
-//      $html .= '{';
-//      $html .= '     onPlayerEditClick(param1);';
-//      $html .= '}';
-//      $html .= 'function onPlayerEditClick(param1)';
-//      $html .= '{';
-//      $html .= '      kalturaInitModalBox(\''. $CFG->wwwroot.'/local/kaltura/keditor.php?entry_id=' . '\'+param1 , {width:890, height:546});';
-//      $html .= '}';
       $html .= '        var kaltura_swf = new SWFObject("'. $swfUrl .'", "player_'. $entryId .'", "'. $width .'", "'. $height .'", "9", "#ffffff");';
       $html .= '        kaltura_swf.addParam("wmode", "opaque");';
       $html .= '        kaltura_swf.addParam("allowScriptAccess", "always");';
@@ -349,7 +341,7 @@ function embed_kaltura($entryId, $width, $height, $type, $design, $show_links = 
 
 
 function embed_kswfdoc($entryId, $width, $height, $context_id) {
-  global $CFG, $USER;
+  global $CFG, $USER, $PAGE;
   $client = KalturaHelpers::getKalturaClient();
   $kswf_player = KalturaHelpers::getPlatformKey("video_presentation",KalturaSettings_PLAY_VIDEO_PRESENTATION_UICONF_ID);
   $partnerId= KalturaHelpers::getPlatformKey("partner_id","0");
@@ -363,26 +355,26 @@ function embed_kswfdoc($entryId, $width, $height, $context_id) {
 
 
   $context = get_context_instance(CONTEXT_COURSE, $context_id);
- 	if (has_capability('moodle/course:manageactivities',$context)) //check if admin of this widget
+	if (has_capability('moodle/course:manageactivities',$context)) //check if admin of this widget
 	{
 		//is admin
 		$kc = KalturaHelpers::getKalturaClient(0,'edit:'.$_GET['entry']);
-  	$adminvars = '"&adminMode=true"+"&partnerid='.$config->partnerId.'"+"&subpid='.$config->partnerId*100 . '"+"&ks='.$client->getKs().'"+"&uid='.$USER->id.'"';
+		$adminvars = '"&adminMode=true"+"&partnerid='.$config->partnerId.'"+"&subpid='.$config->partnerId*100 . '"+"&ks='.$client->getKs().'"+"&uid='.$USER->id.'"';
 	} else {
-  		//is student
-		$kc = KalturaHelpers::getKalturaClient(0,0);
-  	$adminvars = '"&adminMode=false"+"&partnerid='.$config->partnerId.'"+"&subpid='.$config->partnerId*100 . '"+"&ks='.$client->getKs().'"+"&uid='.$USER->id.'"';
+        //is student
+        $kc = KalturaHelpers::getKalturaClient(0,0);
+        $adminvars = '"&adminMode=false"+"&partnerid='.$config->partnerId.'"+"&subpid='.$config->partnerId*100 . '"+"&ks='.$client->getKs().'"+"&uid='.$USER->id.'"';
 	}
 
- 	$host = 'www.kaltura.com';
+    $host = 'www.kaltura.com';
 	if ($client -> getConfig() -> serviceUrl != 'http://www.kaltura.com')
 	{
 	  $host = str_replace('http://', '', $kc->config->serviceUrl);
 	}
 	$flashVarsStr = '"host='.$host.'"+'.$adminvars.'+"&debugMode=1" +"&kshowId=-1"+"&pd_sync_entry='.$entryId.'"';
 
-   require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
-   require_js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
+   $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
+   $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
 
    $kalturaprotal = new kaltura_jsportal();
    $output = $kalturaprotal->print_javascript(
@@ -395,14 +387,6 @@ function embed_kswfdoc($entryId, $width, $height, $context_id) {
     $html = $output . '
       <div id="'. $div_id .'" class="kaltura_wrapper" style="'. $align . $custom_style .'"'. $embed_options['js_events'] .'>'. $links .'</div>'. $kaltura_poweredby;
       $html .= '<script type="text/javascript">';
-//      $html .= 'function gotoEditorWindow(param1)';
-//      $html .= '{';
-//      $html .= '     onPlayerEditClick(param1);';
-//      $html .= '}';
-//      $html .= 'function onPlayerEditClick(param1)';
-//      $html .= '{';
-//      $html .= '      kalturaInitModalBox(\''. $CFG->wwwroot.'/local/kaltura/keditor.php?entry_id=' . '\'+param1 , {width:890, height:546});';
-//      $html .= '}';
       $html .= '        var kaltura_swf = new SWFObject("'.$swfUrl.'/uiconf_id/'.$kswf_player.'", "' .$div_id . '", "'. $width .'", "'. $height .'", "9", "#ffffff");';
       $html .= '        kaltura_swf.addParam("flashVars", '. $flashVarsStr .');';
       $html .= '        kaltura_swf.addParam("wmode", "opaque");';
@@ -489,7 +473,7 @@ function kaltura_process_options(&$config)
 			KalturaHelpers::importCE($config->ceurl, $config->ceadminemail, $config->cecmspass, $secret, $adminSecret, $partner);
 
 			$entry = new stdClass;
-			$entry->plugin="kaltura";
+			$entry->plugin="local_kaltura";
 
 			$entry->name="secret";
 			$entry->value = $secret;
@@ -630,7 +614,7 @@ function kaltura_print_recent_activity($course, $viewfullnames, $timestart)
 function kaltura_uninstall()
 {
     delete_records('log_display','module',"kaltura");
-    delete_records('config_plugins','plugin',"kaltura");
+    delete_records('config_plugins','plugin',"local_kaltura");
     drop_table('kaltura_entries');
 }
 ?>
