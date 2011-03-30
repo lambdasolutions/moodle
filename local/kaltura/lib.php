@@ -269,8 +269,8 @@ function get_wait_image($div, $field)
 {
     global $CFG, $USER, $PAGE;
 
-    $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
-    $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
+    $PAGE->requires->js('/local/kaltura/js/kaltura.main.js');
+    $PAGE->requires->js('/local/kaltura/js/kaltura.lib.js');
 
    $kalturaprotal = new kaltura_jsportal();
    $javascript = $kalturaprotal->print_javascript(
@@ -309,8 +309,8 @@ function embed_kaltura($entryId, $width, $height, $type, $design, $show_links = 
     $kaltura_poweredby = '';
   }
 
-   $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.main.js');
-   $PAGE->requires->js($CFG->wwwroot . '/local/kaltura/js/kaltura.lib.js');
+   $PAGE->requires->js('/local/kaltura/js/kaltura.main.js');
+   $PAGE->requires->js('/local/kaltura/js/kaltura.lib.js');
 
    $kalturaprotal = new kaltura_jsportal();
    $output = $kalturaprotal->print_javascript(
@@ -464,117 +464,7 @@ function get_width($entry)
 
 function kaltura_process_options(&$config)
 {
-    global $CFG;
-
-	if (!empty($config->ceurl) && !empty($config->ceadminemail) && !empty($config->cecmspass))
-	{
-		try
-		{
-			KalturaHelpers::importCE($config->ceurl, $config->ceadminemail, $config->cecmspass, $secret, $adminSecret, $partner);
-
-			$entry = new stdClass;
-			$entry->plugin="local_kaltura";
-
-			$entry->name="secret";
-			$entry->value = $secret;
-			insert_record("config_plugins", $entry);
-
-			$entry->name="adminsecret";
-			$entry->value = $adminSecret;
-			insert_record("config_plugins", $entry);
-
-			$entry->name="partner_id";
-			$entry->value = $partner;
-			insert_record("config_plugins", $entry);
-
-			$entry = get_record("config_plugins", "plugin", "kaltura", "name", "server_uri");
-			$entry->value = $config->ceurl;
-			update_record("config_plugins", $entry);
-		}
-      catch(Exception $exp)
-      {
-       redirect("$CFG->wwwroot/$CFG->admin/module.php?module=kaltura", get_string("registrationfailed","kaltura"). $exp->getMessage(), 5);
-       exit;
-      }
-	}
-    else if (empty($config->username) || empty($config->email) || empty($config->phone) ||
-        empty($config->descself) || empty($config->weburl) || empty($config->adult) ||
-        empty($config->purpose) || empty($config->webcontent))
-    {
-       redirect("$CFG->wwwroot/$CFG->admin/module.php?module=kaltura&err=mand", get_string("registrationfailed","kaltura"), 5);
-       exit;
-    }
-    else if (empty($config->accpetterms))
-    {
-       redirect("$CFG->wwwroot/$CFG->admin/module.php?module=kaltura&err=terms", get_string("registrationfailed","kaltura"), 5);
-       exit;
-    }
-    else
-    {
-      try
-      {
-         KalturaHelpers::register($config->username, $config->email, $secret, $adminSecret, $partner,
-                                  $config->phone, $config->purpose, $CFG->version, $config->descself,
-                                  $config->weburl, $config->webcontent,($config->adult == "Yes" ? true: false));
-        $entry = new stdClass;
-        $entry->plugin="kaltura";
-
-        $entry->name="secret";
-        $entry->value = $secret;
-        insert_record("config_plugins", $entry);
-
-        $entry->name="adminsecret";
-        $entry->value = $adminSecret;
-        insert_record("config_plugins", $entry);
-
-        $entry->name="partner_id";
-        $entry->value = $partner;
-        insert_record("config_plugins", $entry);
-
-      }
-      catch(Exception $exp)
-      {
-       redirect("$CFG->wwwroot/$CFG->admin/module.php?module=kaltura", get_string("registrationfailed","kaltura"). $exp->getMessage(), 5);
-       exit;
-      }
-    }
-
-    redirect("$CFG->wwwroot/$CFG->admin/module.php?module=kaltura", get_string("registrationsucced","kaltura"), 5);
-    exit;
-}
-
-function kaltura_add_instance($data)
-{
-/// Given an object containing all the necessary data,
-/// (defined by the form in mod.html) this function
-/// will create a new instance and return the id number
-/// of the new instance.
-    $returnid = insert_record("kaltura_entries", $data);
-
-    return $returnid;
-
-}
-
-function kaltura_update_instance($data)
-{
-
- /// Given an object containing all the necessary data,
-/// (defined by the form in mod.html) this function
-/// will update an existing instance with new data.
-
-  $returnid = update_record("kaltura_entries", $data);
-
-  return $returnid;
-}
-
-function kaltura_delete_instance($instance)
-{
-/// Given an ID of an instance of this module,
-/// this function will permanently delete the instance
-/// and any data that depends on it.
-
-  delete_records('kaltura_entries','context',"R_" . "$instance");
-  return true;
+    
 }
 
 function kaltura_user_complete($course, $user, $mod, $instance)

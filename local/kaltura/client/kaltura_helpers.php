@@ -1,4 +1,5 @@
 <?php
+
 class KalturaHelpers
 {
 	static $platfromConfig = null;
@@ -171,23 +172,24 @@ class KalturaHelpers
 	
   function getPlayer($type, $design)
   {
+    global $DB;
     $full_name = 'player_' . ($type == KalturaEntryType::MEDIA_CLIP ? 'regular_' : 'mix_') . $design;
-    $cnfg = get_record('config_plugins', 'plugin','kaltura','name', $full_name);
+    $cnfg = $DB->get_record('config_plugins', array('plugin' => 'local_kaltura','name' => $full_name));
     
     return $cnfg->value;
   }
   
   function getDesigns($type)
   {
-    global $CFG;
+    global $CFG, $DB;
     $arr = array();
     if ($type == KalturaEntryType::MEDIA_CLIP)
     {
-      $temp_arr = get_records_sql('select name from ' . $CFG->prefix . 'config_plugins where plugin="kaltura" and name like "player_regular%"');
+      $temp_arr = $DB->get_records_sql('select name from ' . $CFG->prefix . 'config_plugins where plugin="local_kaltura" and name like "player_regular%"');
     }
     else
     {
-       $temp_arr = get_records_sql('select name from ' . $CFG->prefix . 'config_plugins where plugin="kaltura" and name like "player_mix%"');
+       $temp_arr = $DB->get_records_sql('select name from ' . $CFG->prefix . 'config_plugins where plugin="local_kaltura" and name like "player_mix%"');
     }
     
     foreach($temp_arr as $k=>$v)
@@ -201,15 +203,15 @@ class KalturaHelpers
   
   function getPlayers($type)
   {
-    global $CFG;
+    global $CFG, $DB;
     $arr = array();
     if ($type == KalturaEntryType::MEDIA_CLIP)
     {
-      $temp_arr = get_records_sql('select name,value from ' . $CFG->prefix . 'config_plugins where plugin="kaltura" and name like "player_regular%"');
+      $temp_arr = $DB->get_records_sql('select name,value from ' . $CFG->prefix . 'config_plugins where plugin="local_kaltura" and name like "player_regular%"');
     }
     else
     {
-       $temp_arr = get_records_sql('select name,value from ' . $CFG->prefix . 'config_plugins where plugin="kaltura" and name like "player_mix%"');
+       $temp_arr = $DB->get_records_sql('select name,value from ' . $CFG->prefix . 'config_plugins where plugin="local_kaltura" and name like "player_mix%"');
     }
     
     foreach($temp_arr as $k=>$v)
@@ -270,7 +272,7 @@ class KalturaHelpers
 	function getPlatformKey($key = "", $default = "")
 	{
 //		$val = get_field('config_plugins','value','plugin','kaltura','name',$key);
-    $val = get_config('kaltura', $key);
+    $val = get_config('local_kaltura', $key);
 		if ($val == null ||  strlen($val) == 0)
 		{
 			return $default;

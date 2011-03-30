@@ -43,17 +43,7 @@ function create_swfdoc($ppt_id,$video_id,$name,$path)
 	$entry->dataContent = $xml;
 	$entry->mediaType = KalturaEntryType::DOCUMENT;
 	$result = $kClient -> data -> add($entry);
-	
-	// Insert the entry into kaltura_entries
-/*	$entry = new stdClass;
-	$entry->media_type = '10';
-	$entry->entry_id = $result["result"]["entry"]["id"];
-	$entry->parent_id = $entry->entry_id;
-	$entry->title = mysql_real_escape_string($name);
-	$entry->user_id = $USER->id;
-	$entry->created = time();
-	$newId = insert_record('kaltura_entries', $entry);
-*/
+
 	return $result->id;
 }
 

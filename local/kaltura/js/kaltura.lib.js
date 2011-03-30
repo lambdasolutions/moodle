@@ -40,7 +40,7 @@ function show_wait() {
                     } else {
                         document.getElementById(param_div).innerHTML = txt_document;
                     }
-                }
+                },
                 failure: function(id, o, args) {}
             }
         })

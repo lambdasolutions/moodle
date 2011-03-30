@@ -1,7 +1,6 @@
 <?php
 require_once("../../config.php");
 require_once('lib.php');
-require_js($CFG->wwwroot.'/local/kaltura/js/jquery.js');
 require_js($CFG->wwwroot.'/local/kaltura/js/kvideo.js');
 require_js($CFG->wwwroot.'/local/kaltura/js/swfobject.js');
 
