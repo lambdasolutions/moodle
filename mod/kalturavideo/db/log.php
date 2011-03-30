@@ -27,8 +27,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $logs = array(
-    array('module'=>'url', 'action'=>'view', 'mtable'=>'kalturavideo', 'field'=>'name'),
-    array('module'=>'url', 'action'=>'view all', 'mtable'=>'kalturavideo', 'field'=>'name'),
-    array('module'=>'url', 'action'=>'update', 'mtable'=>'kalturavideo', 'field'=>'name'),
-    array('module'=>'url', 'action'=>'add', 'mtable'=>'kalturavideo', 'field'=>'name'),
+    array('module'=>'kalturavideo', 'action'=>'view', 'mtable'=>'kalturavideo', 'field'=>'name'),
+    array('module'=>'kalturavideo', 'action'=>'view all', 'mtable'=>'kalturavideo', 'field'=>'name'),
+    array('module'=>'kalturavideo', 'action'=>'update', 'mtable'=>'kalturavideo', 'field'=>'name'),
+    array('module'=>'kalturavideo', 'action'=>'add', 'mtable'=>'kalturavideo', 'field'=>'name'),
 );
