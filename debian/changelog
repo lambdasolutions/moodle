@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-4) unstable; urgency=low
+
+  * Adding kalturavideo plugin
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 31 Mar 2011 11:24:24 +1300
+
 moodle-site-feature-kaltura (2.0.2-20110221-3) unstable; urgency=low
 
   * Adding local kaltura module
