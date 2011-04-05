@@ -49,7 +49,15 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
 
         //-------------------------------------------------------
         $mform->addElement('header', 'content', get_string('contentheader', 'kalturavideo'));
-        $mform->addElement('url', 'kalturaentry', get_string('kalturaentry', 'kalturavideo'), array('size'=>'60'));
+        $mform->addElement('hidden', 'kalturaentry','');
+
+        $formjs = kaltura_play_video_js('kalturaPlayer', '', 'input[name=kalturaentry]');
+        $mform->addElement('html','<div id="kalturaPlayer"></div>'.$formjs);
+
+        $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
+        $buttonjs = kaltura_replace_video_js('kalturaCW','replacevideo','input[name=kalturaentry]');
+        $mform->addElement('html',$buttonjs);
+
         //-------------------------------------------------------
         $mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));
 

@@ -25,28 +25,28 @@
  */
 
 require('../../config.php');
-require_once("$CFG->dirroot/mod/kalturavideo/locallib.php");
+require_once("locallib.php");
 require_once($CFG->libdir . '/completionlib.php');
 
 $id       = optional_param('id', 0, PARAM_INT);        // Course module ID
 $u        = optional_param('u', 0, PARAM_INT);         // kaltura video instance id
 
 if ($u) {  // Two ways to specify the module
-    $url = $DB->get_record('kalturavideo', array('id'=>$u), '*', MUST_EXIST);
-    $cm = get_coursemodule_from_instance('kalturavideo', $url->id, $url->course, false, MUST_EXIST);
+    $entry = $DB->get_record('kalturavideo', array('id'=>$u), '*', MUST_EXIST);
+    $cm = get_coursemodule_from_instance('kalturavideo', $entry->id, $entry->course, false, MUST_EXIST);
 
 } else {
     $cm = get_coursemodule_from_id('kalturavideo', $id, 0, false, MUST_EXIST);
-    $url = $DB->get_record('kalturavideo', array('id'=>$cm->instance), '*', MUST_EXIST);
+    $entry = $DB->get_record('kalturavideo', array('id'=>$cm->instance), '*', MUST_EXIST);
 }
 
 $course = $DB->get_record('course', array('id'=>$cm->course), '*', MUST_EXIST);
 
 require_course_login($course, true, $cm);
 $context = get_context_instance(CONTEXT_MODULE, $cm->id);
-//require_capability('mod/kalturavideo:view', $context);
+require_capability('mod/kalturavideo:view', $context);
 
-add_to_log($course->id, 'kalturavideo', 'view', 'view.php?id='.$cm->id, $url->id, $cm->id);
+add_to_log($course->id, 'kalturavideo', 'view', 'view.php?id='.$cm->id, $entry->id, $cm->id);
 
 // Update 'viewed' state if required by completion system
 $completion = new completion_info($course);
@@ -56,40 +56,8 @@ $PAGE->set_url('/mod/kalturavideo/view.php', array('id' => $cm->id));
 
 echo $OUTPUT->header();
 
-$baseurl = $DB->get_record('config_plugins',array('plugin' => 'local_kaltura', 'name'=>'server_uri'));
-$partnerid = $DB->get_record('config_plugins',array('plugin' => 'local_kaltura', 'name'=>'partner_id'));
-$playerid = $DB->get_record('config_plugins',array('plugin' => 'local_kaltura', 'name'=>'player_regular_light'));
-
-$swfurl = $baseurl->value;
-$swfurl .= '/kwidget/wid/_'.$partnerid->value;
-$swfurl .= '/uiconf_id/'.$playerid->value.'/entry_id/'.$url->kalturaentry;
 echo '<div id="kalturaPlayer"></div>';
-echo <<<JAVASCRIPT
-<script type="text/javascript">
-YUI().use('swf', 'node',function(Y){
-    var div = Y.one('#kalturaPlayer');
-    div.set('id', 'kalturaPlayer');
-    div.setStyles({
-        width:400,
-        height:290
-    });
-
-    var params = {
-        fixedAttributes: {
-            wmode: "opaque",
-            allowScriptAccess: "always",
-            allowFullScreen: true,
-            allowNetworking: "all"
-        },
-        flashVars: {
-            externalInterfaceDisabled: 0
-        }
-    };
-    var kaltura_player = new Y.SWF('#kalturaPlayer', '$swfurl', params);
-
-});
-</script>
-JAVASCRIPT;
+echo kaltura_play_video_js('kalturaPlayer', $entry->kalturaentry);
 
 echo $OUTPUT->footer();
 /*switch (url_get_final_display_type($url)) {
