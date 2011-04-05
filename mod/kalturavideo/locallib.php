@@ -28,7 +28,7 @@ function kaltura_replace_video_js($divid, $buttonid, $inputid) {
             var div = Y.one("div#$divid");
             div.setStyles({width:800, height: 600, display: 'none'});
 
-            var params = {  version: "9.0.115",
+            var swf = new Y.SWF("#$divid .yui3-widget-bd", "$url", {  version: "9.0.115",
                             fixedAttributes: {wmode: "opaque",
                                               allowScriptAccess:"always",
                                               allowNetworking:"all",
@@ -42,10 +42,7 @@ function kaltura_replace_video_js($divid, $buttonid, $inputid) {
                                         kShowId: -2,
                                         terms_of_use: "http://corp.kaltura.com/tandc"
                             }
-            };
-
-
-            var swf = new Y.SWF("#$divid .yui3-widget-bd", "$url", params);
+            });
 
             var overlay = new Y.Overlay({
                 srcNode: "#$divid",
