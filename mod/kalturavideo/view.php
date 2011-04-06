@@ -53,11 +53,15 @@ $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
 
 $PAGE->set_url('/mod/kalturavideo/view.php', array('id' => $cm->id));
+$PAGE->requires->js('/mod/kalturavideo/kalturavideo.js');
 
 echo $OUTPUT->header();
 
-echo '<div id="kalturaPlayer"></div>';
-echo kaltura_play_video_js('kalturaPlayer', $entry->kalturaentry);
+echo '<div class="kalturaPlayer"></div>';
+$kalturaConfig = array();
+$kalturaConfig['playerurl'] = kalturaPlayer_url();
+echo kalturaGlobals_js($kalturaConfig);
+echo '<script type="text/javascript">YUI().use("event", function(Y){Y.on("domready",function(){initialisevideo("'.$entry->kalturaentry.'");});});</script>';
 
 echo $OUTPUT->footer();
 /*switch (url_get_final_display_type($url)) {

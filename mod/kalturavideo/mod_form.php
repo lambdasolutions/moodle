@@ -31,7 +31,9 @@ require_once($CFG->dirroot.'/mod/kalturavideo/locallib.php');
 
 class mod_kalturavideo_mod_form extends moodleform_mod {
     function definition() {
-        global $CFG, $DB;
+        global $CFG, $DB, $PAGE;
+        $PAGE->requires->js('/mod/kalturavideo/kalturavideo.js');
+
         $mform = $this->_form;
 
         $config = get_config('kalturavideo');
@@ -51,12 +53,25 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         $mform->addElement('header', 'content', get_string('contentheader', 'kalturavideo'));
         $mform->addElement('hidden', 'kalturaentry','');
 
-        $formjs = kaltura_play_video_js('kalturaPlayer', '', 'input[name=kalturaentry]');
-        $mform->addElement('html','<div id="kalturaPlayer"></div>'.$formjs);
+        $url = kalturaPlayer_url();
+        $kalturaConfig = array('playerurl'=>$url, 'entryid'=>'', 'inputname'=>'kalturaentry');
+        $formjs = kalturaGlobals_js($kalturaConfig);
+        $formjs .= '<script type="text/javascript">YUI().use("event", function(Y){Y.on("domready",function(){initialisevideo("")});});</script>';
+
+        $mform->addElement('html','<div class="kalturaPlayer"></div>'.$formjs);
 
         $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
-        $buttonjs = kaltura_replace_video_js('kalturaCW','replacevideo','input[name=kalturaentry]');
-        $mform->addElement('html',$buttonjs);
+        $mform->addElement('html','<div class="kalturaContributionWizard">
+                                       <div class="yui3-widget-hd"></div>
+                                       <div class="yui3-widget-bd"></div>
+                                       <div class="yui3-widget-ft"></div>
+                                   </div>');
+        $kalturaConfig = kalturaCWSession_setup();
+        $kalturaConfig['buttonname'] = 'replacevideo';
+        $kalturaConfig['inputname'] = 'kalturaentry';
+
+        $updateJS = kalturaGlobals_js($kalturaConfig);
+        $mform->addElement('html',$updateJS);
 
         //-------------------------------------------------------
         $mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));

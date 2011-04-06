@@ -16,10 +16,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Url module admin settings and defaults
+ * kalturavideo module admin settings and defaults
  *
  * @package    mod
- * @subpackage url
+ * @subpackage kalturavideo
  * @copyright  2009 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -43,34 +43,34 @@ if ($ADMIN->fulltree) {
                                   );
 
     //--- general settings -----------------------------------------------------------------------------------
-    $settings->add(new admin_setting_configtext('url/framesize',
-        get_string('framesize', 'url'), get_string('configframesize', 'url'), 130, PARAM_INT));
-    $settings->add(new admin_setting_configcheckbox('url/requiremodintro',
+    $settings->add(new admin_setting_configtext('kalturavideo/framesize',
+        get_string('framesize', 'kalturavideo'), get_string('configframesize', 'kalturavideo'), 130, PARAM_INT));
+    $settings->add(new admin_setting_configcheckbox('kalturavideo/requiremodintro',
         get_string('requiremodintro', 'admin'), get_string('configrequiremodintro', 'admin'), 1));
-    $settings->add(new admin_setting_configpasswordunmask('url/secretphrase', get_string('password'),
-        get_string('configsecretphrase', 'url'), ''));
-    $settings->add(new admin_setting_configcheckbox('url/rolesinparams',
-        get_string('rolesinparams', 'url'), get_string('configrolesinparams', 'url'), false));
-    $settings->add(new admin_setting_configmultiselect('url/displayoptions',
-        get_string('displayoptions', 'url'), get_string('configdisplayoptions', 'url'),
+    $settings->add(new admin_setting_configpasswordunmask('kalturavideo/secretphrase', get_string('password'),
+        get_string('configsecretphrase', 'kalturavideo'), ''));
+    $settings->add(new admin_setting_configcheckbox('kalturavideo/rolesinparams',
+        get_string('rolesinparams', 'kalturavideo'), get_string('configrolesinparams', 'kalturavideo'), false));
+    $settings->add(new admin_setting_configmultiselect('kalturavideo/displayoptions',
+        get_string('displayoptions', 'kalturavideo'), get_string('configdisplayoptions', 'kalturavideo'),
         $defaultdisplayoptions, $displayoptions));
 
     //--- modedit defaults -----------------------------------------------------------------------------------
-    $settings->add(new admin_setting_heading('urlmodeditdefaults', get_string('modeditdefaults', 'admin'), get_string('condifmodeditdefaults', 'admin')));
+    $settings->add(new admin_setting_heading('kalturavideomodeditdefaults', get_string('modeditdefaults', 'admin'), get_string('condifmodeditdefaults', 'admin')));
 
-    $settings->add(new admin_setting_configcheckbox_with_advanced('url/printheading',
-        get_string('printheading', 'url'), get_string('printheadingexplain', 'url'),
+    $settings->add(new admin_setting_configcheckbox_with_advanced('kalturavideo/printheading',
+        get_string('printheading', 'kalturavideo'), get_string('printheadingexplain', 'kalturavideo'),
         array('value'=>0, 'adv'=>false)));
-    $settings->add(new admin_setting_configcheckbox_with_advanced('url/printintro',
-        get_string('printintro', 'url'), get_string('printintroexplain', 'url'),
+    $settings->add(new admin_setting_configcheckbox_with_advanced('kalturavideo/printintro',
+        get_string('printintro', 'kalturavideo'), get_string('printintroexplain', 'kalturavideo'),
         array('value'=>1, 'adv'=>false)));
-    $settings->add(new admin_setting_configselect_with_advanced('url/display',
-        get_string('displayselect', 'url'), get_string('displayselectexplain', 'url'),
+    $settings->add(new admin_setting_configselect_with_advanced('kalturavideo/display',
+        get_string('displayselect', 'kalturavideo'), get_string('displayselectexplain', 'kalturavideo'),
         array('value'=>RESOURCELIB_DISPLAY_AUTO, 'adv'=>false), $displayoptions));
-    $settings->add(new admin_setting_configtext_with_advanced('url/popupwidth',
-        get_string('popupwidth', 'url'), get_string('popupwidthexplain', 'url'),
+    $settings->add(new admin_setting_configtext_with_advanced('kalturavideo/popupwidth',
+        get_string('popupwidth', 'kalturavideo'), get_string('popupwidthexplain', 'kalturavideo'),
         array('value'=>620, 'adv'=>true), PARAM_INT, 7));
-    $settings->add(new admin_setting_configtext_with_advanced('url/popupheight',
-        get_string('popupheight', 'url'), get_string('popupheightexplain', 'url'),
+    $settings->add(new admin_setting_configtext_with_advanced('kalturavideo/popupheight',
+        get_string('popupheight', 'kalturavideo'), get_string('popupheightexplain', 'kalturavideo'),
         array('value'=>450, 'adv'=>true), PARAM_INT, 7));
 }
