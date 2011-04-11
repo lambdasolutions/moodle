@@ -2,19 +2,14 @@
 $string['pluginname'] = 'Kaltura Video';
 $string['modulename'] = 'Kaltura Video';
 $string['modulenameplural'] = 'Kaltura Videos';
-$string['framesize'] = 'framesize**placeholder';
-$string['configframesize'] = 'configframesize**placeholder';
-$string['configsecretphrase'] = 'configsecretphrase**placeholder';
-$string['rolesinparams'] = 'rolesinparams**placeholder';
-$string['configrolesinparams'] = 'configrolesinparams**placeholder';
 $string['displayoptions'] = 'Display options';
-$string['configdisplayoptions'] = 'Configure display options';
+$string['configdisplayoptions'] = 'Select all options that should be available, existing settings are not modified. Hold CTRL key to select multiple fields.';
 $string['printheading'] = 'Display Heading';
-$string['printheadingexplain'] = 'Display heading explanation';
+$string['printheadingexplain'] = 'Display video name above content?';
 $string['printintro'] = 'Display description';
-$string['printintroexplain'] = 'Display description explanation';
+$string['printintroexplain'] = 'Display video description below content?';
 $string['displayselect'] = 'Display';
-$string['displayselectexplain'] = 'Explain display...';
+$string['displayselectexplain'] = 'CHoose display type.';
 $string['displayselect_help'] = 'This setting, together with the URL file type and whether the browser allows embedding, determines how the URL is displayed. Options may include:
 
 * Automatic - The best display option for the URL is selected automatically
@@ -33,4 +28,18 @@ $string['kalturaentry'] = 'Kaltura Entry';
 $string['optionsheader'] = 'Display Options';
 $string['replacevideo'] = 'Replace Video';
 $string['pluginadministration'] = 'Kaltura Video Admin';
+
+$string['kalturaentrytype'] = 'Entry Type';
+$string['automatic'] = 'Automatic';
+$string['mediaclip'] = 'Video';
+$string['mix']       = 'Rough Cut';
+$string['playlist']  = 'Playlist';
+$string['document']  = 'Document';
+
+$string['playertheme'] = 'Player Theme';
+$string['light'] = 'Light';
+$string['dark'] = 'Dark';
+$string['playerthemeexplain'] = 'Choose the default colour theme for the Kaltura Video player widget.';
+$string['editortheme'] = 'Mixer Theme';
+$string['editorthemeexplain'] = 'Choose the default colour theme for the Kaltura Video mix widget.';
 ?>

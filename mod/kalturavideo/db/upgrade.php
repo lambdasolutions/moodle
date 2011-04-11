@@ -39,17 +39,25 @@
  * before any action that may take longer time to finish.
  *
  * @package    mod
- * @subpackage url
+ * @subpackage kalturavideo
  * @copyright  2009 Petr Skoda  {@link http://skodak.org}
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-function xmldb_url_upgrade($oldversion) {
+function xmldb_kalturavideo_upgrade($oldversion) {
     global $CFG, $DB;
 
     $dbman = $DB->get_manager();
+
+    if ($oldversion < 2011041100) {
+        $table = new xmldb_table('kalturavideo');
+        $field = new xmldb_field('videotype', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '-1', 'timemodified');
+        $dbman->add_field($table,$field);
+
+        upgrade_mod_savepoint(true, 2011041100, 'kalturavideo');
+    }
 
 
     return true;

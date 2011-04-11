@@ -58,10 +58,8 @@ $PAGE->requires->js('/mod/kalturavideo/kalturavideo.js');
 echo $OUTPUT->header();
 
 echo '<div class="kalturaPlayer"></div>';
-$kalturaConfig = array();
-$kalturaConfig['playerurl'] = kalturaPlayer_url();
-echo kalturaGlobals_js($kalturaConfig);
-echo '<script type="text/javascript">YUI().use("event", function(Y){Y.on("domready",function(){initialisevideo("'.$entry->kalturaentry.'");});});</script>';
+echo '<input type="hidden" value="'.$entry->kalturaentry.'">';
+echo '<script>window.kaltura = {}; window.kaltura.cmid='.$id.';</script>';
 
 echo $OUTPUT->footer();
 /*switch (url_get_final_display_type($url)) {

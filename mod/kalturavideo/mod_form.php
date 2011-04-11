@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die;
 
 require_once ($CFG->dirroot.'/course/moodleform_mod.php');
 require_once($CFG->dirroot.'/mod/kalturavideo/locallib.php');
+require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
 class mod_kalturavideo_mod_form extends moodleform_mod {
     function definition() {
@@ -53,12 +54,15 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         $mform->addElement('header', 'content', get_string('contentheader', 'kalturavideo'));
         $mform->addElement('hidden', 'kalturaentry','');
 
-        $url = kalturaPlayer_url();
-        $kalturaConfig = array('playerurl'=>$url, 'entryid'=>'', 'inputname'=>'kalturaentry');
-        $formjs = kalturaGlobals_js($kalturaConfig);
-        $formjs .= '<script type="text/javascript">YUI().use("event", function(Y){Y.on("domready",function(){initialisevideo("")});});</script>';
-
-        $mform->addElement('html','<div class="kalturaPlayer"></div>'.$formjs);
+        $kal_options = array(
+                             KalturaEntryType::AUTOMATIC => get_string('automatic','kalturavideo'),
+                             KalturaEntryType::MEDIA_CLIP => get_string('mediaclip','kalturavideo'),
+                             KalturaEntryType::MIX => get_string('mix','kalturavideo'),
+                             KalturaEntryType::PLAYLIST => get_string('playlist','kalturavideo'),
+                             KalturaEntryType::DOCUMENT => get_string('document','kalturavideo')
+        );
+        $mform->addElement('select','videotype', get_string('kalturaentrytype','kalturavideo'), $kal_options);
+        $mform->addElement('html','<div class="kalturaPlayer"></div>');
 
         $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
         $mform->addElement('html','<div class="kalturaContributionWizard">
@@ -66,15 +70,18 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
                                        <div class="yui3-widget-bd"></div>
                                        <div class="yui3-widget-ft"></div>
                                    </div>');
-        $kalturaConfig = kalturaCWSession_setup();
+
+        $kalturaConfig = array();
         $kalturaConfig['buttonname'] = 'replacevideo';
         $kalturaConfig['inputname'] = 'kalturaentry';
+        $kalturaConfig['mediaselectorname'] = 'videotype';
+        $kalturaConfig['cmid'] = optional_param('update',0,PARAM_INT);
 
         $updateJS = kalturaGlobals_js($kalturaConfig);
         $mform->addElement('html',$updateJS);
 
         //-------------------------------------------------------
-        $mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));
+        /*$mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));
 
         if ($this->current->instance) {
             $options = resourcelib_get_displayoptions(explode(',', $config->displayoptions), $this->current->display);
@@ -127,7 +134,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
             $mform->disabledIf('printintro', 'display', 'eq', RESOURCELIB_DISPLAY_NEW);
             $mform->setDefault('printintro', $config->printintro);
             $mform->setAdvanced('printintro', $config->printintro_adv);
-        }
+        }*/
 
         $this->standard_coursemodule_elements();
 

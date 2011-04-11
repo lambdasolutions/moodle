@@ -3,20 +3,34 @@
 require_once("$CFG->libdir/resourcelib.php");
 require_once($CFG->dirroot."/local/kaltura/client/KalturaClient.php");
 
-function kalturaCWSession_setup() {
-        global $DB, $USER;
-        $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
-        $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
-        $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
-        $uiId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'uploader_regular'));
-        $config = new KalturaConfiguration($partnerId);
-        $config->serviceUrl = $serviceUrl;
-        $client = new KalturaClient($config);
-        $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, 'edit:*');
-        $client->setKs($ks);
-        $url = $serviceUrl."/kcw/ui_conf_id/".$uiId;
+if (empty($config)) {
+    $config = get_config('kalturavideo');
+}
 
-        return array('CWurl'=>$url, 'sessionid'=>$ks,'uiId'=>$uiId,'partnerid'=>$partnerId);
+function kalturaCWSession_setup($mix=false) {
+    global $DB, $USER, $config;
+    $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
+    $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
+    $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
+
+    $uploader_type = 'regular';
+    if ($mix) {
+        $uploader_type = 'mix';
+    }
+
+    $uiId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'uploader_'.$uploader_type));
+    $config = new KalturaConfiguration($partnerId);
+    $config->serviceUrl = $serviceUrl;
+    $client = new KalturaClient($config);
+    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, 'edit:*');
+    $client->setKs($ks);
+    $url = $serviceUrl."/kcw/ui_conf_id/".$uiId;
+
+    return array('url'=>$url, 'params'=>array('sessionid'=>$ks,'uiId'=>$uiId,'partnerid'=>$partnerId, 'userid'=>$USER->id));
+}
+
+function kalturaEditor_setup() {
+    global $DB, $USER, $config;
 }
 
 function kalturaGlobals_js($config) {
@@ -34,11 +48,20 @@ function kalturaGlobals_js($config) {
     return $ret;
 }
 
-function kalturaPlayer_url() {
-    global $DB;
+function kalturaPlayerUrlBase($mix=false) {
+    global $DB, $config;
     $baseurl = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'server_uri'));
     $partnerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'partner_id'));
-    $playerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'player_regular_light'));
+
+    $player_type = 'regular';
+    $player_theme = $config->player_theme;
+    if ($mix) {
+        $player_type = 'mix';
+        $player_theme = $config->editor_theme;
+    }
+
+
+    $playerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'player_'.$player_type.'_'.$player_theme));
 
     $swfurl = $baseurl;
     $swfurl .= '/kwidget/wid/_'.$partnerid;
@@ -46,3 +69,5 @@ function kalturaPlayer_url() {
 
     return $swfurl;
 }
+
+

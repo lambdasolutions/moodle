@@ -31,29 +31,29 @@ if ($ADMIN->fulltree) {
 
     $displayoptions = resourcelib_get_displayoptions(array(RESOURCELIB_DISPLAY_AUTO,
                                                            RESOURCELIB_DISPLAY_EMBED,
-                                                           RESOURCELIB_DISPLAY_FRAME,
-                                                           RESOURCELIB_DISPLAY_OPEN,
                                                            RESOURCELIB_DISPLAY_NEW,
                                                            RESOURCELIB_DISPLAY_POPUP,
                                                           ));
     $defaultdisplayoptions = array(RESOURCELIB_DISPLAY_AUTO,
                                    RESOURCELIB_DISPLAY_EMBED,
-                                   RESOURCELIB_DISPLAY_OPEN,
+                                   RESOURCELIB_DISPLAY_NEW,
                                    RESOURCELIB_DISPLAY_POPUP,
                                   );
 
     //--- general settings -----------------------------------------------------------------------------------
-    $settings->add(new admin_setting_configtext('kalturavideo/framesize',
-        get_string('framesize', 'kalturavideo'), get_string('configframesize', 'kalturavideo'), 130, PARAM_INT));
     $settings->add(new admin_setting_configcheckbox('kalturavideo/requiremodintro',
-        get_string('requiremodintro', 'admin'), get_string('configrequiremodintro', 'admin'), 1));
-    $settings->add(new admin_setting_configpasswordunmask('kalturavideo/secretphrase', get_string('password'),
-        get_string('configsecretphrase', 'kalturavideo'), ''));
-    $settings->add(new admin_setting_configcheckbox('kalturavideo/rolesinparams',
-        get_string('rolesinparams', 'kalturavideo'), get_string('configrolesinparams', 'kalturavideo'), false));
+        get_string('requiremodintro', 'admin'), get_string('configrequiremodintro', 'admin'), 0));
     $settings->add(new admin_setting_configmultiselect('kalturavideo/displayoptions',
         get_string('displayoptions', 'kalturavideo'), get_string('configdisplayoptions', 'kalturavideo'),
         $defaultdisplayoptions, $displayoptions));
+    $settings->add(new admin_setting_configselect('kalturavideo/player_theme',
+        get_string('playertheme','kalturavideo'), get_string('playerthemeexplain','kalturavideo'),
+        array('value'=>'light'),
+        array('light'=> get_string('light', 'kalturavideo'), 'dark'=>get_string('dark','kalturavideo'))));
+    $settings->add(new admin_setting_configselect('kalturavideo/editor_theme',
+        get_string('editortheme','kalturavideo'), get_string('editorthemeexplain','kalturavideo'),
+        array('value'=>'light'),
+        array('light'=> get_string('light', 'kalturavideo'), 'dark'=>get_string('dark','kalturavideo'))));
 
     //--- modedit defaults -----------------------------------------------------------------------------------
     $settings->add(new admin_setting_heading('kalturavideomodeditdefaults', get_string('modeditdefaults', 'admin'), get_string('condifmodeditdefaults', 'admin')));
