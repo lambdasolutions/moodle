@@ -7,6 +7,19 @@ if (empty($config)) {
     $config = get_config('kalturavideo');
 }
 
+function kalturaClientSession() {
+    global $DB, $USER, $config;
+    $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
+    $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
+    $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
+    $config = new KalturaConfiguration($partnerId);
+    $config->serviceUrl = $serviceUrl;
+    $client = new KalturaClient($config);
+    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, 'edit:*');
+    $client->setKs($ks);
+    return $client;
+}
+
 function kalturaCWSession_setup($mix=false) {
     global $DB, $USER, $config;
     $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));

@@ -58,7 +58,6 @@ $PAGE->requires->js('/mod/kalturavideo/kalturavideo.js');
 echo $OUTPUT->header();
 
 echo '<div class="kalturaPlayer"></div>';
-echo '<input type="hidden" value="'.$entry->kalturaentry.'">';
 echo '<script>window.kaltura = {}; window.kaltura.cmid='.$id.';</script>';
 
 echo $OUTPUT->footer();

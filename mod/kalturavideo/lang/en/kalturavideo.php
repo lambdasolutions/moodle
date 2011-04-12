@@ -27,6 +27,7 @@ $string['contentheader'] = 'Video Content';
 $string['kalturaentry'] = 'Kaltura Entry';
 $string['optionsheader'] = 'Display Options';
 $string['replacevideo'] = 'Replace Video';
+$string['replaceeditvideo'] = 'Replace Editable Video';
 $string['pluginadministration'] = 'Kaltura Video Admin';
 
 $string['kalturaentrytype'] = 'Entry Type';

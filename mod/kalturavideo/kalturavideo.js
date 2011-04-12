@@ -1,71 +1,91 @@
-YUI().use("swf","node", "overlay","io","json-parse","event", function(Y) {
-    var wiz = Y.one(".kalturaContributionWizard");
-    if (wiz != undefined) {
-        wiz.setStyles({width:800, height: 600, display: 'none'});
-        Y.one('input[name='+window.kaltura.buttonname+']').on('click',function(e) {
-            e.preventDefault();
-            Y.one(".kalturaContributionWizard .yui3-widget-bd").setStyles({width:800, height: 600});
+var KalturaEntryType_Media = 1;
+var KalturaEntryType_Mix = 2;
 
-            var select = Y.one("select[name="+window.kaltura.mediaselectorname+"]");
-            var mix = false;
-            if (select != undefined) {
-                mix = select.get('value')==2? 1 : 0; // This is as set in KalturaClient.php...
-            } else mix =0;
-            var datastr = '';
-            if (window.kaltura.cmid != 0) {
-                datastr += 'id='+window.kaltura.cmid+'&';
-            }
-            datastr += 'fields=url&uploader=1&mix='+mix;
+YUI().use("node","io","json-parse","event", function(Y) {
+    var div = Y.Node.create('<div class="kalturaContributionWizard">'
+                                +'<div class="yui3-widget-hd"></div>'
+                                +'<div class="yui3-widget-bd"></div>'
+                                +'<div class="yui3-widget-ft"></div>'
+                            +'</div>');
+    Y.one('body').appendChild(div);
 
-            Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
-                {
-                    data: datastr,
-                    on: {
-                        complete: function(i,o,a) {
-                        var response = Y.JSON.parse(o.responseText);
-                            var swf = new Y.SWF(".kalturaContributionWizard .yui3-widget-bd", response.url,
-                                    {  version: "9.0.115",
-                                   fixedAttributes: {wmode: "opaque",
-                                                 allowScriptAccess:"always",
-                                                     allowNetworking:"all",
-                                                     allowFullScreen: "TRUE"},
-                                   flashVars: {partnerId: response.params.partnerid,
-                                               userId: response.params.userid,
-                                               sessionId: response.params.sessionid,
-                                               uiConfId: response.params.uiId,
-                                               afterAddEntry: "onContributionWizardAfterAddEntry",
-                                               close: "onContributionWizardClose",
-                                               kShowId: -2,
-                                               terms_of_use: "http://corp.kaltura.com/tandc"
-                                   }
-                                }
-                            );
-                        }
-                    }
-                }
-            );
-            var overlay = new Y.Overlay({
-                srcNode: ".kalturaContributionWizard",
-                centered: true
-            });
-            Y.one('.kalturaContributionWizard').setStyles({display: 'block'});
-            overlay.set("centered", true);
-            overlay.render(document.body);
-            return false;
-        });
-    }
+    Y.one(".kalturaContributionWizard").setStyles({width:800, height: 600, display: 'none'});
+
+    replaceVideoButton('input#id_buttons_replacevideo',KalturaEntryType_Media);
+    replaceVideoButton('input#id_buttons_replaceeditvideo',KalturaEntryType_Mix);
 
     var player = Y.one('.kalturaPlayer');
     if (player != undefined) {
-        Y.on("domready",function() { initialisevideo(''); });
+        Y.on("domready",function() { initialisevideo({}); });
     }
 });
 
+function replaceVideoButton(buttonselector, videotype) {
+    YUI().use('node','io','json-parse','overlay','swf', function(Y) {
+
+        var replace_button = Y.one(buttonselector);
+        if (replace_button != undefined) {
+            replace_button.on('click',function(e) {
+                e.preventDefault();
+                Y.one(".kalturaContributionWizard .yui3-widget-bd").setStyles({width:800, height: 600});
+
+                Y.one("input[name=videotype]").set('value',videotype);
+
+                var datastr = '';
+                datastr += 'actions=cwurl&videotype='+videotype;
+
+                Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
+                    {
+                        data: datastr,
+                        on: {
+                            complete: function(i,o,a) {
+                            var response = Y.JSON.parse(o.responseText);
+                                var swf = new Y.SWF(".kalturaContributionWizard .yui3-widget-bd", response.cwurl.url,
+                                        {  version: "9.0.115",
+                                       fixedAttributes: {wmode: "opaque",
+                                                     allowScriptAccess:"always",
+                                                         allowNetworking:"all",
+                                                         allowFullScreen: "TRUE"},
+                                       flashVars: {partnerId: response.cwurl.params.partnerid,
+                                                   userId: response.cwurl.params.userid,
+                                                   sessionId: response.cwurl.params.sessionid,
+                                                   uiConfId: response.cwurl.params.uiId,
+                                                   afterAddEntry: "onContributionWizardAfterAddEntry",
+                                                   close: "onContributionWizardClose",
+                                                   kShowId: -2,
+                                                   terms_of_use: "http://corp.kaltura.com/tandc"
+                                       }
+                                    }
+                                );
+                            }
+                        }
+                    }
+                );
+                var overlay = new Y.Overlay({
+                    srcNode: ".kalturaContributionWizard",
+                    centered: true
+                });
+                Y.one('.kalturaContributionWizard').setStyles({display: 'block'});
+                overlay.set("centered", true);
+                overlay.render(document.body);
+                return false;
+            });
+        }
+    });
+}
+
 function onContributionWizardAfterAddEntry(param) {
     YUI.use('node', function(Y) {
-        var entryId = (param[0].uniqueID == null ? param[0].entryId: param[0].uniqueID);
-        Y.one('input[name='+window.kaltura.inputname+']').set('value',entryId);
-        initialisevideo(entryId);
+        var videoType = Y.one('input[name=videotype]').get('value');
+
+        if (videoType == KalturaEntryType_Media) {
+            var entryId = (param[0].uniqueID == null ? param[0].entryId: param[0].uniqueID);
+            Y.one('input[name=kalturaentry]').set('value',entryId);
+            initialisevideo({entryid: entryId, videotype: videoType});
+        }
+        else if (videoType == KalturaEntryTYpe_Mix) {
+            //TODO: fill this out again for mix type
+        }
     });
 }
 
@@ -75,17 +95,23 @@ function onContributionWizardClose(modified) {
     });
 }
 
-function initialisevideo(entry_id) {
+function initialisevideo(obj) {
     YUI().use("swf","node","io","json-parse", function(Y) {
         Y.one('.kalturaPlayer').setStyles({width:400,height:290});
 
         var datastr = '';
-        if (window.kaltura.cmid != 0) {
-            datastr += 'id='+window.kaltura.cmid+'&';
+        datastr += 'actions=playerurl';
+        if (obj.entryid != undefined) {
+            datastr += '&entryid='+obj.entryid;
         }
-        datastr += 'fields=url';
-        if (entry_id) {
-            datastr += '&entryid='+entry_id;
+        else if (window.kaltura.cmid != 0) {
+            datastr += '&id='+window.kaltura.cmid;
+        }
+        else {
+            return false;
+        }
+        if (obj.videotype != undefined) {
+            datastr += '&videotype='+obj.videotype;
         }
 
         Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
@@ -94,7 +120,7 @@ function initialisevideo(entry_id) {
                 on: {
                     complete: function(i, o, a) {
                         var data = Y.JSON.parse(o.responseText);
-                        var kaltura_player = new Y.SWF('.kalturaPlayer', data['url'],
+                        var kaltura_player = new Y.SWF('.kalturaPlayer', data.playerurl.url,
                             {
                                 fixedAttributes: {
                                     wmode: "opaque",

@@ -28,54 +28,74 @@ require('../../config.php');
 require_once("locallib.php");
 require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
-$id             = optional_param('id', 0, PARAM_INT);
-$fields         = optional_param('fields', '', PARAM_TAGLIST);
-$entryid        = optional_param('entryid', '', PARAM_CLEAN);
-$uploader       = optional_param('uploader', false, PARAM_BOOL);
-$mix            = optional_param('mix', false, PARAM_BOOL);
-
-if ($id != 0) {
-    $cm = get_coursemodule_from_id('kalturavideo', $id, 0, false, MUST_EXIST);
-    $entry = $DB->get_record('kalturavideo', array('id'=>$cm->instance), '*', MUST_EXIST);
-    $course = $DB->get_record('course', array('id'=>$cm->course), '*', MUST_EXIST);
-}
-
-if (!$uploader) {
-    if (empty($entry)) {
-        $entry = new stdClass;
-        $entry->videotype = KalturaEntryType::MEDIA_CLIP;
-        if ($mix) {
-            $entry->videotype = KalturaEntryType::MIX;
-        }
-    } else if (!empty($entry) && empty($entryid)) {
-        $entryid = $entry->kalturaentry;
-    }
-}
+$id         = optional_param('id', 0, PARAM_INT);
+$actions    = optional_param('actions', '', PARAM_TAGLIST);
+$entryid    = optional_param('entryid', '', PARAM_CLEAN);
+$videotype  = optional_param('videotype', 0, PARAM_INT);
+$mixentries = optional_param('misentries', '', PARAM_TAGLIST);
 
 require_login();
 
-$fields = explode(',', $fields);
+$actions = explode(',', $actions);
 
 $returndata = array();
 
-foreach ($fields as $field) {
-    switch ($field) {
-        case 'url':
-            if (!$uploader) {
-                if ($entry->videotype != KalturaEntryType::MIX and !$mix) {
-                    $url = kalturaPlayerUrlBase();
-                } else if ($entry->videotype == KalturaEntryType::MIX or $mix) {
-                    $url = kalturaPlayerUrlBase(true);
-                }
-                $returndata['url'] = $url.$entryid;
+foreach ($actions as $action) {
+    switch ($action) {
+        case 'playerurl':
+            $entry = null;
+            if (!empty($id)) {
+                $cm = get_coursemodule_from_id('kalturavideo', $id, 0, false, MUST_EXIST);
+                $entry = $DB->get_record('kalturavideo', array('id'=>$cm->instance), '*', MUST_EXIST);
+            }
+            else if (!empty($entryid)) {
+                $entry = new stdClass;
+                $entry->kalturaentry = $entryid;
+            }
+            else {
+                //what are we displaying? :o
+                break;
+            }
+            if (!empty($videotype)) {
+                $entry->videotype = $videotype;
+            } else if (empty($entry->videotype)) {
+                //what video type should it be? oh noes!
+                break;
+            }
+            if ($videotype == KalturaEntryType::MIX) {
+                $mix = true;
+            }
+            else {
+                $mix = false;
+            }
+
+            $url = kalturaPlayerUrlBase($mix);
+            $returndata['playerurl'] = array('url' => $url.$entry->kalturaentry);
+            break;
+
+        case 'cwurl':
+            if ($videotype == KalturaEntryType::MIX) {
+                $tmp = kalturaCWSession_setup(true);
             } else {
-                if (!$mix) {
-                    $tmp = kalturaCWSession_setup();
-                } else if ($mix) {
-                    $tmp = kalturaCWSession_setup(true);
+                $tmp = kalturaCWSession_setup();
+            }
+            $returndata['cwurl'] = $tmp;
+            break;
+
+        case 'mixaddentries':
+            if (!empty($mixentries)) {
+                $client = kalturaClientSession();
+                $mix = new KalturaMixEntry();
+                $mix->name = "Editable video";
+                //$mix -> name = (empty($_POST["name"]) ? "Editable video" : $_POST["name"]);
+                $mix->editorType = KalturaEditorType::ADVANCED;
+                $mix = $client->mixing->add($mix);
+
+                $mixentries = explode(',', $mixentries);
+                foreach ($mixentries as $mid) {
+                    $client->mixing->appendMediaEntry($mix->id, $mid);
                 }
-                $returndata['url'] = $tmp['url'];
-                $returndata['params'] = $tmp['params'];
+                $returndata['mixaddentries'] = array('entryid' => $mix->id);
             }
             break;
 

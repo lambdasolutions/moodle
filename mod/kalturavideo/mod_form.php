@@ -54,27 +54,20 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         $mform->addElement('header', 'content', get_string('contentheader', 'kalturavideo'));
         $mform->addElement('hidden', 'kalturaentry','');
 
-        $kal_options = array(
-                             KalturaEntryType::AUTOMATIC => get_string('automatic','kalturavideo'),
-                             KalturaEntryType::MEDIA_CLIP => get_string('mediaclip','kalturavideo'),
-                             KalturaEntryType::MIX => get_string('mix','kalturavideo'),
-                             KalturaEntryType::PLAYLIST => get_string('playlist','kalturavideo'),
-                             KalturaEntryType::DOCUMENT => get_string('document','kalturavideo')
-        );
-        $mform->addElement('select','videotype', get_string('kalturaentrytype','kalturavideo'), $kal_options);
+        $mform->addElement('hidden','videotype', '');
         $mform->addElement('html','<div class="kalturaPlayer"></div>');
 
-        $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
-        $mform->addElement('html','<div class="kalturaContributionWizard">
+        $buttons = array();
+        $buttons[] =& $mform->createElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
+        $buttons[] =& $mform->createElement('submit', 'replaceeditvideo', get_String('replaceeditvideo', 'kalturavideo'));
+        $mform->addGroup($buttons, 'buttons', ' ', false);
+        /*$mform->addElement('html','<div class="kalturaContributionWizard">
                                        <div class="yui3-widget-hd"></div>
                                        <div class="yui3-widget-bd"></div>
                                        <div class="yui3-widget-ft"></div>
-                                   </div>');
+                                   </div>');*/
 
         $kalturaConfig = array();
-        $kalturaConfig['buttonname'] = 'replacevideo';
-        $kalturaConfig['inputname'] = 'kalturaentry';
-        $kalturaConfig['mediaselectorname'] = 'videotype';
         $kalturaConfig['cmid'] = optional_param('update',0,PARAM_INT);
 
         $updateJS = kalturaGlobals_js($kalturaConfig);
