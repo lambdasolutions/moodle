@@ -16,7 +16,7 @@ YUI().use("swf","node", "overlay","io","json-parse","event", function(Y) {
                 datastr += 'id='+window.kaltura.cmid+'&';
             }
             datastr += 'fields=url&uploader=1&mix='+mix;
-alert(datastr);
+
             Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
                 {
                     data: datastr,
