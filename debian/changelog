@@ -1,3 +1,10 @@
+moodle-site-feature-kaltura (2.0.2-20110221-10) unstable; urgency=low
+
+  * mod/kalturavideo: moved everything sharable into local/kaltura,
+    backup and restore now functional
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 14 Apr 2011 11:44:06 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-9) unstable; urgency=low
 
   * mod/kalturavideo: editing now in rough working condition
