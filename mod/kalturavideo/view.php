@@ -25,7 +25,7 @@
  */
 
 require('../../config.php');
-require_once("locallib.php");
+require_once($CFG->dirroot."/local/kaltura/lib.php");
 require_once($CFG->libdir . '/completionlib.php');
 
 $id       = optional_param('id', 0, PARAM_INT);        // Course module ID
@@ -53,8 +53,8 @@ $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
 
 $PAGE->set_url('/mod/kalturavideo/view.php', array('id' => $cm->id));
-$PAGE->requires->js('/mod/kalturavideo/kalturavideo-common.js');
-$PAGE->requires->js('/mod/kalturavideo/kalturavideo-play.js');
+$PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
+$PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
 echo $OUTPUT->header();
 

@@ -27,15 +27,15 @@
 defined('MOODLE_INTERNAL') || die;
 
 require_once ($CFG->dirroot.'/course/moodleform_mod.php');
-require_once($CFG->dirroot.'/mod/kalturavideo/locallib.php');
+require_once($CFG->dirroot.'/local/kaltura/lib.php');
 require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
 class mod_kalturavideo_mod_form extends moodleform_mod {
     function definition() {
         global $CFG, $DB, $PAGE;
-        $PAGE->requires->js('/mod/kalturavideo/kalturavideo-common.js');
-        $PAGE->requires->js('/mod/kalturavideo/kalturavideo-edit.js');
-        $PAGE->requires->js('/mod/kalturavideo/kalturavideo-play.js');
+        $PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
+        $PAGE->requires->js('/local/kaltura/js/kaltura-edit.js');
+        $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
         $mform = $this->_form;
 

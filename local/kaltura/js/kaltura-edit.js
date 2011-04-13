@@ -29,7 +29,7 @@ function replaceVideoButton(buttonselector, videotype) {
                 var datastr = '';
                 datastr += 'actions=cwurl&videotype='+videotype;
 
-                Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
+                Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
                     {
                         data: datastr,
                         on: {
@@ -90,7 +90,7 @@ function onContributionWizardAfterAddEntry(param) {
                 }
             }
 
-            Y.io(M.cfg.wwwroot + "/mod/kalturavideo/ajax.php", {
+            Y.io(M.cfg.wwwroot + "/local/kaltura/ajax.php", {
                 data: 'actions=mixaddentries&mixentries='+entries,
                 on: {
                     complete: function(id, o, args) {
@@ -99,6 +99,7 @@ function onContributionWizardAfterAddEntry(param) {
                             var id = response.mixaddentries.entryid;
                             Y.one('input[name=kalturaentry]').set('value',id);
                             initialisevideo({
+                                playerselector: '.kalturaPlayerEdit',
                                 entryid: id,
                                 videotype: videoType
                             })
@@ -120,7 +121,7 @@ function onContributionWizardClose(modified) {
 function gotoEditorWindow(param) {
     YUI().use('node','io','swf','overlay','json-parse', function(Y) {
         if (param != undefined && param != '') {
-            Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php', {
+            Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php', {
                 data: 'actions=editorurl&entryid='+param,
                 on: {
                     complete: function(i,o,a) {

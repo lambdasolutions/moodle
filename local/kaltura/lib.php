@@ -8,7 +8,7 @@ if (empty($config)) {
 }
 
 function kalturaClientSession() {
-    global $DB, $USER, $config;
+    global $DB, $USER;
     $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
     $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
     $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
@@ -21,7 +21,7 @@ function kalturaClientSession() {
 }
 
 function kalturaCWSession_setup($mix=false) {
-    global $DB, $USER, $config;
+    global $DB, $USER;
     $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
     $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
     $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
@@ -43,7 +43,7 @@ function kalturaCWSession_setup($mix=false) {
 }
 
 function kalturaEditor_setup($entryid) {
-    global $DB, $USER, $config;
+    global $DB, $USER;
     $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
     $editor = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'editor'));
     $client = kalturaClientSession();

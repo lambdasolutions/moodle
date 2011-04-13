@@ -24,7 +24,7 @@ function initialisevideo(obj) {
             datastr += '&videotype='+obj.videotype;
         }
 
-        Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
+        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
             {
                 data: datastr,
                 on: {

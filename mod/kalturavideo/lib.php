@@ -208,7 +208,7 @@ function kalturavideo_get_participants($kalturavideoid) {
  */
 function kalturavideo_get_coursemodule_info($coursemodule) {
     global $CFG, $DB;
-    require_once("$CFG->dirroot/mod/kalturavideo/locallib.php");
+    require_once("$CFG->dirroot/local/kaltura/lib.php");
 
     if (!$kalturavideo = $DB->get_record('kalturavideo', array('id'=>$coursemodule->instance), 'id, name, display, displayoptions, kalturaentry, parameters')) {
         return NULL;

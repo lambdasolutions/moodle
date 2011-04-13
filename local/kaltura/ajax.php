@@ -25,7 +25,7 @@
  */
 
 require('../../config.php');
-require_once("locallib.php");
+require_once("lib.php");
 require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
 $id         = optional_param('id', 0, PARAM_INT);
