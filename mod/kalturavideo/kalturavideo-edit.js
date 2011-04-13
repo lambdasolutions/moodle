@@ -80,7 +80,6 @@ function onContributionWizardAfterAddEntry(param) {
             initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId, videotype: videoType});
         }
         else if (videoType == KalturaEntryType_Mix) {
-            //TODO: fill this out again for mix type
             var entries = "";
 
             for (i = 0; i < param.length; i++) {
