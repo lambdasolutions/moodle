@@ -56,13 +56,7 @@ foreach ($actions as $action) {
                 //what are we displaying? :o
                 break;
             }
-            if (!empty($videotype)) {
-                $entry->videotype = $videotype;
-            } else if (empty($entry->videotype)) {
-                //what video type should it be? oh noes!
-                break;
-            }
-            if ($entry->videotype == KalturaEntryType::MIX) {
+            if ($videotype == KalturaEntryType::MIX) {
                 $mix = true;
             }
             else {

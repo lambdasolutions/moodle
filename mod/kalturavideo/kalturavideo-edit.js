@@ -1,6 +1,3 @@
-var KalturaEntryType_Media = 1;
-var KalturaEntryType_Mix = 2;
-
 YUI().use("node","io","json-parse","event", function(Y) {
     var div = Y.Node.create('<div class="kalturaContributionWizard">'
                                 +'<div class="yui3-widget-hd"></div>'
@@ -14,10 +11,11 @@ YUI().use("node","io","json-parse","event", function(Y) {
     replaceVideoButton('input#id_buttons_replacevideo',KalturaEntryType_Media);
     replaceVideoButton('input#id_buttons_replaceeditvideo',KalturaEntryType_Mix);
 
-    var player = Y.one('.kalturaPlayer');
-    if (player != undefined) {
-        Y.on("domready",function() { initialisevideo({}); });
-    }
+
+    Y.on("domready",function() {
+                                initialisevideo({playerselector:'.kalturaPlayerEdit',
+                                videotype: Y.one('input[name=videotype]').get('value')});
+    });
 });
 
 function replaceVideoButton(buttonselector, videotype) {
@@ -119,52 +117,6 @@ function onContributionWizardAfterAddEntry(param) {
 function onContributionWizardClose(modified) {
     YUI().use('node', function(Y) {
         Y.one('.kalturaContributionWizard').setStyles({display: 'none'});
-    });
-}
-
-function initialisevideo(obj) {
-    YUI().use("swf","node","io","json-parse", function(Y) {
-        Y.one('.kalturaPlayer').setStyles({width:400,height:290});
-
-        var datastr = '';
-        datastr += 'actions=playerurl';
-        if (obj.entryid != undefined) {
-            datastr += '&entryid='+obj.entryid;
-        }
-        else if (window.kaltura.cmid != 0) {
-            datastr += '&id='+window.kaltura.cmid;
-        }
-        else {
-            return false;
-        }
-        if (obj.videotype != undefined) {
-            datastr += '&videotype='+obj.videotype;
-        }
-
-        Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php',
-            {
-                data: datastr,
-                on: {
-                    complete: function(i, o, a) {
-                        var data = Y.JSON.parse(o.responseText);
-                        var kaltura_player = new Y.SWF('.kalturaPlayer', data.playerurl.url,
-                            {
-                                fixedAttributes: {
-                                    wmode: "opaque",
-                                    allowScriptAccess: "always",
-                                    allowFullScreen: true,
-                                    allowNetworking: "all"
-                                },
-                                flashVars: {
-                                    externalInterfaceDisabled: 0,
-                                    gotoEditorWindow: "gotoEditorWindow"
-                                }
-                            }
-                        );
-                    }
-                }
-            }
-        );
     });
 }
 

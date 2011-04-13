@@ -33,7 +33,9 @@ require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 class mod_kalturavideo_mod_form extends moodleform_mod {
     function definition() {
         global $CFG, $DB, $PAGE;
-        $PAGE->requires->js('/mod/kalturavideo/kalturavideo.js');
+        $PAGE->requires->js('/mod/kalturavideo/kalturavideo-common.js');
+        $PAGE->requires->js('/mod/kalturavideo/kalturavideo-edit.js');
+        $PAGE->requires->js('/mod/kalturavideo/kalturavideo-play.js');
 
         $mform = $this->_form;
 
@@ -55,7 +57,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         $mform->addElement('hidden', 'kalturaentry','');
 
         $mform->addElement('hidden','videotype', '');
-        $mform->addElement('html','<div class="kalturaPlayer"></div>');
+        $mform->addElement('html','<div class="kalturaPlayerEdit"></div>');
 
         $buttons = array();
         $buttons[] =& $mform->createElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
