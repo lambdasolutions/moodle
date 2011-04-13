@@ -23,38 +23,38 @@
  */
 
 /**
- * Define all the restore steps that will be used by the restore_url_activity_task
+ * Define all the restore steps that will be used by the restore_kalturavideo_activity_task
  */
 
 /**
- * Structure step to restore one url activity
+ * Structure step to restore one kalturavideo activity
  */
-class restore_url_activity_structure_step extends restore_activity_structure_step {
+class restore_kalturavideo_activity_structure_step extends restore_activity_structure_step {
 
     protected function define_structure() {
 
         $paths = array();
-        $paths[] = new restore_path_element('url', '/activity/url');
+        $paths[] = new restore_path_element('kalturavideo', '/activity/kalturavideo');
 
         // Return the paths wrapped into standard activity structure
         return $this->prepare_activity_structure($paths);
     }
 
-    protected function process_url($data) {
+    protected function process_kalturavideo($data) {
         global $DB;
 
         $data = (object)$data;
         $oldid = $data->id;
         $data->course = $this->get_courseid();
 
-        // insert the url record
-        $newitemid = $DB->insert_record('url', $data);
+        // insert the kalturavideo record
+        $newitemid = $DB->insert_record('kalturavideo', $data);
         // immediately after inserting "activity" record, call this
         $this->apply_activity_instance($newitemid);
     }
 
     protected function after_execute() {
-        // Add url related files, no need to match by itemname (just internally handled context)
-        $this->add_related_files('mod_url', 'intro', null);
+        // Add kalturavideo related files, no need to match by itemname (just internally handled context)
+        $this->add_related_files('mod_kalturavideo', 'intro', null);
     }
 }

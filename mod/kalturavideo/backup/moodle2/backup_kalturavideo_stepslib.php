@@ -16,10 +16,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Define all the backup steps that will be used by the backup_url_activity_task
+ * Define all the backup steps that will be used by the backup_kalturavideo_activity_task
  *
  * @package    mod
- * @subpackage url
+ * @subpackage kalturavideo
  * @copyright  2010 onwards Andrew Davis
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -27,34 +27,34 @@
 defined('MOODLE_INTERNAL') || die;
 
  /**
- * Define the complete url structure for backup, with file and id annotations
+ * Define the complete kalturavideo structure for backup, with file and id annotations
  */
-class backup_url_activity_structure_step extends backup_activity_structure_step {
+class backup_kalturavideo_activity_structure_step extends backup_activity_structure_step {
 
     protected function define_structure() {
 
-        //the URL module stores no user info
+        //the kalturavideo module stores no user info
 
         // Define each element separated
-        $url = new backup_nested_element('url', array('id'), array(
-            'course','name', 'intro', 'introformat', 'externalurl',
+        $kalturavideo = new backup_nested_element('kalturavideo', array('id'), array(
+            'course','name', 'intro', 'introformat', 'kalturaentry','videotype',
             'display', 'displayoptions', 'parameters', 'timemodified'));
 
 
         // Build the tree
-        //nothing here for URLs
+        //nothing here for videos
 
         // Define sources
-        $url->set_source_table('url', array('id' => backup::VAR_ACTIVITYID));
+        $kalturavideo->set_source_table('kalturavideo', array('id' => backup::VAR_ACTIVITYID));
 
         // Define id annotations
         //module has no id annotations
 
         // Define file annotations
-        $url->annotate_files('mod_url', 'intro', null); // This file area hasn't itemid
+        $kalturavideo->annotate_files('mod_kalturavideo', 'intro', null); // This file area hasn't itemid
 
-        // Return the root element (url), wrapped into standard activity structure
-        return $this->prepare_activity_structure($url);
+        // Return the root element (kalturavideo), wrapped into standard activity structure
+        return $this->prepare_activity_structure($kalturavideo);
 
     }
 }

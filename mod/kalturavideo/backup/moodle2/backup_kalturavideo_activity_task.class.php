@@ -17,7 +17,7 @@
 
 /**
  * @package    mod
- * @subpackage url
+ * @subpackage kalturavideo
  * @copyright  2010 onwards Andrew Davis
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -28,13 +28,13 @@ defined('MOODLE_INTERNAL') || die;
  // backup_activity_task so here there isn't any class definition, like the ones
  // existing in /backup/moodle2/backup_settingslib.php (activities section)
 
-require_once($CFG->dirroot . '/mod/url/backup/moodle2/backup_url_stepslib.php'); // Because it exists (must)
+require_once($CFG->dirroot . '/mod/kalturavideo/backup/moodle2/backup_kalturavideo_stepslib.php'); // Because it exists (must)
 
 /**
- * URL backup task that provides all the settings and steps to perform one
+ * KALTURAVIDEO backup task that provides all the settings and steps to perform one
  * complete backup of the activity
  */
-class backup_url_activity_task extends backup_activity_task {
+class backup_kalturavideo_activity_task extends backup_activity_task {
 
     /**
      * Define (add) particular settings this activity can have
@@ -47,7 +47,7 @@ class backup_url_activity_task extends backup_activity_task {
      * Define (add) particular steps this activity can have
      */
     protected function define_my_steps() {
-        $this->add_step(new backup_url_activity_structure_step('url_structure', 'url.xml'));
+        $this->add_step(new backup_kalturavideo_activity_structure_step('kalturavideo_structure', 'kalturavideo.xml'));
     }
 
     /**
@@ -57,21 +57,21 @@ class backup_url_activity_task extends backup_activity_task {
     static public function encode_content_links($content) {
         global $CFG;
 
-        $base = preg_quote($CFG->wwwroot.'/mod/url','#');
+        $base = preg_quote($CFG->wwwroot.'/mod/kalturavideo','#');
 
         //Access a list of all links in a course
         $pattern = '#('.$base.'/index\.php\?id=)([0-9]+)#';
-        $replacement = '$@URLINDEX*$2@$';
+        $replacement = '$@KALTURAVIDEOINDEX*$2@$';
         $content = preg_replace($pattern, $replacement, $content);
 
         //Access the link supplying a course module id
         $pattern = '#('.$base.'/view\.php\?id=)([0-9]+)#';
-        $replacement = '$@URLVIEWBYID*$2@$';
+        $replacement = '$@KALTURAVIDEOVIEWBYID*$2@$';
         $content = preg_replace($pattern, $replacement, $content);
 
         //Access the link supplying an instance id
         $pattern = '#('.$base.'/view\.php\?u=)([0-9]+)#';
-        $replacement = '$@URLVIEWBYU*$2@$';
+        $replacement = '$@KALTURAVIDEOVIEWBYU*$2@$';
         $content = preg_replace($pattern, $replacement, $content);
 
         return $content;
