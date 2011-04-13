@@ -1,16 +1,6 @@
 YUI().use("node","io","json-parse","event", function(Y) {
-    var div = Y.Node.create('<div class="kalturaContributionWizard">'
-                                +'<div class="yui3-widget-hd"></div>'
-                                +'<div class="yui3-widget-bd"></div>'
-                                +'<div class="yui3-widget-ft"></div>'
-                            +'</div>');
-    Y.one('body').appendChild(div);
-
-    Y.one(".kalturaContributionWizard").setStyles({width:800, height: 600, display: 'none'});
-
     replaceVideoButton('input#id_buttons_replacevideo',KalturaEntryType_Media);
     replaceVideoButton('input#id_buttons_replaceeditvideo',KalturaEntryType_Mix);
-
 
     Y.on("domready",function() {
                                 initialisevideo({playerselector:'.kalturaPlayerEdit',
@@ -25,6 +15,13 @@ function replaceVideoButton(buttonselector, videotype) {
         if (replace_button != undefined) {
             replace_button.on('click',function(e) {
                 e.preventDefault();
+                var div = Y.Node.create('<div class="kalturaContributionWizard">'
+                                            +'<div class="yui3-widget-hd"></div>'
+                                            +'<div class="yui3-widget-bd"></div>'
+                                            +'<div class="yui3-widget-ft"></div>'
+                                        +'</div>');
+                Y.one('body').appendChild(div);
+
                 Y.one(".kalturaContributionWizard .yui3-widget-bd").setStyles({width:800, height: 600});
 
                 Y.one("input[name=videotype]").set('value',videotype);
@@ -80,7 +77,7 @@ function onContributionWizardAfterAddEntry(param) {
         if (videoType == KalturaEntryType_Media) {
             var entryId = (param[0].uniqueID == null ? param[0].entryId: param[0].uniqueID);
             Y.one('input[name=kalturaentry]').set('value',entryId);
-            initialisevideo({entryid: entryId, videotype: videoType});
+            initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId, videotype: videoType});
         }
         else if (videoType == KalturaEntryType_Mix) {
             //TODO: fill this out again for mix type
@@ -117,6 +114,7 @@ function onContributionWizardAfterAddEntry(param) {
 function onContributionWizardClose(modified) {
     YUI().use('node', function(Y) {
         Y.one('.kalturaContributionWizard').setStyles({display: 'none'});
+        Y.one('.kalturaContributionWizard').remove(true);
     });
 }
 
@@ -138,9 +136,10 @@ function gotoEditorWindow(param) {
                             Y.one('body').appendChild(div);
                             Y.one('.kalturaEditor').setStyles({'z-index': 10});
                             Y.one('.kalturaEditor .yui3-widget-bd').setStyles({width:900, height:600});
+
                             var swf = new Y.SWF('.kalturaEditor .yui3-widget-bd', response.editorurl.url,
                                 {
-                                    flashAttributes: {
+                                    fixedAttributes: {
                                         wmode: "opaque",
                                         allowScriptAccess: "always",
                                         allowFullScreen: true,
@@ -151,8 +150,7 @@ function gotoEditorWindow(param) {
                             );
                             var overlay = new Y.Overlay({
                                 srcNode: '.kalturaEditor',
-                                centered: true,
-                                shim: true
+                                centered: true
                             });
 
                             overlay.render(document.body);
@@ -165,13 +163,13 @@ function gotoEditorWindow(param) {
     });
 }
 
-function onSimpleEditorSaveClick(param) {
+function onSimpleEditorSaveClick() {
     YUI.use('node', function(Y) {
         Y.one('.kalturaEditor').setStyles({display: 'none'});
-        alert(param);
+        Y.one('.kalturaEditor').remove(true);
     });
 }
 
 function onSimpleEditorBackClick(param) {
-    //TODO: Nothing?
+    onSimpleEditorSaveClick();
 }

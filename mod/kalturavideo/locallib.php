@@ -57,8 +57,8 @@ function kalturaEditor_setup($entryid) {
                         'uid' => $USER->id,
                         'ks' => $client->getKs(),
                         'uiConfId' => $editor,
-                        'backF' => 'onSimpleEditorBackClick',
-                        'saveF' => 'onSimpleEditorSaveClick'
+                         'backF' => 'onSimpleEditorBackClick',
+                         'saveF' => 'onSimpleEditorSaveClick'
     );
     return array('url' => $url, 'params' => $params);
 }
