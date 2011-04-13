@@ -46,14 +46,15 @@ function replaceVideoButton(buttonselector, videotype) {
                                                      allowScriptAccess:"always",
                                                          allowNetworking:"all",
                                                          allowFullScreen: "TRUE"},
-                                       flashVars: {partnerId: response.cwurl.params.partnerid,
-                                                   userId: response.cwurl.params.userid,
-                                                   sessionId: response.cwurl.params.sessionid,
-                                                   uiConfId: response.cwurl.params.uiId,
-                                                   afterAddEntry: "onContributionWizardAfterAddEntry",
-                                                   close: "onContributionWizardClose",
-                                                   kShowId: -2,
-                                                   terms_of_use: "http://corp.kaltura.com/tandc"
+                                       flashVars: {
+                                                    partnerId: response.cwurl.params.partnerid,
+                                                    userId: response.cwurl.params.userid,
+                                                    sessionId: response.cwurl.params.sessionid,
+                                                    uiConfId: response.cwurl.params.uiId,
+                                                    afterAddEntry: "onContributionWizardAfterAddEntry",
+                                                    close: "onContributionWizardClose",
+                                                    kShowId: -2,
+                                                    terms_of_use: "http://corp.kaltura.com/tandc"
                                        }
                                     }
                                 );
@@ -75,7 +76,7 @@ function replaceVideoButton(buttonselector, videotype) {
 }
 
 function onContributionWizardAfterAddEntry(param) {
-    YUI.use('node', function(Y) {
+    YUI.use('node','io','json-parse', function(Y) {
         var videoType = Y.one('input[name=videotype]').get('value');
 
         if (videoType == KalturaEntryType_Media) {
@@ -83,8 +84,34 @@ function onContributionWizardAfterAddEntry(param) {
             Y.one('input[name=kalturaentry]').set('value',entryId);
             initialisevideo({entryid: entryId, videotype: videoType});
         }
-        else if (videoType == KalturaEntryTYpe_Mix) {
+        else if (videoType == KalturaEntryType_Mix) {
             //TODO: fill this out again for mix type
+            var entries = "";
+
+            for (i = 0; i < param.length; i++) {
+                entryId = (param[i].uniqueID == null ? param[i].entryId: param[i].uniqueID);
+                entries += entryId;
+                if (i != param.length-1) {
+                    entries+=",";
+                }
+            }
+
+            Y.io(M.cfg.wwwroot + "/mod/kalturavideo/ajax.php", {
+                data: 'actions=mixaddentries&mixentries='+entries,
+                on: {
+                    complete: function(id, o, args) {
+                        try {
+                            var response = Y.JSON.parse(o.responseText);
+                            var id = response.mixaddentries.entryid;
+                            Y.one('input[name=kalturaentry]').set('value',id);
+                            initialisevideo({
+                                entryid: id,
+                                videotype: videoType
+                            })
+                        } catch(ex) {}
+                    }
+                }
+            });
         }
     });
 }
@@ -129,7 +156,8 @@ function initialisevideo(obj) {
                                     allowNetworking: "all"
                                 },
                                 flashVars: {
-                                    externalInterfaceDisabled: 0
+                                    externalInterfaceDisabled: 0,
+                                    gotoEditorWindow: "gotoEditorWindow"
                                 }
                             }
                         );
@@ -138,4 +166,60 @@ function initialisevideo(obj) {
             }
         );
     });
+}
+
+function gotoEditorWindow(param) {
+    YUI().use('node','io','swf','overlay','json-parse', function(Y) {
+        if (param != undefined && param != '') {
+            Y.io(M.cfg.wwwroot+'/mod/kalturavideo/ajax.php', {
+                data: 'actions=editorurl&entryid='+param,
+                on: {
+                    complete: function(i,o,a) {
+                        try {
+                            var response = Y.JSON.parse(o.responseText);
+                            var div = Y.Node.create('<div class="kalturaEditor">'
+                                                        +'<div class="yui3-widget-hd"></div>'
+                                                        +'<div class="yui3-widget-bd"></div>'
+                                                        +'<div class="yui3-widget-ft"></div>'
+                                                    +'</div>'
+                            );
+                            Y.one('body').appendChild(div);
+                            Y.one('.kalturaEditor').setStyles({'z-index': 10});
+                            Y.one('.kalturaEditor .yui3-widget-bd').setStyles({width:900, height:600});
+                            var swf = new Y.SWF('.kalturaEditor .yui3-widget-bd', response.editorurl.url,
+                                {
+                                    flashAttributes: {
+                                        wmode: "opaque",
+                                        allowScriptAccess: "always",
+                                        allowFullScreen: true,
+                                        allowNetworking: "all"
+                                    },
+                                    flashVars: response.editorurl.params
+                                }
+                            );
+                            var overlay = new Y.Overlay({
+                                srcNode: '.kalturaEditor',
+                                centered: true,
+                                shim: true
+                            });
+
+                            overlay.render(document.body);
+                        }
+                        catch(ex) {}
+                    }
+                 }
+             });
+        }
+    });
+}
+
+function onSimpleEditorSaveClick(param) {
+    YUI.use('node', function(Y) {
+        Y.one('.kalturaEditor').setStyles({display: 'none'});
+        alert(param);
+    });
+}
+
+function onSimpleEditorBackClick(param) {
+    //TODO: Nothing?
 }

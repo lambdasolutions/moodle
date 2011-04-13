@@ -59,13 +59,10 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
 
         $buttons = array();
         $buttons[] =& $mform->createElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
+        //if (admin has set 'mix' as a supported type in this moodle) {
         $buttons[] =& $mform->createElement('submit', 'replaceeditvideo', get_String('replaceeditvideo', 'kalturavideo'));
+        //}
         $mform->addGroup($buttons, 'buttons', ' ', false);
-        /*$mform->addElement('html','<div class="kalturaContributionWizard">
-                                       <div class="yui3-widget-hd"></div>
-                                       <div class="yui3-widget-bd"></div>
-                                       <div class="yui3-widget-ft"></div>
-                                   </div>');*/
 
         $kalturaConfig = array();
         $kalturaConfig['cmid'] = optional_param('update',0,PARAM_INT);
@@ -74,7 +71,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         $mform->addElement('html',$updateJS);
 
         //-------------------------------------------------------
-        /*$mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));
+        $mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));
 
         if ($this->current->instance) {
             $options = resourcelib_get_displayoptions(explode(',', $config->displayoptions), $this->current->display);
@@ -127,7 +124,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
             $mform->disabledIf('printintro', 'display', 'eq', RESOURCELIB_DISPLAY_NEW);
             $mform->setDefault('printintro', $config->printintro);
             $mform->setAdvanced('printintro', $config->printintro_adv);
-        }*/
+        }
 
         $this->standard_coursemodule_elements();
 

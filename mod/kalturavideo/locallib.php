@@ -15,7 +15,7 @@ function kalturaClientSession() {
     $config = new KalturaConfiguration($partnerId);
     $config->serviceUrl = $serviceUrl;
     $client = new KalturaClient($config);
-    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, 'edit:*');
+    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, '*');
     $client->setKs($ks);
     return $client;
 }
@@ -42,8 +42,25 @@ function kalturaCWSession_setup($mix=false) {
     return array('url'=>$url, 'params'=>array('sessionid'=>$ks,'uiId'=>$uiId,'partnerid'=>$partnerId, 'userid'=>$USER->id));
 }
 
-function kalturaEditor_setup() {
+function kalturaEditor_setup($entryid) {
     global $DB, $USER, $config;
+    $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
+    $editor = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'editor'));
+    $client = kalturaClientSession();
+    $config = $client->getConfig();
+
+    $url = $serviceUrl.'/kse/ui_conf_id/'.$editor;
+    $params = array(
+                        'entry_id' => $entryid,
+                        'kshow_id' => 'entry-'.$entryid,
+                        'partner_id' => $config->partnerId,
+                        'uid' => $USER->id,
+                        'ks' => $client->getKs(),
+                        'uiConfId' => $editor,
+                        'backF' => 'onSimpleEditorBackClick',
+                        'saveF' => 'onSimpleEditorSaveClick'
+    );
+    return array('url' => $url, 'params' => $params);
 }
 
 function kalturaGlobals_js($config) {

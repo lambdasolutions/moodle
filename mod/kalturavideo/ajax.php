@@ -32,7 +32,7 @@ $id         = optional_param('id', 0, PARAM_INT);
 $actions    = optional_param('actions', '', PARAM_TAGLIST);
 $entryid    = optional_param('entryid', '', PARAM_CLEAN);
 $videotype  = optional_param('videotype', 0, PARAM_INT);
-$mixentries = optional_param('misentries', '', PARAM_TAGLIST);
+$mixentries = optional_param('mixentries', '', PARAM_TAGLIST);
 
 require_login();
 
@@ -62,7 +62,7 @@ foreach ($actions as $action) {
                 //what video type should it be? oh noes!
                 break;
             }
-            if ($videotype == KalturaEntryType::MIX) {
+            if ($entry->videotype == KalturaEntryType::MIX) {
                 $mix = true;
             }
             else {
@@ -80,6 +80,13 @@ foreach ($actions as $action) {
                 $tmp = kalturaCWSession_setup();
             }
             $returndata['cwurl'] = $tmp;
+            break;
+
+        case 'editorurl':
+            if (empty($entryid)) {
+                break;
+            }
+            $returndata['editorurl'] = kalturaEditor_setup($entryid);
             break;
 
         case 'mixaddentries':
