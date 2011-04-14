@@ -38,7 +38,7 @@ function replaceVideoButton(buttonselector, videotype) {
                                 var swf = new Y.SWF(".kalturaContributionWizard .yui3-widget-bd", response.cwurl.url,
                                         {  version: "9.0.115",
                                        fixedAttributes: {wmode: "opaque",
-                                                     allowScriptAccess:"always",
+                                                         allowScriptAccess:"always",
                                                          allowNetworking:"all",
                                                          allowFullScreen: "TRUE"},
                                        flashVars: {
@@ -90,8 +90,10 @@ function onContributionWizardAfterAddEntry(param) {
                 }
             }
 
+            var name = Y.one('input[name=name]').get('value');
+
             Y.io(M.cfg.wwwroot + "/local/kaltura/ajax.php", {
-                data: 'actions=mixaddentries&mixentries='+entries,
+                data: 'actions=mixaddentries&mixentries='+entries+'&mixname='+name,
                 on: {
                     complete: function(id, o, args) {
                         try {

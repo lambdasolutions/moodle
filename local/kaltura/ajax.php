@@ -33,6 +33,7 @@ $actions    = optional_param('actions', '', PARAM_TAGLIST);
 $entryid    = optional_param('entryid', '', PARAM_CLEAN);
 $videotype  = optional_param('videotype', 0, PARAM_INT);
 $mixentries = optional_param('mixentries', '', PARAM_TAGLIST);
+$mixname    = optional_param('mixname','', PARAM_TEXT);
 
 require_login();
 
@@ -88,7 +89,9 @@ foreach ($actions as $action) {
                 $client = kalturaClientSession();
                 $mix = new KalturaMixEntry();
                 $mix->name = "Editable video";
-                //$mix -> name = (empty($_POST["name"]) ? "Editable video" : $_POST["name"]);
+                if (!empty($mixname)) {
+                    $mix->name = $mixname;
+                }
                 $mix->editorType = KalturaEditorType::ADVANCED;
                 $mix = $client->mixing->add($mix);
 

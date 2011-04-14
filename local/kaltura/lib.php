@@ -3,9 +3,6 @@
 require_once("$CFG->libdir/resourcelib.php");
 require_once($CFG->dirroot."/local/kaltura/client/KalturaClient.php");
 
-if (empty($config)) {
-    $config = get_config('kalturavideo');
-}
 
 function kalturaClientSession() {
     global $DB, $USER;
@@ -15,7 +12,7 @@ function kalturaClientSession() {
     $config = new KalturaConfiguration($partnerId);
     $config->serviceUrl = $serviceUrl;
     $client = new KalturaClient($config);
-    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, '*');
+    $ks = $client->session->start($secret, $USER->id, KalturaSessionType::USER);
     $client->setKs($ks);
     return $client;
 }
@@ -35,7 +32,7 @@ function kalturaCWSession_setup($mix=false) {
     $config = new KalturaConfiguration($partnerId);
     $config->serviceUrl = $serviceUrl;
     $client = new KalturaClient($config);
-    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER, -1, 86400, 'edit:*');
+    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER);
     $client->setKs($ks);
     $url = $serviceUrl."/kcw/ui_conf_id/".$uiId;
 
@@ -79,7 +76,8 @@ function kalturaGlobals_js($config) {
 }
 
 function kalturaPlayerUrlBase($mix=false) {
-    global $DB, $config;
+    global $DB;
+    $config = get_config('kalturavideo');
     $baseurl = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'server_uri'));
     $partnerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'partner_id'));
 
