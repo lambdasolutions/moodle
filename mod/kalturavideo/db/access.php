@@ -36,16 +36,5 @@ $capabilities = array(
         )
     ),
 
-/* TODO: review public portfolio API first!
-    'mod/url:portfolioexport' => array(
-
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => array(
-            'teacher' => CAP_ALLOW,
-            'editingteacher' => CAP_ALLOW,
-        )
-    ),*/
-
 );
 

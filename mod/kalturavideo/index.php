@@ -16,11 +16,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * List of urls in course
+ * List of videos in course
  *
  * @package    mod
- * @subpackage video
- * @copyright  2011 onwards Brett Wilkins <brett@catalyst.net.nz>
+ * @subpackage kalturavideo
+ * @copyright  2011 Brett Wilkins <brett@catalyst.net.nz>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -33,23 +33,23 @@ $course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
 require_course_login($course, true);
 $PAGE->set_pagelayout('incourse');
 
-add_to_log($course->id, 'url', 'view all', "index.php?id=$course->id", '');
+add_to_log($course->id, 'kalturavideo', 'view all', "index.php?id=$course->id", '');
 
-$strurl       = get_string('modulename', 'kalturavideo');
-$strurls      = get_string('modulenameplural', 'kalturavideo');
+$strvideo        = get_string('modulename', 'kalturavideo');
+$strvideos       = get_string('modulenameplural', 'kalturavideo');
 $strsectionname  = get_string('sectionname', 'format_'.$course->format);
 $strname         = get_string('name');
 $strintro        = get_string('moduleintro');
 $strlastmodified = get_string('lastmodified');
 
 $PAGE->set_url('/mod/kalturavideo/index.php', array('id' => $course->id));
-$PAGE->set_title($course->shortname.': '.$strurls);
+$PAGE->set_title($course->shortname.': '.$strvideos);
 $PAGE->set_heading($course->fullname);
-$PAGE->navbar->add($strurls);
+$PAGE->navbar->add($strvideos);
 echo $OUTPUT->header();
 
 if (!$videos = get_all_instances_in_course('kalturavideo', $course)) {
-    notice(get_string('thereareno', 'moodle', $strurls), "$CFG->wwwroot/course/view.php?id=$course->id");
+    notice(get_string('thereareno', 'moodle', $strvideos), "$CFG->wwwroot/course/view.php?id=$course->id");
     exit;
 }
 
@@ -71,35 +71,34 @@ if ($usesections) {
 
 $modinfo = get_fast_modinfo($course);
 $currentsection = '';
-foreach ($urls as $url) {
-    $cm = $modinfo->cms[$url->coursemodule];
+foreach ($videos as $video) {
+    $cm = $modinfo->cms[$video->coursemodule];
     if ($usesections) {
         $printsection = '';
-        if ($url->section !== $currentsection) {
-            if ($url->section) {
-                $printsection = get_section_name($course, $sections[$url->section]);
+        if ($video->section !== $currentsection) {
+            if ($video->section) {
+                $printsection = get_section_name($course, $sections[$video->section]);
             }
             if ($currentsection !== '') {
                 $table->data[] = 'hr';
             }
-            $currentsection = $url->section;
+            $currentsection = $video->section;
         }
     } else {
-        $printsection = '<span class="smallinfo">'.userdate($url->timemodified)."</span>";
+        $printsection = '<span class="smallinfo">'.userdate($video->timemodified)."</span>";
     }
 
     $extra = empty($cm->extra) ? '' : $cm->extra;
     $icon = '';
     if (!empty($cm->icon)) {
-        // each url has an icon in 2.0
         $icon = '<img src="'.$OUTPUT->pix_url($cm->icon).'" class="activityicon" alt="'.get_string('modulename', $cm->modname).'" /> ';
     }
 
-    $class = $url->visible ? '' : 'class="dimmed"'; // hidden modules are dimmed
+    $class = $video->visible ? '' : 'class="dimmed"'; // hidden modules are dimmed
     $table->data[] = array (
         $printsection,
-        "<a $class $extra href=\"view.php?id=$cm->id\">".$icon.format_string($url->name)."</a>",
-        format_module_intro('url', $url, $cm->id));
+        "<a $class $extra href=\"view.php?id=$cm->id\">".$icon.format_string($video->name)."</a>",
+        format_module_intro('kalturavideo', $video, $cm->id));
 }
 
 echo html_writer::table($table);

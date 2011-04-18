@@ -9,8 +9,8 @@ $string['printheadingexplain'] = 'Display video name above content?';
 $string['printintro'] = 'Display description';
 $string['printintroexplain'] = 'Display video description below content?';
 $string['displayselect'] = 'Display';
-$string['displayselectexplain'] = 'CHoose display type.';
-$string['displayselect_help'] = 'This setting, together with the URL file type and whether the browser allows embedding, determines how the URL is displayed. Options may include:
+$string['displayselectexplain'] = 'Choose display type.';
+$string['displayselect_help'] = 'This setting, together with the  file type and whether the browser allows embedding, determines how the URL is displayed. Options may include:
 
 * Automatic - The best display option for the URL is selected automatically
 * Embed - The URL is displayed within the page below the navigation bar together with the URL description and any blocks

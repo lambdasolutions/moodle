@@ -18,7 +18,7 @@
 /**
  * @package    mod
  * @subpackage kalturavideo
- * @copyright  2010 onwards Andrew Davis
+ * @copyright  2011 Brett Wilkins <brett@catalyst.net.nz>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

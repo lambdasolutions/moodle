@@ -19,8 +19,8 @@
  * Definition of log events
  *
  * @package    mod
- * @subpackage url
- * @copyright  2010 Petr Skoda (http://skodak.org)
+ * @subpackage kalturavideo
+ * @copyright  2011 Brett Wilkins <brett@catalyst.net.nz>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

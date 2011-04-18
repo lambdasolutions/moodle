@@ -16,7 +16,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * URL configuration form
+ * kalturavideo configuration form
  *
  * @package    mod
  * @subpackage kalturavideo
@@ -89,7 +89,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
             $mform->addElement('select', 'display', get_string('displayselect', 'kalturavideo'), $options);
             $mform->setDefault('display', $config->display);
             $mform->setAdvanced('display', $config->display_adv);
-            $mform->addHelpButton('display', 'displayselect', 'url');
+            $mform->addHelpButton('display', 'displayselect', 'kalturavideo');
         }
 
         if (array_key_exists(RESOURCELIB_DISPLAY_POPUP, $options)) {

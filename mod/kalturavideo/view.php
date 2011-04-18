@@ -16,11 +16,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * URL module main user interface
+ * kalturavideo module main user interface
  *
  * @package    mod
- * @subpackage url
- * @copyright  2009 Petr Skoda  {@link http://skodak.org}
+ * @subpackage kalturavideo
+ * @copyright  2011 Brett Wilkins <brett@catalyst.net.nz>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -62,14 +62,4 @@ echo '<div class="kalturaPlayer"></div>';
 echo '<script>window.kaltura = {}; window.kaltura.cmid='.$id.';</script>';
 
 echo $OUTPUT->footer();
-/*switch (url_get_final_display_type($url)) {
-    case RESOURCELIB_DISPLAY_EMBED:
-        url_display_embed($url, $cm, $course);
-        break;
-    case RESOURCELIB_DISPLAY_FRAME:
-        url_display_frame($url, $cm, $course);
-        break;
-    default:
-        url_print_workaround($url, $cm, $course);
-        break;
-}*/
+?>
