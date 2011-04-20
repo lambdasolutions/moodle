@@ -36,21 +36,24 @@ function replaceVideoButton(buttonselector, videotype) {
                             complete: function(i,o,a) {
                             var response = Y.JSON.parse(o.responseText);
                                 var swf = new Y.SWF(".kalturaContributionWizard .yui3-widget-bd", response.cwurl.url,
-                                        {  version: "9.0.115",
-                                       fixedAttributes: {wmode: "opaque",
-                                                         allowScriptAccess:"always",
-                                                         allowNetworking:"all",
-                                                         allowFullScreen: "TRUE"},
-                                       flashVars: {
-                                                    partnerId: response.cwurl.params.partnerid,
-                                                    userId: response.cwurl.params.userid,
-                                                    sessionId: response.cwurl.params.sessionid,
-                                                    uiConfId: response.cwurl.params.uiId,
-                                                    afterAddEntry: "onContributionWizardAfterAddEntry",
-                                                    close: "onContributionWizardClose",
-                                                    kShowId: -2,
-                                                    terms_of_use: "http://corp.kaltura.com/tandc"
-                                       }
+                                    {
+                                        version: "9.0.115",
+                                        fixedAttributes: {
+                                            wmode: "opaque",
+                                            allowScriptAccess:"always",
+                                            allowNetworking:"all",
+                                            allowFullScreen: "TRUE"
+                                        },
+                                        flashVars: {
+                                            partnerId: response.cwurl.params.partnerid,
+                                            userId: response.cwurl.params.userid,
+                                            sessionId: response.cwurl.params.sessionid,
+                                            uiConfId: response.cwurl.params.uiId,
+                                            afterAddEntry: "onContributionWizardAfterAddEntry",
+                                            close: "onContributionWizardClose",
+                                            kShowId: -2,
+                                            terms_of_use: "http://corp.kaltura.com/tandc"
+                                        }
                                     }
                                 );
                             }

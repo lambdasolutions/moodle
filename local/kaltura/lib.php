@@ -4,39 +4,42 @@ require_once("$CFG->libdir/resourcelib.php");
 require_once($CFG->dirroot."/local/kaltura/client/KalturaClient.php");
 
 
-function kalturaClientSession() {
+function kalturaClientSession($admin=false) {
     global $DB, $USER;
     $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
     $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
-    $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
     $config = new KalturaConfiguration($partnerId);
     $config->serviceUrl = $serviceUrl;
     $client = new KalturaClient($config);
-    $ks = $client->session->start($secret, $USER->id, KalturaSessionType::USER);
-    $client->setKs($ks);
+
+    if ($admin) {
+        $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'admin_secret'));
+        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::ADMIN);
+        $client->setKs($ks);
+    }
+    else {
+        $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
+        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::USER);
+        $client->setKs($ks);
+    }
     return $client;
 }
 
-function kalturaCWSession_setup($mix=false) {
+function kalturaCWSession_setup($mix=false, $admin=false) {
     global $DB, $USER;
-    $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
-    $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
-    $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
+    $client = kalturaClientSession($admin);
 
     $uploader_type = 'regular';
     if ($mix) {
         $uploader_type = 'mix';
     }
 
+    $config = $client->getConfig();
+    $serviceUrl = $config->serviceUrl;
     $uiId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'uploader_'.$uploader_type));
-    $config = new KalturaConfiguration($partnerId);
-    $config->serviceUrl = $serviceUrl;
-    $client = new KalturaClient($config);
-    $ks = $client->session->start($secret,$USER->id, KalturaSessionType::USER);
-    $client->setKs($ks);
     $url = $serviceUrl."/kcw/ui_conf_id/".$uiId;
 
-    return array('url'=>$url, 'params'=>array('sessionid'=>$ks,'uiId'=>$uiId,'partnerid'=>$partnerId, 'userid'=>$USER->id));
+    return array('url'=>$url, 'params'=>array('sessionid'=>$client->getKs(),'uiId'=>$uiId,'partnerid'=>$config->partnerId, 'userid'=>$USER->id));
 }
 
 function kalturaEditor_setup($entryid) {

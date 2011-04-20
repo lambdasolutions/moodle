@@ -34,12 +34,24 @@ $entryid    = optional_param('entryid', '', PARAM_CLEAN);
 $videotype  = optional_param('videotype', 0, PARAM_INT);
 $mixentries = optional_param('mixentries', '', PARAM_TAGLIST);
 $mixname    = optional_param('mixname','', PARAM_TEXT);
+$pptid      = optional_param('pptid','', PARAM_TEXT);
+$videoid    = optional_param('videoid','', PARAM_TEXT);
 
 require_login();
 
 $actions = explode(',', $actions);
 
 $returndata = array();
+
+$admin = false;
+if (!empty($id)) {
+    $cm = get_coursemodule_from_id('', $id, 0, false, MUST_EXIST);
+    $course = $DB->get_record('course', array('id'=>$cm->course), '*', MUST_EXIST);
+    $context = get_context_instance(CONTEXT_COURSE, $course->id);
+    if (has_capability('moodle/course:manageactivities', $context)) {
+        $admin = true;
+    }
+}
 
 foreach ($actions as $action) {
     switch ($action) {
@@ -102,6 +114,70 @@ foreach ($actions as $action) {
                 $returndata['mixaddentries'] = array('entryid' => $mix->id);
             }
             break;
+
+        case 'convertppt':
+            if (!empty($entryid)) {
+                $client = kalturaClientSession();
+                $result = $client->document->convertPptToSwf($entryid);
+                $returndata['convertppt'] = array('entryid' => $entryid, 'url' => $result);
+            }
+            break;
+
+        case 'swfdocurl':
+            if (!empty($entryid)) {
+                $client = kalturaClientSession($admin);
+                $config = $client->getConfig();
+
+                $uiconf = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'video_presentation'));
+                $url = $config->serviceUrl.'/kwidget/wid/_'.$config->partnerId.'/ui_conf_id/'.$uiconf;
+
+                $returndata['swfdocurl'] = array(
+                    'url' => $url,
+                    'params' => array(
+                        'ks' => $client->getKs(),
+                        'adminMode' => $admin,
+                        'partnerid' => $config->partnerId,
+                        'subpid' => $config->partnerId*100,
+                        'uid' => $USER->id,
+                        'kShowId' => -1,
+                        'pd_sync_entry' => $entryid,
+                        'host' => str_replace('http://', '', $config->serviceUrl)
+                    )
+                );
+            }
+            break;
+
+            case 'createswfdoc':
+                if (!empty($pptid) && !empty($videoid)) {
+                    $client = kalturaClientSession();
+                    $config = $client->getConfig();
+
+                    $real_path = $config->serviceUrl.'/index.php/extwidget/raw/entry_id/'.$ppt_id .'/p/'.$config->partnerId.'/sp/'.$config->partnerId*100.'/type/download/format/swf/direct_serve/1';
+
+                    $entry_id = $video_id;
+                    if (strpos($kClient->getConfig()->serviceUrl, 'www.kaltura.com') &&
+                        strpos($path, 'www.kaltura.com'))
+                    {
+                        $real_path = str_replace('www.kaltura.com','cdn.kaltura.com',$real_path);
+                    }
+
+                    $xml = '<sync><video><entryId>'.$entry_id.'</entryId></video><slide><path>'.$real_path.'</path></slide>';
+                    $xml .= '<times></times></sync>';
+
+                    $entry = new KalturaDataEntry();
+                    $entry->dataContent = $xml;
+                    $entry->mediaType = KalturaEntryType::DOCUMENT;
+                    $result = $kClient -> data -> add($entry);
+
+                    $returndata['createswfdoc'] = array('entryid' => $result->id);
+                }
+                break;
+
+            case 'swfdocuploader':
+                $client = kalturaClientSession($admin);
+                $config = $client->getConfig();
+                $returndata['swfdocuploader'] = array('ks' => $client->getKs(), 'partnerid' => $config->partnerId, 'userid' => $USER->id);
+                break;
 
         default:
             break;
