@@ -29,16 +29,9 @@ require_once($CFG->dirroot."/local/kaltura/lib.php");
 require_once($CFG->libdir . '/completionlib.php');
 
 $id       = optional_param('id', 0, PARAM_INT);        // Course module ID
-$u        = optional_param('u', 0, PARAM_INT);         // kaltura video instance id
 
-if ($u) {  // Two ways to specify the module
-    $entry = $DB->get_record('kalturavideo', array('id'=>$u), '*', MUST_EXIST);
-    $cm = get_coursemodule_from_instance('kalturavideo', $entry->id, $entry->course, false, MUST_EXIST);
-
-} else {
-    $cm = get_coursemodule_from_id('kalturavideo', $id, 0, false, MUST_EXIST);
-    $entry = $DB->get_record('kalturavideo', array('id'=>$cm->instance), '*', MUST_EXIST);
-}
+$cm = get_coursemodule_from_id('kalturavideo', $id, 0, false, MUST_EXIST);
+$entry = $DB->get_record('kalturavideo', array('id'=>$cm->instance), '*', MUST_EXIST);
 
 $course = $DB->get_record('course', array('id'=>$cm->course), '*', MUST_EXIST);
 
