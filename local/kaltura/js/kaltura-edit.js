@@ -3,8 +3,11 @@ YUI().use("node","io","json-parse","event", function(Y) {
     replaceVideoButton('input#id_buttons_replaceeditvideo',KalturaEntryType_Mix);
 
     Y.on("domready",function() {
-                                initialisevideo({playerselector:'.kalturaPlayerEdit',
-                                videotype: Y.one('input[name=videotype]').get('value')});
+        obj = {};
+        obj.playerselector = '.kalturaPlayerEdit';
+        obj.entryid = Y.one('input[name=kalturaentry]').get('value');
+        obj.videotype = Y.one('input[name=videotype]').get('value');
+        initialisevideo(obj);
     });
 });
 

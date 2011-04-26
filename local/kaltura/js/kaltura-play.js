@@ -11,10 +11,13 @@ function initialisevideo(obj) {
 
         var datastr = '';
         datastr += 'actions=playerurl';
-        if (obj.entryid != undefined) {
+        if (obj.entryid != undefined && obj.entryid != '') {
             datastr += '&entryid='+obj.entryid;
         }
-        else if (window.kaltura.cmid != 0) {
+        else if (window.kaltura.entryid != 0 && window.kaltura.entryid != undefined) {
+            datastr += '&entryid='+window.kaltura.entryid;
+        }
+        else if (window.kaltura.cmid != 0 && window.kaltura.cmid != undefined) {
             datastr += '&id='+window.kaltura.cmid;
         }
         else {
@@ -52,5 +55,5 @@ function initialisevideo(obj) {
 }
 
 YUI.use('node','event', function(Y) {
-    Y.on("domready",function() { initialisevideo({playerselector:'.kalturaPlayer'}); });
+    Y.on("domready",function() { initialisevideo({playerselector:'.kalturaPlayer', videotype: KalturaEntryType_Media}); });
 });
