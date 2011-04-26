@@ -152,11 +152,13 @@ foreach ($actions as $action) {
                     $client = kalturaClientSession();
                     $config = $client->getConfig();
 
-                    $real_path = $config->serviceUrl.'/index.php/extwidget/raw/entry_id/'.$ppt_id .'/p/'.$config->partnerId.'/sp/'.$config->partnerId*100.'/type/download/format/swf/direct_serve/1';
+                    $real_path = $config->serviceUrl.'/index.php/extwidget/raw/entry_id/';
+                    $real_path .= $pptid.'/p/'.$config->partnerId.'/sp/'.$config->partnerId*100;
+                    $real_path .= '/type/download/format/swf/direct_serve/1';
 
-                    $entry_id = $video_id;
-                    if (strpos($kClient->getConfig()->serviceUrl, 'www.kaltura.com') &&
-                        strpos($path, 'www.kaltura.com'))
+                    $entry_id = $videoid;
+                    if (strpos($config->serviceUrl, 'www.kaltura.com') &&
+                        strpos($real_path, 'www.kaltura.com'))
                     {
                         $real_path = str_replace('www.kaltura.com','cdn.kaltura.com',$real_path);
                     }
@@ -176,7 +178,8 @@ foreach ($actions as $action) {
             case 'swfdocuploader':
                 $client = kalturaClientSession($admin);
                 $config = $client->getConfig();
-                $returndata['swfdocuploader'] = array('ks' => $client->getKs(), 'partnerid' => $config->partnerId, 'userid' => $USER->id);
+                $url = $config->serviceUrl.'/kupload/ui_conf_id/1002613';
+                $returndata['swfdocuploader'] = array('url' => $url, 'params' => array('ks' => $client->getKs(), 'partnerid' => $config->partnerId, 'userid' => $USER->id));
                 break;
 
         default:
