@@ -28,18 +28,22 @@ defined('MOODLE_INTERNAL') || die;
 
 if ($ADMIN->fulltree) {
     require_once("$CFG->libdir/resourcelib.php");
+    require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
-/*    $displayoptions = resourcelib_get_displayoptions(array(RESOURCELIB_DISPLAY_AUTO,
-                                                          ));
-    $defaultdisplayoptions = array(RESOURCELIB_DISPLAY_AUTO,
-                                  );*/
+    $supportedtypes = array(KalturaEntryType::MEDIA_CLIP=>get_string('mediaclip','kalturavideo'),
+                            KalturaEntryType::MIX=>get_string('mix','kalturavideo'),
+                           );
+    $defaultsupportedtypes = array(KalturaEntryType::MEDIA_CLIP,
+                            KalturaEntryType::MIX,
+                           );
+
 
     //--- general settings -----------------------------------------------------------------------------------
     $settings->add(new admin_setting_configcheckbox('kalturavideo/requiremodintro',
         get_string('requiremodintro', 'admin'), get_string('configrequiremodintro', 'admin'), 0));
-/*    $settings->add(new admin_setting_configmultiselect('kalturavideo/displayoptions',
-        get_string('displayoptions', 'kalturavideo'), get_string('configdisplayoptions', 'kalturavideo'),
-        $defaultdisplayoptions, $displayoptions));*/
+    $settings->add(new admin_setting_configmultiselect('kalturavideo/supportedmedia',
+        get_string('supportedmedia', 'kalturavideo'), get_string('configsupportedmedia','kalturavideo'),
+        $defaultsupportedtypes, $supportedtypes));
     $settings->add(new admin_setting_configselect('kalturavideo/player_theme',
         get_string('playertheme','kalturavideo'), get_string('playerthemeexplain','kalturavideo'),
         'light',
@@ -58,13 +62,4 @@ if ($ADMIN->fulltree) {
     $settings->add(new admin_setting_configcheckbox_with_advanced('kalturavideo/printintro',
         get_string('printintro', 'kalturavideo'), get_string('printintroexplain', 'kalturavideo'),
         array('value'=>1, 'adv'=>false)));
-/*    $settings->add(new admin_setting_configselect_with_advanced('kalturavideo/display',
-        get_string('displayselect', 'kalturavideo'), get_string('displayselectexplain', 'kalturavideo'),
-        array('value'=>RESOURCELIB_DISPLAY_AUTO, 'adv'=>false), $displayoptions));*/
-/*    $settings->add(new admin_setting_configtext_with_advanced('kalturavideo/popupwidth',
-        get_string('popupwidth', 'kalturavideo'), get_string('popupwidthexplain', 'kalturavideo'),
-        array('value'=>620, 'adv'=>true), PARAM_INT, 7));
-    $settings->add(new admin_setting_configtext_with_advanced('kalturavideo/popupheight',
-        get_string('popupheight', 'kalturavideo'), get_string('popupheightexplain', 'kalturavideo'),
-        array('value'=>450, 'adv'=>true), PARAM_INT, 7));*/
 }

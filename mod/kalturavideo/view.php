@@ -39,6 +39,8 @@ require_course_login($course, true, $cm);
 $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 require_capability('mod/kalturavideo:view', $context);
 
+$config = get_config('kalturavideo');
+
 add_to_log($course->id, 'kalturavideo', 'view', 'view.php?id='.$cm->id, $entry->id, $cm->id);
 
 // Update 'viewed' state if required by completion system
@@ -46,13 +48,28 @@ $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
 
 $PAGE->set_url('/mod/kalturavideo/view.php', array('id' => $cm->id));
+$PAGE->set_title(get_string('modulename','kalturavideo').': '.$entry->name);
 $PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
 $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
 echo $OUTPUT->header();
 
-echo '<div class="kalturaPlayer"></div>';
+if ($config->printheading) {
+    echo $OUTPUT->box_start('mod_introbox centerpara', 'kalturavideointro');
+    echo '<h2>'.$entry->name.'</h2>';
+    echo $OUTPUT->box_end();
+}
+//print content
+echo $OUTPUT->box_start();
+echo '<div class="kalturaPlayer" style="margin:auto;"></div>';
 echo '<script>window.kaltura = {}; window.kaltura.cmid='.$id.';</script>';
+echo $OUTPUT->box_end();
+
+if ($config->printintro) {
+    echo $OUTPUT->box_start();
+    echo $entry->intro;
+    echo $OUTPUT->box_end();
+}
 
 echo $OUTPUT->footer();
 ?>

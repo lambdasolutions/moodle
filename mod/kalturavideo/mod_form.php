@@ -57,14 +57,21 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         $mform->addElement('hidden', 'kalturaentry','');
 
         $mform->addElement('hidden','videotype', '');
+
+        //nasty indentation hack....
+        $mform->addElement('html','<div style="margin-left:16%;">');
         $mform->addElement('html','<div class="kalturaPlayerEdit"></div>');
 
         $buttons = array();
+        if (in_array(KalturaEntryType::MEDIA_CLIP, explode(',',$config->supportedmedia))) {
         $buttons[] =& $mform->createElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
-        //if (admin has set 'mix' as a supported type in this moodle) {
+        }
+        if (in_array(KalturaEntryType::MIX, explode(',',$config->supportedmedia))) {
         $buttons[] =& $mform->createElement('submit', 'replaceeditvideo', get_String('replaceeditvideo', 'kalturavideo'));
-        //}
+        }
         $mform->addGroup($buttons, 'buttons', ' ', false);
+        //end nasty indentation hack
+        $mform->addElement('html','</div>');
 
         $kalturaConfig = array();
         $kalturaConfig['cmid'] = optional_param('update',0,PARAM_INT);
@@ -75,58 +82,13 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         //-------------------------------------------------------
         $mform->addElement('header', 'optionssection', get_string('optionsheader', 'kalturavideo'));
 
-        if ($this->current->instance) {
-            $options = resourcelib_get_displayoptions(explode(',', $config->displayoptions), $this->current->display);
-        } else {
-            $options = resourcelib_get_displayoptions(explode(',', $config->displayoptions));
-        }
-        if (count($options) == 1) {
-            $mform->addElement('hidden', 'display');
-            $mform->setType('display', PARAM_INT);
-            reset($options);
-            $mform->setDefault('display', key($options));
-        } else {
-            $mform->addElement('select', 'display', get_string('displayselect', 'kalturavideo'), $options);
-            $mform->setDefault('display', $config->display);
-            $mform->setAdvanced('display', $config->display_adv);
-            $mform->addHelpButton('display', 'displayselect', 'kalturavideo');
-        }
+        $mform->addElement('checkbox', 'printheading', get_string('printheading', 'kalturavideo'));
+        $mform->setDefault('printheading', $config->printheading);
+        $mform->setAdvanced('printheading', $config->printheading_adv);
 
-        if (array_key_exists(RESOURCELIB_DISPLAY_POPUP, $options)) {
-            $mform->addElement('text', 'popupwidth', get_string('popupwidth', 'kalturavideo'), array('size'=>3));
-            if (count($options) > 1) {
-                $mform->disabledIf('popupwidth', 'display', 'noteq', RESOURCELIB_DISPLAY_POPUP);
-            }
-            $mform->setType('popupwidth', PARAM_INT);
-            $mform->setDefault('popupwidth', $config->popupwidth);
-            $mform->setAdvanced('popupwidth', $config->popupwidth_adv);
-
-            $mform->addElement('text', 'popupheight', get_string('popupheight', 'kalturavideo'), array('size'=>3));
-            if (count($options) > 1) {
-                $mform->disabledIf('popupheight', 'display', 'noteq', RESOURCELIB_DISPLAY_POPUP);
-            }
-            $mform->setType('popupheight', PARAM_INT);
-            $mform->setDefault('popupheight', $config->popupheight);
-            $mform->setAdvanced('popupheight', $config->popupheight_adv);
-        }
-
-        if (array_key_exists(RESOURCELIB_DISPLAY_AUTO, $options) or
-          array_key_exists(RESOURCELIB_DISPLAY_EMBED, $options) or
-          array_key_exists(RESOURCELIB_DISPLAY_FRAME, $options)) {
-            $mform->addElement('checkbox', 'printheading', get_string('printheading', 'kalturavideo'));
-            $mform->disabledIf('printheading', 'display', 'eq', RESOURCELIB_DISPLAY_POPUP);
-            $mform->disabledIf('printheading', 'display', 'eq', RESOURCELIB_DISPLAY_OPEN);
-            $mform->disabledIf('printheading', 'display', 'eq', RESOURCELIB_DISPLAY_NEW);
-            $mform->setDefault('printheading', $config->printheading);
-            $mform->setAdvanced('printheading', $config->printheading_adv);
-
-            $mform->addElement('checkbox', 'printintro', get_string('printintro', 'kalturavideo'));
-            $mform->disabledIf('printintro', 'display', 'eq', RESOURCELIB_DISPLAY_POPUP);
-            $mform->disabledIf('printintro', 'display', 'eq', RESOURCELIB_DISPLAY_OPEN);
-            $mform->disabledIf('printintro', 'display', 'eq', RESOURCELIB_DISPLAY_NEW);
-            $mform->setDefault('printintro', $config->printintro);
-            $mform->setAdvanced('printintro', $config->printintro_adv);
-        }
+        $mform->addElement('checkbox', 'printintro', get_string('printintro', 'kalturavideo'));
+        $mform->setDefault('printintro', $config->printintro);
+        $mform->setAdvanced('printintro', $config->printintro_adv);
 
         $this->standard_coursemodule_elements();
 
