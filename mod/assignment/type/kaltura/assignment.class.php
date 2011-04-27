@@ -97,7 +97,7 @@ class assignment_kaltura extends assignment_base {
             } else {
                 echo $OUTPUT->box_start('generalbox boxwidthwide boxaligncenter', 'kaltura');
                 echo '<script type="text/javascript">window.kaltura = {entryid: "'.$submission->data1.'"};</script>';
-                echo '<div styles="margin: auto;"><div class="kalturaPlayer"></div></div>';
+                echo '<div class="kalturaPlayer" style="margin:auto;"></div>';
             }
             echo $OUTPUT->box_end();
             if (!$editmode && $editable) {
@@ -106,9 +106,11 @@ class assignment_kaltura extends assignment_base {
                 } else {
                     $submitbutton = "addsubmission";
                 }
-                echo "<div style='text-align:center'>";
-                echo $OUTPUT->single_button(new moodle_url('view.php', array('id'=>$this->cm->id, 'edit'=>'1')), get_string($submitbutton, 'assignment'));
-                echo "</div>";
+                if ($this->assignment->resubmit) {
+                    echo "<div style='text-align:center'>";
+                    echo $OUTPUT->single_button(new moodle_url('view.php', array('id'=>$this->cm->id, 'edit'=>'1')), get_string($submitbutton, 'assignment'));
+                    echo "</div>";
+                }
             }
 
         }
@@ -193,20 +195,6 @@ class assignment_kaltura extends assignment_base {
         return $output;
     }
 
-    function preprocess_submission(&$submission) {
-        if ($this->assignment->var1 && empty($submission->submissioncomment)) {  // comment inline
-            if ($this->usehtmleditor) {
-                // Convert to html, clean & copy student data to teacher
-                $submission->submissioncomment = format_text($submission->data1, $submission->data2);
-                $submission->format = FORMAT_HTML;
-            } else {
-                // Copy student data to teacher
-                $submission->submissioncomment = $submission->data1;
-                $submission->format = $submission->data2;
-            }
-        }
-    }
-
     function setup_elements(&$mform) {
         global $CFG, $COURSE, $PAGE;
         $ynoptions = array( 0 => get_string('no'), 1 => get_string('yes'));
@@ -218,11 +206,6 @@ class assignment_kaltura extends assignment_base {
         $mform->addElement('select', 'emailteachers', get_string('emailteachers', 'assignment'), $ynoptions);
         $mform->addHelpButton('emailteachers', 'emailteachers', 'assignment');
         $mform->setDefault('emailteachers', 0);
-
-        $mform->addElement('select', 'var1', get_string('commentinline', 'assignment'), $ynoptions);
-        $mform->addHelpButton('var1', 'commentinline', 'assignment');
-        $mform->setDefault('var1', 0);
-
     }
 
     function extend_settings_navigation($node) {
@@ -231,7 +214,8 @@ class assignment_kaltura extends assignment_base {
         // get users submission if there is one
         $submission = $this->get_submission();
         if (is_enrolled($PAGE->cm->context, $USER, 'mod/assignment:submit')) {
-            $editable = $this->isopen() && (!$submission || $this->assignment->resubmit || !$submission->timemarked);
+            //editing is practically the same as resubmitting in this case.
+            $editable = $this->isopen() && (!$submission || !$submission->timemarked) && $this->assignment->resubmit;
         } else {
             $editable = false;
         }
