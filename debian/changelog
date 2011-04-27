@@ -1,3 +1,10 @@
+moodle-site-feature-kaltura (2.0.2-20110221-11) unstable; urgency=low
+
+  * mod/kalturavideo: complete
+  * mod/assignment/type/kaltura: complete
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 28 Apr 2011 11:04:23 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-10) unstable; urgency=low
 
   * mod/kalturavideo: moved everything sharable into local/kaltura,
