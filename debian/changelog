@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-12) unstable; urgency=low
+
+  * mod/kalturavideo: bugfix for heading/intro checkboxes
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 28 Apr 2011 13:44:19 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-11) unstable; urgency=low
 
   * mod/kalturavideo: complete
