@@ -11,9 +11,12 @@
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="course" NEXT="intro"/>
         <FIELD NAME="intro" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="name" NEXT="introformat"/>
         <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="intro" NEXT="kalturaentry"/>
-        <FIELD NAME="kalturaentry" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="introformat" NEXT="videotype"/>
-        <FIELD NAME="videotype" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="-1" SEQUENCE="false" PREVIOUS="kalturaentry" NEXT="timemodified"/>
-        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="videotype"/>
+        <FIELD NAME="kalturaentry" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="introformat" NEXT="display"/>
+        <FIELD NAME="display" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="kalturaentry" NEXT="displayoptions"/>
+        <FIELD NAME="displayoptions" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="display" NEXT="parameters"/>
+        <FIELD NAME="parameters" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="displayoptions" NEXT="timemodified"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="parameters" NEXT="videotype"/>
+        <FIELD NAME="videotype" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="-1" SEQUENCE="false" PREVIOUS="timemodified"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
