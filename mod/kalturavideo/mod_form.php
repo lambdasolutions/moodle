@@ -28,6 +28,7 @@ defined('MOODLE_INTERNAL') || die;
 
 require_once ($CFG->dirroot.'/course/moodleform_mod.php');
 require_once($CFG->dirroot.'/local/kaltura/lib.php');
+require_once($CFG->libdir.'/resourcelib.php');
 require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
 class mod_kalturavideo_mod_form extends moodleform_mod {

@@ -92,6 +92,10 @@ function kalturavideo_add_instance($data, $mform) {
 
 
     $data->timemodified = time();
+    $displayoptions=array();
+    $displayoptions['printheading'] = (int)!empty($data->printheading);
+    $displayoptions['printintro'] = (int)!empty($data->printintro);
+    $data->displayoptions = serialize($displayoptions);
     $data->id = $DB->insert_record('kalturavideo', $data);
 
     return $data->id;
@@ -109,6 +113,10 @@ function kalturavideo_update_instance($data, $mform) {
 
 
     $data->timemodified = time();
+    $displayoptions=array();
+    $displayoptions['printheading'] = (int)!empty($data->printheading);
+    $displayoptions['printintro'] = (int)!empty($data->printintro);
+    $data->displayoptions = serialize($displayoptions);
     $data->id           = $data->instance;
 
     $DB->update_record('kalturavideo', $data);

@@ -39,7 +39,7 @@ require_course_login($course, true, $cm);
 $context = get_context_instance(CONTEXT_MODULE, $cm->id);
 require_capability('mod/kalturavideo:view', $context);
 
-$config = get_config('kalturavideo');
+$config = unserialize($entry->displayoptions);
 
 add_to_log($course->id, 'kalturavideo', 'view', 'view.php?id='.$cm->id, $entry->id, $cm->id);
 
@@ -54,7 +54,7 @@ $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
 echo $OUTPUT->header();
 
-if ($config->printheading) {
+if ($config['printheading']) {
     echo $OUTPUT->box_start('mod_introbox centerpara', 'kalturavideointro');
     echo '<h2>'.$entry->name.'</h2>';
     echo $OUTPUT->box_end();
@@ -65,7 +65,7 @@ echo '<div class="kalturaPlayer" style="margin:auto;"></div>';
 echo '<script>window.kaltura = {}; window.kaltura.cmid='.$id.';</script>';
 echo $OUTPUT->box_end();
 
-if ($config->printintro) {
+if ($config['printintro']) {
     echo $OUTPUT->box_start();
     echo $entry->intro;
     echo $OUTPUT->box_end();
