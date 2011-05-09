@@ -10,7 +10,7 @@ function initialisevideo(obj) {
         }
 
         var datastr = '';
-        datastr += 'actions=playerurl';
+        datastr += 'action=playerurl';
         if (obj.entryid != undefined && obj.entryid != '') {
             datastr += '&entryid='+obj.entryid;
         }
@@ -23,9 +23,6 @@ function initialisevideo(obj) {
         else {
             return false;
         }
-        if (obj.videotype != undefined) {
-            datastr += '&videotype='+obj.videotype;
-        }
 
         Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
             {
@@ -33,7 +30,7 @@ function initialisevideo(obj) {
                 on: {
                     complete: function(i, o, a) {
                         var data = Y.JSON.parse(o.responseText);
-                        var kaltura_player = new Y.SWF(obj.playerselector, data.playerurl.url,
+                        var kaltura_player = new Y.SWF(obj.playerselector, data.url,
                             {
                                 fixedAttributes: {
                                     wmode: "opaque",
@@ -42,8 +39,7 @@ function initialisevideo(obj) {
                                     allowNetworking: "all"
                                 },
                                 flashVars: {
-                                    externalInterfaceDisabled: 0,
-                                    gotoEditorWindow: "gotoEditorWindow"
+                                    externalInterfaceDisabled: 0
                                 }
                             }
                         );
@@ -55,5 +51,5 @@ function initialisevideo(obj) {
 }
 
 YUI.use('node','event', function(Y) {
-    Y.on("domready",function() { initialisevideo({playerselector:'.kalturaPlayer', videotype: KalturaEntryType_Media}); });
+    Y.on("domready",function() { initialisevideo({playerselector:'.kalturaPlayer'}); });
 });

@@ -30,20 +30,9 @@ if ($ADMIN->fulltree) {
     require_once("$CFG->libdir/resourcelib.php");
     require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
-    $supportedtypes = array(KalturaEntryType::MEDIA_CLIP=>get_string('mediaclip','kalturavideo'),
-                            KalturaEntryType::MIX=>get_string('mix','kalturavideo'),
-                           );
-    $defaultsupportedtypes = array(KalturaEntryType::MEDIA_CLIP,
-                            KalturaEntryType::MIX,
-                           );
-
-
     //--- general settings -----------------------------------------------------------------------------------
     $settings->add(new admin_setting_configcheckbox('kalturavideo/requiremodintro',
         get_string('requiremodintro', 'admin'), get_string('configrequiremodintro', 'admin'), 0));
-    $settings->add(new admin_setting_configmultiselect('kalturavideo/supportedmedia',
-        get_string('supportedmedia', 'kalturavideo'), get_string('configsupportedmedia','kalturavideo'),
-        $defaultsupportedtypes, $supportedtypes));
     $settings->add(new admin_setting_configselect('kalturavideo/player_theme',
         get_string('playertheme','kalturavideo'), get_string('playerthemeexplain','kalturavideo'),
         'light',

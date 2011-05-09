@@ -34,7 +34,6 @@ require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 class mod_kalturavideo_mod_form extends moodleform_mod {
     function definition() {
         global $CFG, $DB, $PAGE;
-        $PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-edit.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
@@ -55,22 +54,16 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
 
         //-------------------------------------------------------
         $mform->addElement('header', 'content', get_string('contentheader', 'kalturavideo'));
-        $mform->addElement('hidden', 'kalturaentry','');
+        $mform->addElement('hidden', 'kalturavideo','');
 
-        $mform->addElement('hidden','videotype', '');
+        //$mform->addElement('hidden','videotype', '');
 
         //nasty indentation hack....
         $mform->addElement('html','<div style="margin-left:16%;">');
         $mform->addElement('html','<div class="kalturaPlayerEdit"></div>');
 
-        $buttons = array();
-        if (in_array(KalturaEntryType::MEDIA_CLIP, explode(',',$config->supportedmedia))) {
-        $buttons[] =& $mform->createElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
-        }
-        if (in_array(KalturaEntryType::MIX, explode(',',$config->supportedmedia))) {
-        $buttons[] =& $mform->createElement('submit', 'replaceeditvideo', get_String('replaceeditvideo', 'kalturavideo'));
-        }
-        $mform->addGroup($buttons, 'buttons', ' ', false);
+        $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
+
         //end nasty indentation hack
         $mform->addElement('html','</div>');
 

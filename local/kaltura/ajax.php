@@ -29,12 +29,12 @@ require_once("lib.php");
 require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 
 $id         = optional_param('id', 0, PARAM_INT);
-$actions    = optional_param('actions', '', PARAM_TAGLIST);
+$actions    = optional_param('action', '', PARAM_TAGLIST);
 $entryid    = optional_param('entryid', '', PARAM_CLEAN);
-$videotype  = optional_param('videotype', 0, PARAM_INT);
-$mixentries = optional_param('mixentries', '', PARAM_TAGLIST);
+//$videotype  = optional_param('videotype', 0, PARAM_INT);
+//$mixentries = optional_param('mixentries', '', PARAM_TAGLIST);
 $mixname    = optional_param('mixname','', PARAM_TEXT);
-$pptid      = optional_param('pptid','', PARAM_TEXT);
+$docid      = optional_param('docid','', PARAM_TEXT);
 $videoid    = optional_param('videoid','', PARAM_TEXT);
 
 require_login();
@@ -63,123 +63,97 @@ foreach ($actions as $action) {
             }
             else if (!empty($entryid)) {
                 $entry = new stdClass;
-                $entry->kalturaentry = $entryid;
+                $entry->kalturavideo = $entryid;
             }
             else {
                 //what are we displaying? :o
                 break;
             }
-            if ($videotype == KalturaEntryType::MIX) {
-                $mix = true;
-            }
-            else {
-                $mix = false;
-            }
 
-            $url = kalturaPlayerUrlBase($mix);
-            $returndata['playerurl'] = array('url' => $url.$entry->kalturaentry);
+            $url = kalturaPlayerUrlBase();
+            $returndata = array('url' => $url.$entry->kalturavideo, $params = array());
             break;
 
         case 'cwurl':
-            if ($videotype == KalturaEntryType::MIX) {
-                $tmp = kalturaCWSession_setup(true);
-            } else {
-                $tmp = kalturaCWSession_setup();
-            }
-            $returndata['cwurl'] = $tmp;
-            break;
-
-        case 'editorurl':
-            if (empty($entryid)) {
-                break;
-            }
-            $returndata['editorurl'] = kalturaEditor_setup($entryid);
-            break;
-
-        case 'mixaddentries':
-            if (!empty($mixentries)) {
-                $client = kalturaClientSession();
-                $mix = new KalturaMixEntry();
-                $mix->name = "Editable video";
-                if (!empty($mixname)) {
-                    $mix->name = $mixname;
-                }
-                $mix->editorType = KalturaEditorType::ADVANCED;
-                $mix = $client->mixing->add($mix);
-
-                $mixentries = explode(',', $mixentries);
-                foreach ($mixentries as $mid) {
-                    $client->mixing->appendMediaEntry($mix->id, $mid);
-                }
-                $returndata['mixaddentries'] = array('entryid' => $mix->id);
-            }
+            $returndata = kalturaCWSession_setup();
             break;
 
         case 'convertppt':
             if (!empty($entryid)) {
                 $client = kalturaClientSession();
                 $result = $client->document->convertPptToSwf($entryid);
-                $returndata['convertppt'] = array('entryid' => $entryid, 'url' => $result);
+                $returndata = array('entryid' => $entryid, 'url' => $result);
             }
             break;
 
         case 'swfdocurl':
-            if (!empty($entryid)) {
+            if (!empty($entryid) && !empty($docid)) {
                 $client = kalturaClientSession($admin);
                 $config = $client->getConfig();
+
+                $real_path = $config->serviceUrl.'/index.php/extwidget/raw/entry_id/';
+                $real_path .= $docid.'/p/'.$config->partnerId.'/sp/'.$config->partnerId*100;
+                $real_path .= '/type/download/format/swf/direct_serve/1';
+
+                $entry_id = $videoid;
+                if (strpos($config->serviceUrl, 'www.kaltura.com') &&
+                    strpos($real_path, 'www.kaltura.com'))
+                {
+                    $real_path = str_replace('www.kaltura.com','cdn.kaltura.com',$real_path);
+                }
+
+                $xml = '<sync><video><entryId>'.$entry_id.'</entryId></video><slide><path>'.$real_path.'</path></slide>';
+                $xml .= '<times></times></sync>';
+
+                $entry = new KalturaDataEntry();
+                $entry->dataContent = $xml;
+                $entry->mediaType = KalturaEntryType::DOCUMENT;
+                $result = $client->data->add($entry);
 
                 $uiconf = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'video_presentation'));
                 $url = $config->serviceUrl.'/kwidget/wid/_'.$config->partnerId.'/ui_conf_id/'.$uiconf;
 
-                $returndata['swfdocurl'] = array(
+                $returndata = array(
                     'url' => $url,
                     'params' => array(
-                        'ks' => $client->getKs(),
+                        'sessionId' => $client->getKs(),
                         'adminMode' => $admin,
-                        'partnerid' => $config->partnerId,
+                        'partnerId' => $config->partnerId,
                         'subpid' => $config->partnerId*100,
-                        'uid' => $USER->id,
+                        'userId' => $USER->id,
                         'kShowId' => -1,
-                        'pd_sync_entry' => $entryid,
+                        'pd_sync_entry' => $result->id,
                         'host' => str_replace('http://', '', $config->serviceUrl)
                     )
                 );
             }
             break;
 
-            case 'createswfdoc':
-                if (!empty($pptid) && !empty($videoid)) {
-                    $client = kalturaClientSession();
-                    $config = $client->getConfig();
-
-                    $real_path = $config->serviceUrl.'/index.php/extwidget/raw/entry_id/';
-                    $real_path .= $pptid.'/p/'.$config->partnerId.'/sp/'.$config->partnerId*100;
-                    $real_path .= '/type/download/format/swf/direct_serve/1';
-
-                    $entry_id = $videoid;
-                    if (strpos($config->serviceUrl, 'www.kaltura.com') &&
-                        strpos($real_path, 'www.kaltura.com'))
-                    {
-                        $real_path = str_replace('www.kaltura.com','cdn.kaltura.com',$real_path);
-                    }
-
-                    $xml = '<sync><video><entryId>'.$entry_id.'</entryId></video><slide><path>'.$real_path.'</path></slide>';
-                    $xml .= '<times></times></sync>';
-
-                    $entry = new KalturaDataEntry();
-                    $entry->dataContent = $xml;
-                    $entry->mediaType = KalturaEntryType::DOCUMENT;
-                    $result = $kClient -> data -> add($entry);
-
-                    $returndata['createswfdoc'] = array('entryid' => $result->id);
-                }
+            case 'swfdocuploader':
+                $client = kalturaClientSession();
+                $config = $client->getConfig();
+                $url = $config->serviceUrl.'/kcw/ui_conf_id/4391521';
+                $returndata = array(
+                                                    'url' => $url,
+                                                    'params' => array(
+                                                        'sessionid' => $client->getKs(),
+                                                        'partnerid' => $config->partnerId,
+                                                        'userid' => $USER->id,
+                                                        'uuid' => '4391521',
+                                                    )
+                                                );
                 break;
 
-            case 'swfdocuploader':
-                $client = kalturaClientSession($admin);
-                $config = $client->getConfig();
-                $url = $config->serviceUrl.'/kupload/ui_conf_id/1002613';
-                $returndata['swfdocuploader'] = array('url' => $url, 'params' => array('ks' => $client->getKs(), 'partnerid' => $config->partnerId, 'userid' => $USER->id));
+            case 'doccheckstatus':
+                $client = kalturaClientSession();
+                $data = $client->document->get($entryid);
+                if ($data->status == KalturaEntryStatus::READY) {
+                    $returndata = array('status' => true,
+                                        'thumbnail' => $data->thumbnailUrl);
+                }
+                else {
+                    $returndata = array('status' => false);
+                }
                 break;
 
         default:

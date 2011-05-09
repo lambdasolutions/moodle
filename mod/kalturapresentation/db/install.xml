@@ -10,10 +10,10 @@
         <FIELD NAME="course" TYPE="int" LENGTH="10" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="id" NEXT="name"/>
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="course" NEXT="intro"/>
         <FIELD NAME="intro" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="name" NEXT="introformat"/>
-        <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="intro" NEXT="kalturaentry"/>
-        <FIELD NAME="kalturaentry" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="introformat" NEXT="kalturavideo"/>
-        <FIELD NAME="kalturavideo" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="kalturaentry" NEXT="kalturadocument"/>
-        <FIELD NAME="kalturadocument" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="kalturavideo" NEXT="display"/>
+        <FIELD NAME="introformat" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="intro" NEXT="kalturavideo"/>
+        <FIELD NAME="kalturavideo" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="introformat" NEXT="kalturapresentation"/>
+        <FIELD NAME="kalturapresentation" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="kalturavideo" NEXT="kalturadocument"/>
+        <FIELD NAME="kalturadocument" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="kalturapresentation" NEXT="display"/>
         <FIELD NAME="display" TYPE="int" LENGTH="4" NOTNULL="true" UNSIGNED="true" DEFAULT="0" SEQUENCE="false" PREVIOUS="kalturadocument" NEXT="displayoptions"/>
         <FIELD NAME="displayoptions" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="display" NEXT="parameters"/>
         <FIELD NAME="parameters" TYPE="text" LENGTH="small" NOTNULL="false" SEQUENCE="false" PREVIOUS="displayoptions" NEXT="timemodified"/>

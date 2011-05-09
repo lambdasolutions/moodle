@@ -53,7 +53,6 @@ $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
 
 $PAGE->set_url('/mod/kalturapresentation/view.php', array('id' => $cm->id));
-$PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
 $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
 echo $OUTPUT->header();

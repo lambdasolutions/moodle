@@ -210,7 +210,7 @@ function kalturapresentation_get_coursemodule_info($coursemodule) {
     global $CFG, $DB;
     require_once("$CFG->dirroot/local/kaltura/lib.php");
 
-    if (!$kalturapresentation = $DB->get_record('kalturapresentation', array('id'=>$coursemodule->instance), 'id, name, display, displayoptions, kalturaentry, parameters')) {
+    if (!$kalturapresentation = $DB->get_record('kalturapresentation', array('id'=>$coursemodule->instance), 'id, name, display, displayoptions, kalturapresentation, parameters')) {
         return NULL;
     }
 
@@ -218,7 +218,7 @@ function kalturapresentation_get_coursemodule_info($coursemodule) {
     $info->name = $kalturapresentation->name;
 
     //note: there should be a way to differentiate links from normal resources
-    $info->icon = kalturapresentation_guess_icon($kalturapresentation->kalturaentry);
+    $info->icon = kalturapresentation_guess_icon($kalturapresentation->kalturapresentation);
 
     $display = kalturapresentation_get_final_display_type($kalturapresentation);
 

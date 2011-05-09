@@ -51,14 +51,6 @@ function xmldb_kalturavideo_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
-    if ($oldversion < 2011041100) {
-        $table = new xmldb_table('kalturavideo');
-        $field = new xmldb_field('videotype', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '-1', 'timemodified');
-        $dbman->add_field($table,$field);
-
-        upgrade_mod_savepoint(true, 2011041100, 'kalturavideo');
-    }
-
 
     return true;
 }

@@ -25,24 +25,21 @@ function kalturaClientSession($admin=false) {
     return $client;
 }
 
-function kalturaCWSession_setup($mix=false, $admin=false) {
+function kalturaCWSession_setup($admin=false) {
     global $DB, $USER;
     $client = kalturaClientSession($admin);
 
     $uploader_type = 'regular';
-    if ($mix) {
-        $uploader_type = 'mix';
-    }
 
     $config = $client->getConfig();
     $serviceUrl = $config->serviceUrl;
     $uiId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'uploader_'.$uploader_type));
     $url = $serviceUrl."/kcw/ui_conf_id/".$uiId;
 
-    return array('url'=>$url, 'params'=>array('sessionid'=>$client->getKs(),'uiId'=>$uiId,'partnerid'=>$config->partnerId, 'userid'=>$USER->id));
+    return array('url'=>$url, 'params'=>array('sessionId'=>$client->getKs(),'uiConfId'=>$uiId,'partnerId'=>$config->partnerId, 'userId'=>$USER->id));
 }
 
-function kalturaEditor_setup($entryid) {
+/*function kalturaEditor_setup($entryid) {
     global $DB, $USER;
     $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
     $editor = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'editor'));
@@ -61,7 +58,7 @@ function kalturaEditor_setup($entryid) {
                          'saveF' => 'onSimpleEditorSaveClick'
     );
     return array('url' => $url, 'params' => $params);
-}
+}*/
 
 function kalturaGlobals_js($config) {
     if(empty($config) || !is_array($config)) {
@@ -78,25 +75,19 @@ function kalturaGlobals_js($config) {
     return $ret;
 }
 
-function kalturaPlayerUrlBase($mix=false) {
+function kalturaPlayerUrlBase() {
     global $DB;
     $config = get_config('kalturavideo');
     $baseurl = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'server_uri'));
     $partnerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'partner_id'));
 
     $player_type = 'regular';
-    $player_theme = $config->player_theme;
-    if ($mix) {
-        $player_type = 'mix';
-        $player_theme = $config->editor_theme;
-    }
 
-
-    $playerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'player_'.$player_type.'_'.$player_theme));
+    $playerid = $DB->get_field('config_plugins','value',array('plugin' => 'local_kaltura', 'name'=>'player_'.$player_type.'_'.$config->player_theme));
 
     $swfurl = $baseurl;
     $swfurl .= '/kwidget/wid/_'.$partnerid;
-    $swfurl .= '/uiconf_id/'.$playerid.'/entry_id/';
+    $swfurl .= '/ui_conf_id/'.$playerid.'/entry_id/';
 
     return $swfurl;
 }

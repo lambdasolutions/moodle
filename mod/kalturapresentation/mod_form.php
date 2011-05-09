@@ -33,10 +33,10 @@ require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 class mod_kalturapresentation_mod_form extends moodleform_mod {
     function definition() {
         global $CFG, $DB, $PAGE;
-        $PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-edit.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-doc.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
+        $PAGE->requires->css('/mod/kalturapresentation/styles.css');
 
         $mform = $this->_form;
 
@@ -55,9 +55,10 @@ class mod_kalturapresentation_mod_form extends moodleform_mod {
 
         //-------------------------------------------------------
         $mform->addElement('header', 'content', get_string('contentheader', 'kalturapresentation'));
-        $mform->addElement('hidden', 'kalturaentry','');
+        $mform->addElement('hidden', 'kalturapresentation','');
         $mform->addElement('hidden', 'kalturavideo','');
         $mform->addElement('hidden', 'kalturadocument','');
+        $mform->addElement('hidden', 'videotype',1);
 
         $str_replacevideo = get_string('replacevideo', 'kalturapresentation');
         $str_replacedocument = get_string('replacedocument', 'kalturapresentation');
@@ -66,11 +67,12 @@ class mod_kalturapresentation_mod_form extends moodleform_mod {
         <div class="swfdoc_section">
             <span id="video">
                 <div class="kalturaPlayerEdit"></div>
-                <input type="submit" id="id_buttons_replacevideo" value="$str_replacevideo"/>
+                <input type="submit" id="id_replacevideo" value="$str_replacevideo"/>
             </span>
+            <span class="spacer" style="width:20px;"></span>
             <span>
                 <div class="kalturaDocThumb"></div>
-                <input type="submit" id="id_buttons_replacedocument" value="$str_replacedocument"/>
+                <input type="submit" id="id_replacedocument" value="$str_replacedocument"/>
             </span>
         </div>
 INLINE;

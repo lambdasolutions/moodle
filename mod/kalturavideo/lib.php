@@ -218,7 +218,7 @@ function kalturavideo_get_coursemodule_info($coursemodule) {
     global $CFG, $DB;
     require_once("$CFG->dirroot/local/kaltura/lib.php");
 
-    if (!$kalturavideo = $DB->get_record('kalturavideo', array('id'=>$coursemodule->instance), 'id, name, display, displayoptions, kalturaentry, parameters')) {
+    if (!$kalturavideo = $DB->get_record('kalturavideo', array('id'=>$coursemodule->instance), 'id, name, display, displayoptions, kalturavideo, parameters')) {
         return NULL;
     }
 
@@ -226,7 +226,7 @@ function kalturavideo_get_coursemodule_info($coursemodule) {
     $info->name = $kalturavideo->name;
 
     //note: there should be a way to differentiate links from normal resources
-    $info->icon = kalturavideo_guess_icon($kalturavideo->kalturaentry);
+    $info->icon = kalturavideo_guess_icon($kalturavideo->kalturavideo);
 
     $display = kalturavideo_get_final_display_type($kalturavideo);
 
