@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-14) unstable; urgency=low
+
+  * mod/assignment/type/kaltura: fixing assignment type for mix removal
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 10 May 2011 12:36:10 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-13) unstable; urgency=low
 
   * Removed mix type from kalura video
