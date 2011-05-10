@@ -44,10 +44,10 @@ class assignment_kaltura extends assignment_base {
             $data->edit       = 1;
             if ($submission) {
                 $data->sid          = $submission->id;
-                $data->kalturaentry = $submission->data1;
+                $data->kalturavideo = $submission->data1;
             } else {
                 $data->sid          = NULL;
-                $data->kalturaentry = '';
+                $data->kalturavideo = '';
             }
 
             $mform = new mod_assignment_kaltura_edit_form(null, array($data));
@@ -153,7 +153,7 @@ class assignment_kaltura extends assignment_base {
 
         $update = new stdClass();
         $update->id           = $submission->id;
-        $update->data1        = $data->kalturaentry;
+        $update->data1        = $data->kalturavideo;
         $update->data2        = $data->videotype;
         $update->timemodified = time();
 
@@ -262,8 +262,8 @@ class mod_assignment_kaltura_edit_form extends moodleform {
         $mform->addElement('hidden', 'edit');
         $mform->setType('edit', PARAM_INT);
 
-        $mform->addElement('hidden', 'kalturaentry');
-        $mform->setType('kalturaentry', PARAM_TEXT);
+        $mform->addElement('hidden', 'kalturavideo');
+        $mform->setType('kalturavideo', PARAM_TEXT);
 
         // buttons
         $this->add_action_buttons();
