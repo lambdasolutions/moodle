@@ -4,7 +4,6 @@ require_once('../../../../config.php');
 $id     = required_param('id', 0, PARAM_INT);
 $userid = required_param('userid', 0, PARAM_INT);
 
-$PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
 $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
 //get course module/context from cmid

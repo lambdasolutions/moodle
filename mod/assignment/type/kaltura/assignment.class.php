@@ -18,7 +18,6 @@ class assignment_kaltura extends assignment_base {
 
     function view() {
         global $OUTPUT, $CFG, $USER, $PAGE;
-        $PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
         $edit  = optional_param('edit', 0, PARAM_BOOL);
@@ -46,11 +45,9 @@ class assignment_kaltura extends assignment_base {
             if ($submission) {
                 $data->sid          = $submission->id;
                 $data->kalturaentry = $submission->data1;
-                $data->videotype    = $submission->data2;
             } else {
                 $data->sid          = NULL;
                 $data->kalturaentry = '';
-                $data->videotype    = -1;
             }
 
             $mform = new mod_assignment_kaltura_edit_form(null, array($data));
@@ -186,7 +183,6 @@ class assignment_kaltura extends assignment_base {
         if (!$submission = $this->get_submission($userid)) {
             return '';
         }
-        $PAGE->requires->js('/local/kaltura/js/kaltura-common.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
 
         $output = '<script type="text/javascript">window.kaltura = {entryid: "'.$submission->data1.'"};</script>';
@@ -256,12 +252,7 @@ class mod_assignment_kaltura_edit_form extends moodleform {
         $mform->addElement('html','<script type="text/javascript">window.kaltura = {cmid: 0};</script>');
         // visible elements
         $mform->addElement('html','<div class="kalturaPlayerEdit"></div>');
-        $buttons = array();
-        $buttons[] =& $mform->createElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
-        //if (admin has set 'mix' as a supported type in this moodle) {
-        $buttons[] =& $mform->createElement('submit', 'replaceeditvideo', get_String('replaceeditvideo', 'kalturavideo'));
-        //}
-        $mform->addGroup($buttons, 'buttons', ' ', false);
+        $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));
 
 
         // hidden params
@@ -273,8 +264,6 @@ class mod_assignment_kaltura_edit_form extends moodleform {
 
         $mform->addElement('hidden', 'kalturaentry');
         $mform->setType('kalturaentry', PARAM_TEXT);
-        $mform->addElement('hidden', 'videotype', '1');
-        $mform->setType('videotype', PARAM_INT);
 
         // buttons
         $this->add_action_buttons();
