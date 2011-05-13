@@ -27,12 +27,6 @@ if ($hassiteconfig) { // needs this condition or there is error on login page
     $settings->add(new admin_setting_configtext('local_kaltura/uploader_regular',
         get_string('uploaderregular', 'local_kaltura'), null, '1002217', PARAM_TEXT, 8));
 
-    $settings->add(new admin_setting_configtext('local_kaltura/uploader_mix',
-        get_string('uploadermix', 'local_kaltura'), null, '1002225', PARAM_TEXT, 8));
-
-    $settings->add(new admin_setting_configtext('local_kaltura/editor',
-        get_string('editor', 'local_kaltura'), null, '1002226', PARAM_TEXT, 8));
-
     $settings->add(new admin_setting_configtext('local_kaltura/player_regular_dark',
         get_string('playerregulardark', 'local_kaltura'), null, '1466342', PARAM_TEXT, 8));
 
