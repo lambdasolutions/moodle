@@ -89,6 +89,8 @@ function onContributionWizardClose(modified) {
     YUI().use('node', function(Y) {
         Y.one('.kalturaContributionWizard').setStyles({display: 'none'});
         Y.one('.kalturaContributionWizard').remove(true);
-        check_inputs();
+        if (typeof check_inputs == 'function') {
+            check_inputs();
+        }
     });
 }
