@@ -14,12 +14,12 @@ function kalturaClientSession($admin=false) {
 
     if ($admin) {
         $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'admin_secret'));
-        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::ADMIN);
+        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::ADMIN, $partnerId);
         $client->setKs($ks);
     }
     else {
         $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
-        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::USER);
+        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::USER, $partnerId);
         $client->setKs($ks);
     }
     return $client;
