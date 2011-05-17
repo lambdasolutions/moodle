@@ -16,11 +16,11 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * URL module main user interface
  *
- * @package    mod
- * @subpackage kalturavideo
- * @copyright  2011 Brett Wilkins <brett@catalyst.net.nz>
+ * @package    local
+ * @subpackage kaltura
+ * @copyright  2011 Catalyst IT <http://catalyst.net.nz/>
+ * @author     Brett Wilkins <brett@catalyst.net.nz>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
