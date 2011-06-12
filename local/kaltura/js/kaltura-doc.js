@@ -12,10 +12,9 @@ function check_status() {
                 return false;
             });
         }
-        var entryid = Y.one('input[name=kalturadocument]').get('value');
         Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
             {
-                data: 'action=doccheckstatus&entryid='+entryid,
+                data: 'action=doccheckstatus&docurl='+urlencode(documentswfurl),
                 on: {
                     complete: function(i, o, a) {
                         var response = Y.JSON.parse(o.responseText);
@@ -39,10 +38,11 @@ YUI().use('event', function(Y) {
         replaceDocumentButton('input#id_replacedocument');
         Y.one('input[name=syncpoints]').on('click', function(f) {
             f.preventDefault();
+            alert('this button *IS* being handled correctly-ish.');
             var vid = Y.one('input[name=kalturavideo]').get('value');
             var doc = Y.one('input[name=kalturadocument]').get('value');
             if (doc != '' && vid != '') {
-                overlaySWF('SyncPoints','action=swfdocurl&entryid='+vid+'&docid='+doc+'&id='+window.kaltura.cmid);
+                overlaySWF('SyncPoints','action=swfdocurl&entryid='+vid+'&docurl='+documentswfurl+'&id='+window.kaltura.cmid);
                 var closebutton = Y.Node.create('<input type="submit" value="Close" onclick=".preventDefault();YUI().use(\'node\', function(Y){Y.one(\'.kalturaSyncPoints\').remove(true);});return false;"/>')
                 Y.one('.kalturaSyncPoints .yui3-widget-ft').appendChild(closebutton);
             }
@@ -55,9 +55,22 @@ function replaceDocumentButton(buttonselector) {
     replaceButton(buttonselector, 'DocumentUploader', 'action=swfdocuploader');
 }
 
+var documentswfurl = '';
+
 function onDocumentUploaderAfterAddEntry(param) {
-    YUI.use('node', function(Y) {
+    YUI.use('node', 'io', 'json-parse', function(Y) {
         Y.one('input[name=kalturadocument]').set('value', param[0].entryId);
+        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
+            {
+                data: 'action=convertppt&entryid='+param[0].entryId,
+                on: {
+                    complete: function(i, o, a) {
+                        var response = Y.JSON.parse(o.responseText);
+                        documentswfurl = response.url;
+                    }
+                }
+            }
+        );
     });
 }
 
@@ -70,7 +83,7 @@ function onDocumentUploaderClose(modified) {
 }
 
 function check_inputs() {
-    YUI().use('node','io', function(Y) {
+    YUI().use('node', function(Y) {
         var doc = Y.one('input[name=kalturadocument]').get('value');
         var vid = Y.one('input[name=kalturavideo]').get('value');
         if (doc != '' && vid != '') {
