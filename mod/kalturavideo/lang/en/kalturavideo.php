@@ -11,8 +11,8 @@ $string['printintroexplain'] = 'Display video description below content?';
 $string['contentheader'] = 'Video Content';
 $string['kalturaentry'] = 'Kaltura Entry';
 $string['optionsheader'] = 'Display Options';
-$string['replacevideo'] = 'Replace Video';
-$string['replaceeditvideo'] = 'Replace Editable Video';
+$string['replacevideo'] = 'Add/Replace Video';
+$string['replaceeditvideo'] = 'Add/Replace Editable Video';
 $string['pluginadministration'] = 'Kaltura Video Admin';
 
 $string['kalturaentrytype'] = 'Entry Type';
