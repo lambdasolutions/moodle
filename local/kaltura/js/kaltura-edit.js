@@ -38,10 +38,119 @@ function replaceButton(buttonselector, overlayclass, datastr) {
         if (replace_button != undefined) {
             replace_button.on('click',function(e) {
                 e.preventDefault();
-                overlaySWF(overlayclass, datastr);
+                overlayHTML();
                 return false;
             });
         }
+    });
+}
+
+function overlayHTML() {
+    YUI().use('node','io','json-parse','overlay', 'tabview', 'swf', function(Y) {
+        var tabview = Y.Node.create('<div id="overlayContainer">'
+                                        +'<div id="kalturahtmlcontrib">'
+                                            +'<ul>'
+                                                +'<li><a href="#videotab">Video</a></li>'
+                                                +'<li><a href="#audiotab">Audio</a></li>'
+                                            +'</ul>'
+                                            +'<div>'
+                                                +'<div id="videotab">Video Content</div>'
+                                                +'<div id="audiotab">Audio Content</div>'
+                                            +'</div>'
+                                        +'</div>'
+                                    +'</div>');
+        Y.one('body').appendChild(tabview);
+        var videotab = Y.Node.create('<div id="videotabview">'
+                                        +'<ul>'
+                                            +'<li><a href="#uploadvideotab">Upload from File</a></li>'
+                                            +'<li><a href="#webcamtab">Record from Webcam</a></li>'
+                                            +'<li><a href="#myvideo">My Video</a></li>'
+                                            +'<li><a href="#sharedvideo">Shared Video</a></li>'
+                                        +'</ul>'
+                                        +'<div>'
+                                            +'<div id="uploadvideotab">Upload from File</div>'
+                                            +'<div id="webcamtab">Record from Webcam</div>'
+                                            +'<div id="myvideo">My Video</div>'
+                                            +'<div id="sharedvideo">Shared Video</div>'
+                                        +'</div>'
+                                    +'</div>');
+        Y.one('#videotab').setContent(videotab);
+        var audiotab = Y.Node.create('<div id="audiotabview">'
+                                        +'<ul>'
+                                            +'<li><a href="#uploadaudiotab">Upload from File</a></li>'
+                                            +'<li><a href="#mictab">Record from Mic</a></li>'
+                                            +'<li><a href="#myaudio">My Audio</a></li>'
+                                            +'<li><a href="#sharedaudio">Shared Audio</a></li>'
+                                        +'</ul>'
+                                        +'<div>'
+                                            +'<div id="uploadaudiotab">Upload from File</div>'
+                                            +'<div id="mictab">Record from Mic</div>'
+                                            +'<div id="myaudio">My Audio</div>'
+                                            +'<div id="sharedaudio">Shared Audio</div>'
+                                        +'</div>'
+                                    +'</div>');
+        Y.one('#audiotab').setContent(audiotab);
+        Y.one(document.body).addClass('yui3-skin-sam');
+        Y.all('#overlayContainer > div > div > div > div > div').each(function(div) {
+            div.setStyles({height:300, width:500});
+            console.log(div);
+        });
+        var tabs = new Y.TabView({srcNode:'#kalturahtmlcontrib'});
+        var vid  = new Y.TabView({srcNode:'#videotabview'});
+        var aud  = new Y.TabView({srcNode:'#audiotabview'});
+
+        Y.one('#overlayContainer').setStyles({background: '#FFFFFF',border: '1px'});
+
+        var overlay = new Y.Overlay({
+            srcNode:'#overlayContainer',
+            centered: true,
+        });
+        tabs.render();
+        aud.render();
+        vid.render();
+        overlay.render(document.body);
+        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
+            {
+                data: 'action=audiourl',
+                on: {
+                    complete: function (i,o,a) {
+                        response = Y.JSON.parse(o.responseText);
+                        Y.one('#mictab').setStyles({height: 240, width: 300});
+                        var swf = new Y.SWF('#mictab', response.url,
+                        {
+                            version: "9.0.115",
+                            fixedAttributes: {
+                                allowScriptAccess:"always",
+                                allowNetworking:"all",
+                                allowFullScreen: "TRUE"
+                            },
+                            flashVars: response.params
+                        });
+                    }
+                }
+            }
+        );
+        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
+            {
+                data: 'action=videourl',
+                on: {
+                    complete: function (i,o,a) {
+                        response = Y.JSON.parse(o.responseText);
+                        Y.one('#webcamtab').setStyles({height: 280, width: 400});
+                        var swf = new Y.SWF('#webcamtab', response.url,
+                        {
+                            version: "9.0.115",
+                            fixedAttributes: {
+                                allowScriptAccess:"always",
+                                allowNetworking:"all",
+                                allowFullScreen: "TRUE"
+                            },
+                            flashVars: response.params
+                        });
+                    }
+                }
+            }
+        );
     });
 }
 
@@ -62,7 +171,6 @@ function overlaySWF(overlayclass, datastr) {
                 on: {
                     complete: function(i,o,a) {
                         var response = Y.JSON.parse(o.responseText);
-                        console.log(response);
                         response.params.terms_of_use = "http://corp.kaltura.com/tandc";
                         response.params.afterAddEntry = "on"+overlayclass+"AfterAddEntry";
                         response.params.close = "on"+overlayclass+"Close";
