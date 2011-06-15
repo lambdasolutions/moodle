@@ -59,11 +59,23 @@ switch ($action) {
         }
 
         $url = kalturaPlayerUrlBase();
-        $returndata = array('url' => $url.$entry->kalturavideo, $params = array());
+        $returndata = array('url' => $url.$entry->kalturavideo, 'params' => array());
         break;
 
     case 'cwurl':
         $returndata = kalturaCWSession_setup();
+        break;
+
+    case 'audiourl':
+        $client = kalturaClientSession();
+        $config = $client->getConfig();
+        $returndata = array('url' => $CFG->wwwroot.'/local/kaltura/objects/audio.swf', 'params' => array('ks' => $client->getKs(), 'host' => $config->serviceUrl, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'entryTags' => 'audio', 'thumbOffset' => 1, 'useCamera' => 'false'));
+        break;
+
+    case 'videourl':
+        $client = kalturaClientSession();
+        $config = $client->getConfig();
+        $returndata = array('url' => $CFG->wwwroot.'/local/kaltura/objects/video.swf', 'params' => array('ks' => $client->getKs(), 'host' => $config->serviceUrl, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'entryTags' => 'audio', 'thumbOffset' => 1));
         break;
 
     default:
