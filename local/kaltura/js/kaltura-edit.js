@@ -46,7 +46,7 @@ function replaceButton(buttonselector, overlayclass, datastr) {
 }
 
 function overlayHTML() {
-    YUI().use('node','io','json-parse','overlay', 'tabview', 'swf', function(Y) {
+    YUI().use('node','overlay', 'tabview', function(Y) {
         var tabview = Y.Node.create('<div id="overlayContainer">'
                                         +'<div id="kalturahtmlcontrib">'
                                             +'<ul>'
@@ -58,6 +58,7 @@ function overlayHTML() {
                                                 +'<div id="audiotab">Audio Content</div>'
                                             +'</div>'
                                         +'</div>'
+                                        +'<input type="submit" value="Close" id="contribClose"/>'
                                     +'</div>');
         Y.one('body').appendChild(tabview);
         var videotab = Y.Node.create('<div id="videotabview">'
@@ -90,115 +91,74 @@ function overlayHTML() {
                                         +'</div>'
                                     +'</div>');
         Y.one('#audiotab').setContent(audiotab);
-        Y.one(document.body).addClass('yui3-skin-sam');
-        Y.all('#overlayContainer > div > div > div > div > div').each(function(div) {
-            div.setStyles({height:300, width:500});
-            console.log(div);
-        });
+
         var tabs = new Y.TabView({srcNode:'#kalturahtmlcontrib'});
         var vid  = new Y.TabView({srcNode:'#videotabview'});
         var aud  = new Y.TabView({srcNode:'#audiotabview'});
 
         Y.one('#overlayContainer').setStyles({background: '#FFFFFF',border: '1px'});
+        Y.one('#overlayContainer > div > div > div > div > div > div').setStyles({width: 450, height: 300});
+
+        Y.one('#contribClose').on('click', function(e) {
+            e.preventDefault();
+            Y.one('#overlayContainer').setStyles({display: 'none'});
+            Y.one('#overlayContainer').remove(true);
+
+            return false;
+        });
 
         var overlay = new Y.Overlay({
             srcNode:'#overlayContainer',
-            centered: true,
+            centered: true
         });
         tabs.render();
         aud.render();
         vid.render();
         overlay.render(document.body);
-        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
-            {
-                data: 'action=audiourl',
-                on: {
-                    complete: function (i,o,a) {
-                        response = Y.JSON.parse(o.responseText);
-                        Y.one('#mictab').setStyles({height: 240, width: 300});
-                        var swf = new Y.SWF('#mictab', response.url,
-                        {
-                            version: "9.0.115",
-                            fixedAttributes: {
-                                allowScriptAccess:"always",
-                                allowNetworking:"all",
-                                allowFullScreen: "TRUE"
-                            },
-                            flashVars: response.params
-                        });
-                    }
-                }
-            }
-        );
-        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
-            {
-                data: 'action=videourl',
-                on: {
-                    complete: function (i,o,a) {
-                        response = Y.JSON.parse(o.responseText);
-                        Y.one('#webcamtab').setStyles({height: 280, width: 400});
-                        var swf = new Y.SWF('#webcamtab', response.url,
-                        {
-                            version: "9.0.115",
-                            fixedAttributes: {
-                                allowScriptAccess:"always",
-                                allowNetworking:"all",
-                                allowFullScreen: "TRUE"
-                            },
-                            flashVars: response.params
-                        });
-                    }
-                }
-            }
-        );
+
+        ajaxSwfLoad({
+            datastr: 'action=audiourl',
+            target:  '#mictab'
+        });
+        ajaxSwfLoad({
+            datastr: 'action=videourl',
+            target:  '#webcamtab'
+        });
     });
 }
 
-function overlaySWF(overlayclass, datastr) {
-    YUI().use('node','io','json-parse','overlay','swf', function(Y) {
-        var div = Y.Node.create('<div class="kaltura'+overlayclass+'">'
-                                    +'<div class="yui3-widget-hd"></div>'
-                                    +'<div class="yui3-widget-bd"></div>'
-                                    +'<div class="yui3-widget-ft"></div>'
-                                +'</div>');
-        Y.one('body').appendChild(div);
-
-        Y.one(".kaltura"+overlayclass+" .yui3-widget-bd").setStyles({width:800, height: 600});
-        console.log(datastr);
+function ajaxSwfLoad(conf) {
+    YUI().use('io','json-parse','swf', function(Y) {
+        if (!conf || !conf.datastr || !conf.target) {
+            return false;
+        }
+        if (!conf.fixedAttributes) {
+            conf.fixedAttributes = {
+                allowScriptAccess:"always",
+                allowNetworking:"all",
+                allowFullScreen: "TRUE"
+            }
+        }
         Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
             {
-                data: datastr,
+                data: conf.datastr,
                 on: {
-                    complete: function(i,o,a) {
-                        var response = Y.JSON.parse(o.responseText);
-                        response.params.terms_of_use = "http://corp.kaltura.com/tandc";
-                        response.params.afterAddEntry = "on"+overlayclass+"AfterAddEntry";
-                        response.params.close = "on"+overlayclass+"Close";
-                        response.params.kShowId = -2;
-
-                        var swf = new Y.SWF(".kaltura"+overlayclass+" .yui3-widget-bd", response.url,
-                            {
-                                version: "9.0.115",
-                                fixedAttributes: {
-                                    wmode: "opaque",
-                                    allowScriptAccess:"always",
-                                    allowNetworking:"all",
-                                    allowFullScreen: "TRUE"
-                                },
-                                flashVars: response.params
-                            }
-                        );
+                    complete: function (i,o,a) {
+                        response = Y.JSON.parse(o.responseText);
+                        var swf = new Y.SWF(conf.target, response.url,
+                        {
+                            version: "9.0.124",
+                            fixedAttributes: {
+                                allowScriptAccess:"always",
+                                allowNetworking:"all",
+                                allowFullScreen: "TRUE"
+                            },
+                            flashVars: response.params
+                        });
                     }
                 }
             }
         );
-        var overlay = new Y.Overlay({
-            srcNode: ".kaltura"+overlayclass,
-            centered: true
-        });
-        Y.one('.kaltura'+overlayclass).setStyles({display: 'block'});
-        overlay.set("centered", true);
-        overlay.render(document.body);
     });
 }
 
@@ -214,6 +174,18 @@ function onContributionWizardAfterAddEntry(param) {
         Y.one('input[name=kalturavideo]').set('value',entryId);
         initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
     });
+}
+
+function addEntryComplete(entry) {
+    YUI().use('node', function(Y) {
+        var entryId = entry.entryId;
+        Y.one('input[name=kalturavideo]').set('value',entryId);
+        initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
+    });
+}
+
+function addEntryResult(entry) {
+    addEntryComplete(entry);
 }
 
 function onContributionWizardClose(modified) {
