@@ -35,130 +35,13 @@ YUI().use("node","io","json-parse","event", function(Y) {
 function replaceButton(buttonselector, overlayclass, datastr) {
     YUI().use('node', function(Y) {
         var replace_button = Y.one(buttonselector);
-        if (replace_button != undefined) {
+        if (replace_button) {
             replace_button.on('click',function(e) {
                 e.preventDefault();
-                overlayHTML();
+                window.kalturaWiz = contribWiz();
                 return false;
             });
         }
-    });
-}
-
-function overlayHTML() {
-    YUI().use('node','overlay', 'tabview', function(Y) {
-        var tabview = Y.Node.create('<div id="overlayContainer">'
-                                        +'<div id="kalturahtmlcontrib">'
-                                            +'<ul>'
-                                                +'<li><a href="#videotab">Video</a></li>'
-                                                +'<li><a href="#audiotab">Audio</a></li>'
-                                            +'</ul>'
-                                            +'<div>'
-                                                +'<div id="videotab">Video Content</div>'
-                                                +'<div id="audiotab">Audio Content</div>'
-                                            +'</div>'
-                                        +'</div>'
-                                        +'<input type="submit" value="Close" id="contribClose"/>'
-                                    +'</div>');
-        Y.one('body').appendChild(tabview);
-        var videotab = Y.Node.create('<div id="videotabview">'
-                                        +'<ul>'
-                                            +'<li><a href="#uploadvideotab">Upload from File</a></li>'
-                                            +'<li><a href="#webcamtab">Record from Webcam</a></li>'
-                                            +'<li><a href="#myvideo">My Video</a></li>'
-                                            +'<li><a href="#sharedvideo">Shared Video</a></li>'
-                                        +'</ul>'
-                                        +'<div>'
-                                            +'<div id="uploadvideotab">Upload from File</div>'
-                                            +'<div id="webcamtab">Record from Webcam</div>'
-                                            +'<div id="myvideo">My Video</div>'
-                                            +'<div id="sharedvideo">Shared Video</div>'
-                                        +'</div>'
-                                    +'</div>');
-        Y.one('#videotab').setContent(videotab);
-        var audiotab = Y.Node.create('<div id="audiotabview">'
-                                        +'<ul>'
-                                            +'<li><a href="#uploadaudiotab">Upload from File</a></li>'
-                                            +'<li><a href="#mictab">Record from Mic</a></li>'
-                                            +'<li><a href="#myaudio">My Audio</a></li>'
-                                            +'<li><a href="#sharedaudio">Shared Audio</a></li>'
-                                        +'</ul>'
-                                        +'<div>'
-                                            +'<div id="uploadaudiotab">Upload from File</div>'
-                                            +'<div id="mictab">Record from Mic</div>'
-                                            +'<div id="myaudio">My Audio</div>'
-                                            +'<div id="sharedaudio">Shared Audio</div>'
-                                        +'</div>'
-                                    +'</div>');
-        Y.one('#audiotab').setContent(audiotab);
-
-        var tabs = new Y.TabView({srcNode:'#kalturahtmlcontrib'});
-        var vid  = new Y.TabView({srcNode:'#videotabview'});
-        var aud  = new Y.TabView({srcNode:'#audiotabview'});
-
-        Y.one('#overlayContainer').setStyles({background: '#FFFFFF',border: '1px'});
-        Y.one('#overlayContainer > div > div > div > div > div > div').setStyles({width: 450, height: 300});
-
-        Y.one('#contribClose').on('click', function(e) {
-            e.preventDefault();
-            Y.one('#overlayContainer').setStyles({display: 'none'});
-            Y.one('#overlayContainer').remove(true);
-
-            return false;
-        });
-
-        var overlay = new Y.Overlay({
-            srcNode:'#overlayContainer',
-            centered: true
-        });
-        tabs.render();
-        aud.render();
-        vid.render();
-        overlay.render(document.body);
-
-        ajaxSwfLoad({
-            datastr: 'action=audiourl',
-            target:  '#mictab'
-        });
-        ajaxSwfLoad({
-            datastr: 'action=videourl',
-            target:  '#webcamtab'
-        });
-    });
-}
-
-function ajaxSwfLoad(conf) {
-    YUI().use('io','json-parse','swf', function(Y) {
-        if (!conf || !conf.datastr || !conf.target) {
-            return false;
-        }
-        if (!conf.fixedAttributes) {
-            conf.fixedAttributes = {
-                allowScriptAccess:"always",
-                allowNetworking:"all",
-                allowFullScreen: "TRUE"
-            }
-        }
-        Y.io(M.cfg.wwwroot+'/local/kaltura/ajax.php',
-            {
-                data: conf.datastr,
-                on: {
-                    complete: function (i,o,a) {
-                        response = Y.JSON.parse(o.responseText);
-                        var swf = new Y.SWF(conf.target, response.url,
-                        {
-                            version: "9.0.124",
-                            fixedAttributes: {
-                                allowScriptAccess:"always",
-                                allowNetworking:"all",
-                                allowFullScreen: "TRUE"
-                            },
-                            flashVars: response.params
-                        });
-                    }
-                }
-            }
-        );
     });
 }
 
@@ -168,15 +51,8 @@ function replaceVideoButton(buttonselector) {
     });
 }
 
-function onContributionWizardAfterAddEntry(param) {
-    YUI().use('node','io','json-parse', function(Y) {
-        var entryId = (param[0].uniqueID == null ? param[0].entryId: param[0].uniqueID);
-        Y.one('input[name=kalturavideo]').set('value',entryId);
-        initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
-    });
-}
-
 function addEntryComplete(entry) {
+    alert('entry: '+entry.entryId);
     YUI().use('node', function(Y) {
         var entryId = entry.entryId;
         Y.one('input[name=kalturavideo]').set('value',entryId);
@@ -184,16 +60,368 @@ function addEntryComplete(entry) {
     });
 }
 
-function addEntryResult(entry) {
-    addEntryComplete(entry);
-}
+(function (a, b) {
+    var document  = window.document,
+        navigator = window.navigator,
+        location  = window.location;
 
-function onContributionWizardClose(modified) {
-    YUI().use('node', function(Y) {
-        Y.one('.kalturaContributionWizard').setStyles({display: 'none'});
-        Y.one('.kalturaContributionWizard').remove(true);
-        if (typeof check_inputs == 'function') {
-            check_inputs();
-        }
+    YUI().use('node','io','event','json-parse','overlay','tabview','swf', function(Y) {
+        var contribWiz = (function() {
+            /* Define a few things... */
+
+            var contribWiz = function() {
+                return contribWiz.fn.init();
+            },
+            /* Nice shot var for holding the ajax url variable */
+            _ajaxurl = M.cfg.wwwroot+'/local/kaltura/ajax.php';
+            yui = YUI();
+
+            contribWiz.fn = contribWiz.prototype = {
+                constructor: contribWiz,
+                init: function(target) {
+                    this._buildInterface();
+                    this._yuifyInterface();
+                    this._renderInterface();
+
+                    this.multiJAX([
+                        {
+                            action: 'videourl',
+                            passthrough: {
+                                target: '#webcamtab'
+                            },
+                            callback: this._swfLoadCallback
+                        },
+                        {
+                            action: 'audiourl',
+                            passthrough: {
+                                target: '#mictab'
+                            },
+                            callback: this._swfLoadCallback
+                        },
+                        {
+                            action: 'listpublic',
+                            passthrough: {
+                                target: '#sharedvideo',
+                                action: 'listpublic',
+                                type:   'video'
+                            },
+                            params: {
+                                mediatype: 'video'
+                            },
+                            callback: this._mediaListCallback
+                        },
+                        {
+                            action: 'listprivate',
+                            passthrough: {
+                                target: '#myvideo',
+                                action: 'listprivate',
+                                type:   'video'
+                            },
+                            params: {
+                                mediatype: 'video'
+                            },
+                            callback: this._mediaListCallback
+                        },
+                        {
+                            action: 'listpublic',
+                            passthrough: {
+                                target: '#sharedaudio',
+                                action: 'listpublic',
+                                type:   'audio'
+                            },
+                            params: {
+                                mediatype: 'audio'
+                            },
+                            callback: this._mediaListCallback
+                        },
+                        {
+                            action: 'listprivate',
+                            passthrough: {
+                                target: '#myaudio',
+                                action: 'listprivate',
+                                type:   'audio'
+                            },
+                            params: {
+                                mediatype: 'audio'
+                            },
+                            callback: this._mediaListCallback
+                        },
+                    ]);
+
+                    return this;
+                },
+                _yuifyInterface: function() {
+                    this.renderables           = {};
+                    this.renderables.toptabs   = new Y.TabView({srcNode:'#kalturahtmlcontrib'});
+                    this.renderables.videotabs = new Y.TabView({srcNode:'#videotabview'});
+                    this.renderables.audiotabs = new Y.TabView({srcNode:'#audiotabview'});
+
+                    Y.one('#overlayContainer').setStyles({background: '#CCC',border: '1px'});
+                    Y.all('#overlayContainer > div > div > div > div > div > div').setStyles({width: 450, height: 300});
+
+                    Y.one('#contribClose').on('click', function(e) {
+                        e.preventDefault();
+
+                        Y.one('#overlayContainer').setStyles({display: 'none'});
+                        Y.one('#overlayContainer').remove(true);
+
+                        return false;
+                    });
+
+                    this.renderables.overlay = new Y.Overlay({
+                        srcNode:'#overlayContainer',
+                        centered: true
+                    });
+                },
+                _renderInterface: function() {
+                    this.renderables.toptabs.render();
+                    this.renderables.videotabs.render();
+                    this.renderables.audiotabs.render();
+                    this.renderables.overlay.render();
+                },
+                _buildInterface: function() {
+                    var node = Y.Node.create(
+                        '<div id="overlayContainer">'
+                            +'<div id="kalturahtmlcontrib">'
+                                +'<ul>'
+                                    +'<li><a href="#videotab">Video</a></li>'
+                                   +'<li><a href="#audiotab">Audio</a></li>'
+                               +'</ul>'
+                                +'<div>'
+                                    +'<div id="videotab">'
+                                        +'<div id="videotabview">'
+                                            +'<ul>'
+                                                +'<li><a href="#uploadvideotab">Upload from File</a></li>'
+                                                +'<li><a href="#webcamtab">Record from Webcam</a></li>'
+                                                +'<li><a href="#myvideo">My Video</a></li>'
+                                                +'<li><a href="#sharedvideo">Shared Video</a></li>'
+                                            +'</ul>'
+                                            +'<div>'
+                                                +'<div id="uploadvideotab">Upload from File</div>'
+                                                +'<div id="webcamtab">Record from Webcam</div>'
+                                                +'<div id="myvideo">'
+                                                    +'<div>'
+                                                        +'<span class="videocontainer"></span>'
+                                                        +'<span class="controls"></span>'
+                                                    +'</div>'
+                                                +'</div>'
+                                                +'<div id="sharedvideo">'
+                                                    +'<div>'
+                                                        +'<span class="videocontainer"></span>'
+                                                        +'<span class="controls"></span>'
+                                                    +'</div>'
+                                                +'</div>'
+                                            +'</div>'
+                                        +'</div>'
+                                    +'</div>'
+                                    +'<div id="audiotab">'
+                                        +'<div id="audiotabview">'
+                                            +'<ul>'
+                                                +'<li><a href="#uploadaudiotab">Upload from File</a></li>'
+                                                +'<li><a href="#mictab">Record from Mic</a></li>'
+                                                +'<li><a href="#myaudio">My Audio</a></li>'
+                                                +'<li><a href="#sharedaudio">Shared Audio</a></li>'
+                                            +'</ul>'
+                                            +'<div>'
+                                                +'<div id="uploadaudiotab">Upload from File</div>'
+                                                +'<div id="mictab">Record from Mic</div>'
+                                                +'<div id="myaudio">'
+                                                    +'<div>'
+                                                        +'<span class="audiocontainer"></span>'
+                                                        +'<span class="controls"></span>'
+                                                    +'</div>'
+                                                +'</div>'
+                                                +'<div id="sharedaudio">'
+                                                    +'<div>'
+                                                        +'<span class="audiocontainer"></span>'
+                                                        +'<span class="controls"></span>'
+                                                    +'</div>'
+                                                +'</div>'
+                                            +'</div>'
+                                        +'</div>'
+                                    +'</div>'
+                                +'</div>'
+                            +'</div>'
+                            +'<input type="submit" value="Close" id="contribClose"/>'
+                        +'</div>'
+                    );
+                    Y.one(document.body).appendChild(node);
+                    this.domnode = Y.one('#overlayContainer');
+                },
+                _destroyInterface: function() {
+                    this.domnode.setStyles({display: 'none'});
+                    this.domnode.remove(true);
+                },
+                multiJAX: function(conf) {
+                    var str = '';
+                    var callbacks = Array();
+                    var passthroughs = Array();
+                    for (var i = 0; i < conf.length; i++) {
+                        var c = conf[i];
+                        var actionstr = 'actions[' + i + ']=' + c.action;
+                        var paramstr_head  = 'params[' + i + ']';
+                        var paramstr = '';
+                        if (c.params) {
+                            for (var p in c.params) {
+                                var paramstr = paramstr + paramstr_head + '[' + p + ']=' + c.params[p] + '&';
+                            }
+                        }
+                        str += actionstr + '&' + paramstr; /* paramstr should already end with a & */
+                        callbacks[i] = c.callback;
+                        if (c.passthrough) {
+                            passthroughs[i] = c.passthrough;
+                        }
+                        else {
+                            passthroughs[i] = {};
+                        }
+                    }
+                    str = str.replace(/&$/,'');
+                    console.log(str);
+
+                    Y.io(_ajaxurl,
+                        {
+                            data: str,
+                            on: {
+                                complete: function (i,o,a) {
+                                    response = Y.JSON.parse(o.responseText);
+                                    console.log(response);
+                                    for (var j = 0; j < response.length; j++) {
+                                        callbacks[j]({
+                                            response: response[j],
+                                            passthrough: passthroughs[j]
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    );
+                },
+                _swfLoadCallback: function(ob) {
+                    var swf = new Y.SWF(ob.passthrough.target, ob.response.url,
+                        {
+                            version: "9.0.124",
+                            fixedAttributes: {
+                                allowScriptAccess:"always",
+                                allowNetworking:"all",
+                                allowFullScreen: "TRUE"
+                            },
+                            flashVars: ob.response.params
+                        }
+                    );
+                },
+                _mediaListCallback: function(ob) {
+                    if (!ob.passthrough.page) {
+                        ob.passthrough.page = 1;
+                    }
+
+                    if (ob.response) {
+                        Y.one(ob.passthrough.target+' .controls').setContent('');
+                        Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').setContent('');
+                    }
+
+                    var node = Y.Node.create('<a href="#" class="pageb">&lt;</a>Page '+ob.passthrough.page+'<a href="#" class="pagef">&gt;</a>');
+                    Y.one(ob.passthrough.target+' .controls').appendChild(node);
+
+                    for (var i = 0; i < ob.response.count; i++) {
+                        var n = ob.response.objects[i];
+                        if (n) {
+                            Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').appendChild(
+                                Y.Node.create(
+                                    '<span class="thumb">'
+                                        +'<a href="#" onClick="addEntryComplete({entryId: \''+n.id+'\'});return false;" class="kalturavideo" status="'+n.status+'" id="'+n.id+'">'
+                                            +'<img src="'+n.thumbnailUrl+'" type="image/jpeg" width="120px" height="90px" alt="'+n.name+'"/>'
+                                        +'</a>'
+                                    +'</span>'
+                                )
+                            );
+                        }
+                    }
+                    Y.all(ob.passthrough.target+' .thumb img').setStyles({
+                        background: '#000000',
+                        /*padding: '0.5em'*/
+                    });
+
+                    var back    = Y.one(ob.passthrough.target+' .pageb');
+                    var forward = Y.one(ob.passthrough.target+' .pagef');
+
+                    if (ob.passthrough.page <= 1) {
+                        back.setAttribute('disabled',true);
+                    }
+                    else {
+                        back.on(
+                            {
+                                click: function (e) {
+                                    e.preventDefault();
+
+                                    contribWiz.fn.multiJAX([{
+                                        action: ob.passthrough.action,
+                                        passthrough: {
+                                            target: ob.passthrough.target,
+                                            action: ob.passthrough.action,
+                                            type:   ob.passthrough.type,
+                                            page:   ob.passthrough.page-1
+                                        },
+                                        params: {
+                                            mediatype: ob.passthrough.type,
+                                            page: ob.passthrough.page-1
+                                        },
+                                        callback: contribWiz.fn._mediaListCallback
+                                    }]);
+
+                                    return false;
+                                }
+                            }
+                        );
+                    }
+
+                    if (ob.passthrough.page >= ob.response.page.count) {
+                        forward.setAttribute('disabled', true);
+                    }
+                    else {
+                        forward.on(
+                            {
+                                click: function (e) {
+                                    e.preventDefault();
+
+                                    contribWiz.fn.multiJAX([{
+                                        action: ob.passthrough.action,
+                                        passthrough: {
+                                            target: ob.passthrough.target,
+                                            action: ob.passthrough.action,
+                                            type:   ob.passthrough.type,
+                                            page:   ob.passthrough.page-1
+                                        },
+                                        params: {
+                                            mediatype: ob.passthrough.type,
+                                            page: ob.passthrough.page+1
+                                        },
+                                        callback: contribWiz.fn._mediaListCallback
+                                    }]);
+
+                                    return false;
+                                }
+                            }
+                        );
+                    }
+                },
+                addEntryComplete: function(entry) {
+                    var entryId = entry.entryId;
+                    Y.one('input[name=kalturavideo]').set('value', entryId);
+                    initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
+                },
+                show: function() {
+                    if (this.domnode.getStyle('display') !== 'block') {
+                        this.domnode.setStyle('display', 'block');
+                    }
+                },
+                destroy: function() {
+                    this._destroyInterface();
+                },
+            };
+            contribWiz.fn.init.prototype = contribWiz.prototype;
+            return contribWiz;
+        })();
+        a.contribWiz = contribWiz;
     });
-}
+})(window);
+
