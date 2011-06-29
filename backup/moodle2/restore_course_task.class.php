@@ -71,6 +71,14 @@ class restore_course_task extends restore_task {
             $this->add_step(new restore_course_structure_step('course_info', 'course.xml'));
         }
 
+        // Restore Legacy files area if enabled in original course.
+        if ($this->plan->get_mode() == backup::MODE_IMPORT) {
+            $rootsettings = $this->get_info()->root_settings;
+            if (isset($rootsettings['legacyfiles']) && $rootsettings['legacyfiles']) {
+                $this->add_step(new restore_course_legacy_files_step('course_legacy_files', ''));
+            }
+        }
+
         // Restore course role assignments and overrides (internally will observe the role_assignments setting)
         $this->add_step(new restore_ras_and_caps_structure_step('course_ras_and_caps', 'roles.xml'));
 
