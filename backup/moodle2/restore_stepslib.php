@@ -1480,6 +1480,18 @@ class restore_course_structure_step extends restore_structure_step {
     }
 }
 
+class restore_course_legacy_files_step extends restore_structure_step {
+
+    protected function define_structure() {
+        return array();
+    }
+
+    protected function after_execute() {
+        // Add course related files, without itemid to match
+        $this->add_related_files('course', 'legacy', null);
+    }
+}
+
 
 /*
  * Structure step that will read the roles.xml file (at course/activity/block levels)
