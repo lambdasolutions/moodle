@@ -116,6 +116,13 @@ class backup_root_task extends backup_task {
         $this->add_setting($filters);
         $this->converter_deps($filters, $converters);
 
+        // Define legacy files
+        if ($this->plan->get_mode() == backup::MODE_IMPORT) {
+            $legacy = new backup_generic_setting('legacyfiles', base_setting::IS_BOOLEAN, false);
+            $legacy->set_ui(new backup_setting_ui_checkbox($legacy, get_string('rootsettinglegacyfiles', 'backup')));
+            $this->add_setting($legacy);
+        }
+
         // Define comments (dependent of users)
         $comments = new backup_comments_setting('comments', base_setting::IS_BOOLEAN, true);
         $comments->set_ui(new backup_setting_ui_checkbox($comments, get_string('rootsettingcomments', 'backup')));
