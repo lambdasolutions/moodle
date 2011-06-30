@@ -98,7 +98,7 @@ foreach ($actions as $index => $action) {
             break;
 
         case 'listpublic':
-            list($client, $filter, $pager) = buildListFilter();
+            list($client, $filter, $pager) = buildListFilter($p);
 
             $results = $client->media->listAction($filter, $pager);
             $count   = $client->media->count($filter);
@@ -120,7 +120,7 @@ foreach ($actions as $index => $action) {
             break;
 
         case 'listprivate':
-            list($client, $filter, $pager) = buildListFilter();
+            list($client, $filter, $pager) = buildListFilter($p);
 
             $filter->userIdEqual = $USER->id;
 
@@ -148,9 +148,7 @@ foreach ($actions as $index => $action) {
     }
 }
 
-function buildListFilter() {
-    global $params;
-
+function buildListFilter($params) {
     $client = kalturaClientSession();
     $config = $client->getConfig();
 

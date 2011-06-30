@@ -73,8 +73,26 @@ function addEntryComplete(entry) {
                 return contribWiz.fn.init();
             },
             /* Nice shot var for holding the ajax url variable */
-            _ajaxurl = M.cfg.wwwroot+'/local/kaltura/ajax.php';
-            yui = YUI();
+            _ajaxurl = M.cfg.wwwroot + '/local/kaltura/ajax.php',
+            yui = YUI(),
+            scaffold = '',
+
+            load_scaffold = function(self) {
+                Y.io(M.cfg.wwwroot + '/local/kaltura/js/kaltura-edit_scaffold.html',
+                    {
+                        on: {
+                            success: function(i,o,a) {
+                                scaffold = o.responseText;
+                            },
+                            failure: function(i,o,a) {
+                                setTimeout(function() {self(self);}, 1000);
+                            }
+                        },
+                    }
+                );
+            };
+
+            load_scaffold(load_scaffold);
 
             contribWiz.fn = contribWiz.prototype = {
                 constructor: contribWiz,
@@ -145,7 +163,7 @@ function addEntryComplete(entry) {
                                 mediatype: 'audio'
                             },
                             callback: this._mediaListCallback
-                        },
+                        }
                     ]);
 
                     return this;
@@ -180,71 +198,7 @@ function addEntryComplete(entry) {
                     this.renderables.overlay.render();
                 },
                 _buildInterface: function() {
-                    var node = Y.Node.create(
-                        '<div id="overlayContainer">'
-                            +'<div id="kalturahtmlcontrib">'
-                                +'<ul>'
-                                    +'<li><a href="#videotab">Video</a></li>'
-                                   +'<li><a href="#audiotab">Audio</a></li>'
-                               +'</ul>'
-                                +'<div>'
-                                    +'<div id="videotab">'
-                                        +'<div id="videotabview">'
-                                            +'<ul>'
-                                                +'<li><a href="#uploadvideotab">Upload from File</a></li>'
-                                                +'<li><a href="#webcamtab">Record from Webcam</a></li>'
-                                                +'<li><a href="#myvideo">My Video</a></li>'
-                                                +'<li><a href="#sharedvideo">Shared Video</a></li>'
-                                            +'</ul>'
-                                            +'<div>'
-                                                +'<div id="uploadvideotab">Upload from File</div>'
-                                                +'<div id="webcamtab">Record from Webcam</div>'
-                                                +'<div id="myvideo">'
-                                                    +'<div>'
-                                                        +'<span class="videocontainer"></span>'
-                                                        +'<span class="controls"></span>'
-                                                    +'</div>'
-                                                +'</div>'
-                                                +'<div id="sharedvideo">'
-                                                    +'<div>'
-                                                        +'<span class="videocontainer"></span>'
-                                                        +'<span class="controls"></span>'
-                                                    +'</div>'
-                                                +'</div>'
-                                            +'</div>'
-                                        +'</div>'
-                                    +'</div>'
-                                    +'<div id="audiotab">'
-                                        +'<div id="audiotabview">'
-                                            +'<ul>'
-                                                +'<li><a href="#uploadaudiotab">Upload from File</a></li>'
-                                                +'<li><a href="#mictab">Record from Mic</a></li>'
-                                                +'<li><a href="#myaudio">My Audio</a></li>'
-                                                +'<li><a href="#sharedaudio">Shared Audio</a></li>'
-                                            +'</ul>'
-                                            +'<div>'
-                                                +'<div id="uploadaudiotab">Upload from File</div>'
-                                                +'<div id="mictab">Record from Mic</div>'
-                                                +'<div id="myaudio">'
-                                                    +'<div>'
-                                                        +'<span class="audiocontainer"></span>'
-                                                        +'<span class="controls"></span>'
-                                                    +'</div>'
-                                                +'</div>'
-                                                +'<div id="sharedaudio">'
-                                                    +'<div>'
-                                                        +'<span class="audiocontainer"></span>'
-                                                        +'<span class="controls"></span>'
-                                                    +'</div>'
-                                                +'</div>'
-                                            +'</div>'
-                                        +'</div>'
-                                    +'</div>'
-                                +'</div>'
-                            +'</div>'
-                            +'<input type="submit" value="Close" id="contribClose"/>'
-                        +'</div>'
-                    );
+                    var node = Y.Node.create(scaffold);
                     Y.one(document.body).appendChild(node);
                     this.domnode = Y.one('#overlayContainer');
                 },
@@ -267,7 +221,10 @@ function addEntryComplete(entry) {
                             }
                         }
                         str += actionstr + '&' + paramstr; /* paramstr should already end with a & */
-                        callbacks[i] = c.callback;
+                        callbacks[i] = {
+                            complete: c.callback,
+                            failure : c.failure ? c.failure : this._defaultFailureCallback
+                        };
                         if (c.passthrough) {
                             passthroughs[i] = c.passthrough;
                         }
@@ -286,11 +243,14 @@ function addEntryComplete(entry) {
                                     response = Y.JSON.parse(o.responseText);
                                     console.log(response);
                                     for (var j = 0; j < response.length; j++) {
-                                        callbacks[j]({
+                                        callbacks[j].complete({
                                             response: response[j],
                                             passthrough: passthroughs[j]
                                         });
                                     }
+                                },
+                                failure: function (i,o,a) {
+                                    /* TODO: Do stuff */
                                 }
                             }
                         }
@@ -310,6 +270,7 @@ function addEntryComplete(entry) {
                     );
                 },
                 _mediaListCallback: function(ob) {
+                    var $this = this;
                     if (!ob.passthrough.page) {
                         ob.passthrough.page = 1;
                     }
@@ -319,17 +280,21 @@ function addEntryComplete(entry) {
                         Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').setContent('');
                     }
 
-                    var node = Y.Node.create('<a href="#" class="pageb">&lt;</a>Page '+ob.passthrough.page+'<a href="#" class="pagef">&gt;</a>');
+                    var node = Y.Node.create('<a href="#" class="pageb">&lt;</a>Page ' + ob.passthrough.page + '<a href="#" class="pagef">&gt;</a>');
                     Y.one(ob.passthrough.target+' .controls').appendChild(node);
 
                     for (var i = 0; i < ob.response.count; i++) {
                         var n = ob.response.objects[i];
                         if (n) {
-                            Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').appendChild(
+                            Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').appendChild(
                                 Y.Node.create(
                                     '<span class="thumb">'
                                         +'<a href="#" onClick="addEntryComplete({entryId: \''+n.id+'\'});return false;" class="kalturavideo" status="'+n.status+'" id="'+n.id+'">'
-                                            +'<img src="'+n.thumbnailUrl+'" type="image/jpeg" width="120px" height="90px" alt="'+n.name+'"/>'
+                                            + (
+                                                ob.passthrough.type === 'audio' ?
+                                                    '<span><div style="float:left;height:90px;width:120px">' + n.name + '</div></span>' :
+                                                    '<img src="'+n.thumbnailUrl+'" type="image/jpeg" width="120px" height="90px" alt="'+n.name+'"/>'
+                                                )
                                         +'</a>'
                                     +'</span>'
                                 )
@@ -345,9 +310,10 @@ function addEntryComplete(entry) {
                     var forward = Y.one(ob.passthrough.target+' .pagef');
 
                     if (ob.passthrough.page <= 1) {
-                        back.setAttribute('disabled',true);
+                        back.setAttribute('disabled', true);
                     }
                     else {
+                        back.setAttribute('disabled', false);
                         back.on(
                             {
                                 click: function (e) {
@@ -365,7 +331,7 @@ function addEntryComplete(entry) {
                                             mediatype: ob.passthrough.type,
                                             page: ob.passthrough.page-1
                                         },
-                                        callback: contribWiz.fn._mediaListCallback
+                                        callback: $this._mediaListCallback
                                     }]);
 
                                     return false;
@@ -378,6 +344,7 @@ function addEntryComplete(entry) {
                         forward.setAttribute('disabled', true);
                     }
                     else {
+                        forward.setAttribute('disabled', false);
                         forward.on(
                             {
                                 click: function (e) {
@@ -395,7 +362,7 @@ function addEntryComplete(entry) {
                                             mediatype: ob.passthrough.type,
                                             page: ob.passthrough.page+1
                                         },
-                                        callback: contribWiz.fn._mediaListCallback
+                                        callback: $this._mediaListCallback
                                     }]);
 
                                     return false;
