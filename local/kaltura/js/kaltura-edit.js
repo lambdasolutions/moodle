@@ -21,10 +21,10 @@
  * @licend
  */
 
-YUI().use("node","io","json-parse","event", function(Y) {
+YUI().use('node', 'io', 'json-parse', 'event', function (Y) {
     replaceVideoButton('input#id_replacevideo');
 
-    Y.on("domready",function() {
+    Y.on("domready", function () {
         obj = {};
         obj.playerselector = '.kalturaPlayerEdit';
         obj.entryid = Y.one('input[name=kalturavideo]').get('value');
@@ -33,12 +33,14 @@ YUI().use("node","io","json-parse","event", function(Y) {
 });
 
 function replaceButton(buttonselector, overlayclass, datastr) {
-    YUI().use('node', function(Y) {
+    YUI().use('node', function (Y) {
         var replace_button = Y.one(buttonselector);
         if (replace_button) {
-            replace_button.on('click',function(e) {
+            replace_button.on('click',function (e) {
                 e.preventDefault();
-                window.kalturaWiz = contribWiz();
+                if (window.kalturaWiz == undefined) {
+                    window.kalturaWiz = contribWiz();
+                }
                 return false;
             });
         }
@@ -46,14 +48,14 @@ function replaceButton(buttonselector, overlayclass, datastr) {
 }
 
 function replaceVideoButton(buttonselector) {
-    YUI().use('node', function(Y) {
+    YUI().use('node', function (Y) {
         replaceButton(buttonselector, 'ContributionWizard', 'action=cwurl');
     });
 }
 
 function addEntryComplete(entry) {
     alert('entry: '+entry.entryId);
-    YUI().use('node', function(Y) {
+    YUI().use('node', function (Y) {
         var entryId = entry.entryId;
         Y.one('input[name=kalturavideo]').set('value',entryId);
         initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
@@ -65,11 +67,11 @@ function addEntryComplete(entry) {
         navigator = window.navigator,
         location  = window.location;
 
-    YUI().use('node','io','event','json-parse','overlay','tabview','swf', function(Y) {
-        var contribWiz = (function() {
+    YUI().use('node', 'io', 'event', 'json-parse', 'overlay', 'tabview', 'swf', 'yui2-treeview', function (Y) {
+        var contribWiz = (function () {
             /* Define a few things... */
 
-            var contribWiz = function() {
+            var contribWiz = function () {
                 return contribWiz.fn.init();
             },
             /* Nice shot var for holding the ajax url variable */
@@ -77,15 +79,16 @@ function addEntryComplete(entry) {
             yui = YUI(),
             scaffold = '',
 
-            load_scaffold = function(self) {
-                Y.io(M.cfg.wwwroot + '/local/kaltura/js/kaltura-edit_scaffold.html',
+            load_scaffold = function (self) {
+                Y.io(_ajaxurl,
                     {
+                        data: 'actions[0]=getdomnodes',
                         on: {
-                            success: function(i,o,a) {
-                                scaffold = o.responseText;
+                            success: function (i, o, a) {
+                                scaffold = Y.JSON.parse(o.responseText)[0];
                             },
-                            failure: function(i,o,a) {
-                                setTimeout(function() {self(self);}, 1000);
+                            failure: function (i, o, a) {
+                                setTimeout(function () {self(self);}, 1000);
                             }
                         },
                     }
@@ -96,171 +99,196 @@ function addEntryComplete(entry) {
 
             contribWiz.fn = contribWiz.prototype = {
                 constructor: contribWiz,
-                init: function(target) {
-                    this._buildInterface();
-                    this._yuifyInterface();
-                    this._renderInterface();
+                init: function () {
+                    this.interfaceNodes = scaffold;
 
-                    this.multiJAX([
-                        {
-                            action: 'videourl',
-                            passthrough: {
-                                target: '#webcamtab'
-                            },
-                            callback: this._swfLoadCallback
-                        },
-                        {
-                            action: 'audiourl',
-                            passthrough: {
-                                target: '#mictab'
-                            },
-                            callback: this._swfLoadCallback
-                        },
-                        {
-                            action: 'listpublic',
-                            passthrough: {
-                                target: '#sharedvideo',
-                                action: 'listpublic',
-                                type:   'video'
-                            },
-                            params: {
-                                mediatype: 'video'
-                            },
-                            callback: this._mediaListCallback
-                        },
-                        {
-                            action: 'listprivate',
-                            passthrough: {
-                                target: '#myvideo',
-                                action: 'listprivate',
-                                type:   'video'
-                            },
-                            params: {
-                                mediatype: 'video'
-                            },
-                            callback: this._mediaListCallback
-                        },
-                        {
-                            action: 'listpublic',
-                            passthrough: {
-                                target: '#sharedaudio',
-                                action: 'listpublic',
-                                type:   'audio'
-                            },
-                            params: {
-                                mediatype: 'audio'
-                            },
-                            callback: this._mediaListCallback
-                        },
-                        {
-                            action: 'listprivate',
-                            passthrough: {
-                                target: '#myaudio',
-                                action: 'listprivate',
-                                type:   'audio'
-                            },
-                            params: {
-                                mediatype: 'audio'
-                            },
-                            callback: this._mediaListCallback
-                        }
-                    ]);
+                    if (scaffold === '') {
+                        setTimeout(function () {window.kalturaWiz._buildRootInterface()}, 1000);
+                    }
+                    else {
+                        this._buildRootInterface();
+                    }
 
                     return this;
+
                 },
-                _yuifyInterface: function() {
-                    this.renderables           = {};
-                    this.renderables.toptabs   = new Y.TabView({srcNode:'#kalturahtmlcontrib'});
-                    this.renderables.videotabs = new Y.TabView({srcNode:'#videotabview'});
-                    this.renderables.audiotabs = new Y.TabView({srcNode:'#audiotabview'});
+                _buildRootInterface: function () {
+                    if (window.kalturaWiz !== undefined) {
+                        $this = window.kalturaWiz;
+                    }
+                    else {
+                        $this = this;
+                    }
 
-                    Y.one('#overlayContainer').setStyles({background: '#CCC',border: '1px'});
-                    Y.all('#overlayContainer > div > div > div > div > div > div').setStyles({width: 450, height: 300});
+                    if (scaffold === '') {
+                        setTimeout($this._buildRootInterface, 1000);
+                    } else {
+                        $this.interfaceNodes = scaffold;
+                        console.debug(scaffold);
 
-                    Y.one('#contribClose').on('click', function(e) {
-                        e.preventDefault();
+                        var node = Y.Node.create($this.interfaceNodes.root);
+                        Y.one(document.body).appendChild(node);
+                        $this.domnode = Y.one('#overlayContainer');
 
-                        Y.one('#overlayContainer').setStyles({display: 'none'});
-                        Y.one('#overlayContainer').remove(true);
+                        node = Y.Node.create($this.interfaceNodes.styles);
+                        Y.one(document.head).append(node);
 
-                        return false;
-                    });
+                        Y.one('#contribClose').on('click', function (e) {
+                            e.preventDefault();
+                            $this._destroyInterface();
 
-                    this.renderables.overlay = new Y.Overlay({
+                            return false;
+                        });
+
+                        setTimeout(function() {$this._buildSelectionInterface(Y.one('#kalturahtmlcontrib'));}, 200);
+                    }
+                },
+                _buildSelectionInterface: function (root) {
+                    /* Assign this to another value so it is still valid when defining another object */
+                    var $this = this;
+
+                    try {
+                        if (this.currentnode) {
+                            this.currentnode.destroy();
+                        }
+                    }
+                    catch (err) {};
+
+                    /* Fetch and insert dom tree */
+                    var node = Y.Node.create(this.interfaceNodes.select);
+                    root.append(node);
+                    this.currentnode = Y.one('#selectionInterface');
+
+                    /* YUIfy DOM sections */
+                    var renderables         = {};
+                    renderables.toptabs     = new Y.TabView({srcNode:'#selectionInterface'});
+                    renderables.videotabs   = new Y.TabView({srcNode:'#videotabview'});
+                    renderables.audiotabs   = new Y.TabView({srcNode:'#audiotabview'});
+
+                    renderables.overlay = new Y.Overlay({
                         srcNode:'#overlayContainer',
                         centered: true
                     });
-                },
-                _renderInterface: function() {
-                    this.renderables.toptabs.render();
-                    this.renderables.videotabs.render();
-                    this.renderables.audiotabs.render();
-                    this.renderables.overlay.render();
-                },
-                _buildInterface: function() {
-                    var node = Y.Node.create(scaffold);
-                    Y.one(document.body).appendChild(node);
-                    this.domnode = Y.one('#overlayContainer');
-                },
-                _destroyInterface: function() {
-                    this.domnode.setStyles({display: 'none'});
-                    this.domnode.remove(true);
-                },
-                multiJAX: function(conf) {
-                    var str = '';
-                    var callbacks = Array();
-                    var passthroughs = Array();
-                    for (var i = 0; i < conf.length; i++) {
-                        var c = conf[i];
-                        var actionstr = 'actions[' + i + ']=' + c.action;
-                        var paramstr_head  = 'params[' + i + ']';
-                        var paramstr = '';
-                        if (c.params) {
-                            for (var p in c.params) {
-                                var paramstr = paramstr + paramstr_head + '[' + p + ']=' + c.params[p] + '&';
-                            }
-                        }
-                        str += actionstr + '&' + paramstr; /* paramstr should already end with a & */
-                        callbacks[i] = {
-                            complete: c.callback,
-                            failure : c.failure ? c.failure : this._defaultFailureCallback
-                        };
-                        if (c.passthrough) {
-                            passthroughs[i] = c.passthrough;
-                        }
-                        else {
-                            passthroughs[i] = {};
-                        }
-                    }
-                    str = str.replace(/&$/,'');
-                    console.log(str);
 
-                    Y.io(_ajaxurl,
+                    /* Render YUI parts */
+                    renderables.toptabs.render();
+                    renderables.videotabs.render();
+                    renderables.audiotabs.render();
+                    renderables.overlay.render();
+
+                    pages = Array(
                         {
-                            data: str,
-                            on: {
-                                complete: function (i,o,a) {
-                                    response = Y.JSON.parse(o.responseText);
-                                    console.log(response);
-                                    for (var j = 0; j < response.length; j++) {
-                                        callbacks[j].complete({
-                                            response: response[j],
-                                            passthrough: passthroughs[j]
-                                        });
-                                    }
-                                },
-                                failure: function (i,o,a) {
-                                    /* TODO: Do stuff */
-                                }
-                            }
+                            target: '#sharedaudio',
+                            type  : 'audio',
+                            access: 'public'
+                        },
+                        {
+                            target: '#myaudio',
+                            type  : 'audio',
+                            access: 'private'
+                        },
+                        {
+                            target: '#sharedvideo',
+                            type  : 'video',
+                            access: 'public'
+                        },
+                        {
+                            target: '#myvideo',
+                            type  : 'video',
+                            access: 'private'
                         }
                     );
+                    for (var i = 0; i < pages.length; i++) {
+                        var ob = pages[i];
+                        $this.pageButtonHandlers({
+                            action   : 'list' + ob.access,
+                            target   : ob.target,
+                            type     : ob.type,
+                            page     : window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.current,
+                            pagecount: window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.count
+                        });
+                    }
+
+
+                    /* Load dynamic contents */
+                    /* Load webcam recorder */
+                    this._swfLoadCallback({
+                        passthrough: {
+                            target: '#webcamtab',
+                        },
+                        response: $this.interfaceNodes.selectdata.videourl
+                    });
+                    /* Load mic recorder */
+                    this._swfLoadCallback({
+                        passthrough: {
+                            target: '#mictab',
+                        },
+                        response: $this.interfaceNodes.selectdata.audiourl
+                    });
                 },
-                _swfLoadCallback: function(ob) {
+                _buildEditInterface: function (upload) {
+                    var $this = this;
+
+                    if (this.upload) {
+                        this.currentnode.addClass('hidden');
+                        this.previousnode = this.currentnode;
+                    }
+                    else {
+                        this.currentnode.get('parentNode').remove(true);
+                    }
+
+                    var node = this.interfaceNodes.edit;
+                    Y.one('#kalturahtmlcontrib').append(node);
+                    this.currentnode = Y.one('#editInterface');
+
+                    try {
+                        if (!this.entryid) {
+                            this.entryid = '';
+                        }
+                    }
+                    catch (err) {
+                        this.entryid = '';
+                    }
+
+                    this.multiJAX([
+                        {
+                            action: 'geteditdata',
+                            passthrough: {
+                                entryid: $this.entryid,
+                                upload : $this.upload,
+                            },
+                            params: {
+                                entryid: $this.entryid,
+                                upload : $this.upload,
+                            },
+                            successCallback: $this._populateEditCallback
+                        }
+                    ]);
+
+                    this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview');
+                    this.tree.subscribe('clickEvent', function (e) {
+                        var textbox = Y.one('#editcategoriestext');
+                        var categories = textbox.get('value');
+                        var sep = '';
+                        if (categories !== '') {
+                            sep = ', ';
+                        }
+                        categories += sep + e.node.label;
+                        textbox.set('value', categories);
+                    });
+                    this.tree.render();
+                },
+                _destroyInterface: function () {
+                    this.domnode.setStyles({display: 'none'});
+                    this.domnode.remove(true);
+                    delete(window.kalturaWiz);
+                },
+                _swfLoadCallback: function (ob) {
                     var swf = new Y.SWF(ob.passthrough.target, ob.response.url,
                         {
                             version: "9.0.124",
                             fixedAttributes: {
+                                wmode: ob.response.wmode,
                                 allowScriptAccess:"always",
                                 allowNetworking:"all",
                                 allowFullScreen: "TRUE"
@@ -269,7 +297,17 @@ function addEntryComplete(entry) {
                         }
                     );
                 },
-                _mediaListCallback: function(ob) {
+                _uploadUrlCallback: function (ob) {
+                    /*ob.response.params.delegate = ob.pasthrough.delegate;*/
+                    /*this._swfLoadCallback(ob);*/
+                },
+                _populateEditCallback: function (ob) {
+                    //TODO: populate different items of the editing menu
+                    Y.one('#edittitle').set('value', ob.response.entry.name);
+                    Y.one('#editdescription').set('value', ob.response.entry.description);
+                    console.log(ob.response);
+                },
+                _mediaListCallback: function (ob) {
                     var $this = this;
                     if (!ob.passthrough.page) {
                         ob.passthrough.page = 1;
@@ -289,11 +327,11 @@ function addEntryComplete(entry) {
                             Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').appendChild(
                                 Y.Node.create(
                                     '<span class="thumb">'
-                                        +'<a href="#" onClick="addEntryComplete({entryId: \''+n.id+'\'});return false;" class="kalturavideo" status="'+n.status+'" id="'+n.id+'">'
+                                        +'<a href="#" onClick="contribWiz.fn.selectedEntry({entryId: \'' + n.id + '\', upload: false});return false;" class="kalturavideo" status="' + n.status + '" id="' + n.id + '">'
                                             + (
                                                 ob.passthrough.type === 'audio' ?
                                                     '<span><div style="float:left;height:90px;width:120px">' + n.name + '</div></span>' :
-                                                    '<img src="'+n.thumbnailUrl+'" type="image/jpeg" width="120px" height="90px" alt="'+n.name+'"/>'
+                                                    '<img src="' + n.thumbnailUrl + '" type="image/jpeg" width="120px" height="90px" alt="' + n.name + '"/>'
                                                 )
                                         +'</a>'
                                     +'</span>'
@@ -306,10 +344,20 @@ function addEntryComplete(entry) {
                         /*padding: '0.5em'*/
                     });
 
-                    var back    = Y.one(ob.passthrough.target+' .pageb');
-                    var forward = Y.one(ob.passthrough.target+' .pagef');
+                    window.kalturaWiz.pageButtonHandlers({
+                        action   : ob.passthrough.action,
+                        target   : ob.passthrough.target,
+                        type     : ob.passthrough.type,
+                        page     : ob.passthrough.page,
+                        pagecount: ob.response.page.count
+                    });
+                },
+                pageButtonHandlers: function (ob) {
+                    var $this   = this,
+                    back        = Y.one(ob.target+' .pageb'),
+                    forward     = Y.one(ob.target+' .pagef');
 
-                    if (ob.passthrough.page <= 1) {
+                    if (ob.page <= 1) {
                         back.setAttribute('disabled', true);
                     }
                     else {
@@ -319,19 +367,19 @@ function addEntryComplete(entry) {
                                 click: function (e) {
                                     e.preventDefault();
 
-                                    contribWiz.fn.multiJAX([{
-                                        action: ob.passthrough.action,
+                                    $this.multiJAX([{
+                                        action: ob.action,
                                         passthrough: {
-                                            target: ob.passthrough.target,
-                                            action: ob.passthrough.action,
-                                            type:   ob.passthrough.type,
-                                            page:   ob.passthrough.page-1
+                                            target: ob.target,
+                                            action: ob.action,
+                                            type:   ob.type,
+                                            page:   ob.page-1
                                         },
                                         params: {
-                                            mediatype: ob.passthrough.type,
-                                            page: ob.passthrough.page-1
+                                            mediatype: ob.type,
+                                            page: ob.page-1
                                         },
-                                        callback: $this._mediaListCallback
+                                        successCallback: window.kalturaWiz._mediaListCallback
                                     }]);
 
                                     return false;
@@ -340,7 +388,7 @@ function addEntryComplete(entry) {
                         );
                     }
 
-                    if (ob.passthrough.page >= ob.response.page.count) {
+                    if (ob.page >= ob.pagecount) {
                         forward.setAttribute('disabled', true);
                     }
                     else {
@@ -350,19 +398,19 @@ function addEntryComplete(entry) {
                                 click: function (e) {
                                     e.preventDefault();
 
-                                    contribWiz.fn.multiJAX([{
-                                        action: ob.passthrough.action,
+                                    $this.multiJAX([{
+                                        action: ob.action,
                                         passthrough: {
-                                            target: ob.passthrough.target,
-                                            action: ob.passthrough.action,
-                                            type:   ob.passthrough.type,
-                                            page:   ob.passthrough.page-1
+                                            target: ob.target,
+                                            action: ob.action,
+                                            type:   ob.type,
+                                            page:   ob.page-1
                                         },
                                         params: {
-                                            mediatype: ob.passthrough.type,
-                                            page: ob.passthrough.page+1
+                                            mediatype: ob.type,
+                                            page: ob.page+1
                                         },
-                                        callback: $this._mediaListCallback
+                                        successCallback: window.kalturaWiz._mediaListCallback
                                     }]);
 
                                     return false;
@@ -371,18 +419,76 @@ function addEntryComplete(entry) {
                         );
                     }
                 },
-                addEntryComplete: function(entry) {
+                multiJAX: function (conf) {
+                    var str = '';
+                    var callbacks = Array();
+                    var passthroughs = Array();
+                    for (var i = 0; i < conf.length; i++) {
+                        var c = conf[i];
+                        var actionstr = 'actions[' + i + ']=' + c.action;
+                        var paramstr_head  = 'params[' + i + ']';
+                        var paramstr = '';
+                        if (c.params) {
+                            for (var p in c.params) {
+                                var paramstr = paramstr + paramstr_head + '[' + p + ']=' + c.params[p] + '&';
+                            }
+                        }
+                        str += actionstr + '&' + paramstr; /* paramstr should already end with a & */
+                        callbacks[i] = {
+                            success : c.successCallback,
+                            failure : (c.failureCallback ? c.failureCallback : function () {})
+                        };
+                        if (c.passthrough) {
+                            passthroughs[i] = c.passthrough;
+                        }
+                        else {
+                            passthroughs[i] = {};
+                        }
+                    }
+                    str = str.replace(/&$/,'');
+                    console.log(str);
+
+                    Y.io(_ajaxurl,
+                        {
+                            data: str,
+                            on: {
+                                success: function (i, o, a) {
+                                    response = Y.JSON.parse(o.responseText);
+                                    for (var j = 0; j < response.length; j++) {
+                                        callbacks[j].success({
+                                            response: response[j],
+                                            passthrough: passthroughs[j]
+                                        });
+                                    }
+                                },
+                                failure: function (i, o, a) {
+                                    response = Y.JSON.parse(o.responseText);
+                                    for (var j = 0; j < response.length; j++) {
+                                        callbacks[j].failure({
+                                            response: response[j],
+                                            passthrough: passthroughs[j]
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    );
+                },
+                addEntryComplete: function (entry) {
                     var entryId = entry.entryId;
                     Y.one('input[name=kalturavideo]').set('value', entryId);
                     initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
                 },
-                show: function() {
-                    if (this.domnode.getStyle('display') !== 'block') {
-                        this.domnode.setStyle('display', 'block');
-                    }
+                selectedEntry: function (ob) {
+                    this.entryid = ob.entryId;
+                    this.upload  = ob.upload;
+
+                    //TODO: separate data fetching, fetch here
+
+                    this._buildEditInterface(ob.upload);
                 },
-                destroy: function() {
-                    this._destroyInterface();
+                destroy: function () {
+                    window.kalturaWiz._destroyInterface();
                 },
             };
             contribWiz.fn.init.prototype = contribWiz.prototype;

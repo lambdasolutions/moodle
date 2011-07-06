@@ -1,6 +1,6 @@
 ﻿<?php
 
-$string['pluginname'] = 'Kaltura Video Extension';
+$string['pluginname'] = 'Kaltura Media Extension';
 $string['serveruri'] = 'Server URI';
 $string['serveruri-explanation'] = 'The address of your Kaltura Server';
 $string['pluginsettings'] = 'Player plugin settings';
