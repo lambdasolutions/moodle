@@ -128,10 +128,9 @@ function addEntryComplete(entry) {
 
                         var node = Y.Node.create($this.interfaceNodes.root);
                         Y.one(document.body).appendChild(node);
+                        node = Y.Node.create($this.interfaceNodes.rootstyles);
+                        Y.one('head').appendChild(node);
                         $this.domnode = Y.one('#overlayContainer');
-
-                        node = Y.Node.create($this.interfaceNodes.styles);
-                        Y.one(document.head).append(node);
 
                         Y.one('#contribClose').on('click', function (e) {
                             e.preventDefault();
@@ -155,7 +154,11 @@ function addEntryComplete(entry) {
                     catch (err) {};
 
                     /* Fetch and insert dom tree */
-                    var node = Y.Node.create(this.interfaceNodes.select);
+
+                    var node = Y.Node.create($this.interfaceNodes.selectstyles);
+                    Y.one(document.head).append(node);
+
+                    node = Y.Node.create(this.interfaceNodes.select);
                     root.append(node);
                     this.currentnode = Y.one('#selectionInterface');
 
@@ -239,6 +242,9 @@ function addEntryComplete(entry) {
 
                     var node = this.interfaceNodes.edit;
                     Y.one('#kalturahtmlcontrib').append(node);
+
+                    var node = Y.Node.create($this.interfaceNodes.editstyles);
+                    Y.one('head').append(node);
                     this.currentnode = Y.one('#editInterface');
 
                     try {
@@ -267,14 +273,25 @@ function addEntryComplete(entry) {
 
                     this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview');
                     this.tree.subscribe('clickEvent', function (e) {
+                        console.log(e.node);
                         var textbox = Y.one('#editcategoriestext');
-                        var categories = textbox.get('value');
+                        var idlist  = Y.one('#editcategoriesids');
+                        var categoriestext = textbox.get('value');
+                        var categoriesids  = idlist.get('value');
                         var sep = '';
-                        if (categories !== '') {
+                        if (categoriestext != '') {
                             sep = ', ';
                         }
-                        categories += sep + e.node.label;
-                        textbox.set('value', categories);
+                        if (categoriesids != '') {
+                            sep = ',';
+                            if (categoriesids.indexOf(e.node.data.catid) > -1) {
+                                return;
+                            }
+                        }
+                        categoriestext += sep + e.node.fullName;
+                        categoriesids  += sep + e.node.id;
+                        textbox.set('value', categoriestext);
+                        idlist.set('value', categoriesids);
                     });
                     this.tree.render();
                 },
@@ -302,9 +319,27 @@ function addEntryComplete(entry) {
                     /*this._swfLoadCallback(ob);*/
                 },
                 _populateEditCallback: function (ob) {
-                    //TODO: populate different items of the editing menu
                     Y.one('#edittitle').set('value', ob.response.entry.name);
                     Y.one('#editdescription').set('value', ob.response.entry.description);
+                    if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
+                        Y.one('#contribkalturathumb').set('src', ob.response.entry.thumbnailUrl);
+                    }
+                    if (ob.response.entry.categoriesIds != undefined) {
+                        Y.one('#editcategoriesids').set('value', ob.response.entry.categoriesIds);
+
+                    }
+                    if (ob.response.entry.categories != undefined) {
+                        Y.one('#editcategoriestext').set('value', ob.response.entry.categories);
+                    }
+                    if (ob.response.entry.tags != '') {
+                        Y.one('#edittags').set('value', ob.response.entry.tags);
+                    }
+                    if (ob.upload == false) {
+                        Y.one('#edittitle').set('disabled');
+                    }
+                    if (ob.response.entry.description != '') {
+                        Y.one('#editdescription').set('disabled');
+                    }
                     console.log(ob.response);
                 },
                 _mediaListCallback: function (ob) {

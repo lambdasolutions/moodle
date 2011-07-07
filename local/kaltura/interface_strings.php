@@ -1,6 +1,7 @@
 <?PHP
 
 function construct_interface($select, $edit) {
+    global $CFG;
     $interfaceNodes = array();
 
     $interfaceNodes['root'] = <<<ROOT
@@ -9,41 +10,145 @@ function construct_interface($select, $edit) {
         <input type="submit" value="Close" id="contribClose"/>
     </div>
 ROOT;
+    $interfaceNodes['rootstyles'] = <<<STYLES
+    <style>
+    #overlayContainer {
+        background: #CCC;
+        width     : 500px;
+        height    : 300px;
+        border    : 1px solid #000;
+    }
+    </style>
+STYLES;
+
+    $categories = array();
+    $depth      = array();
+    if (!empty($edit->categorylist)) {
+        foreach ($edit->categorylist['categories']->objects as $index => $category) {
+            if (empty($depth[$category->depth])) {
+                $depth[$category->depth] = array();
+            }
+            $depth[$category->depth][$category->id] = $category;
+        }
+
+        for ($i = count($depth)-1; $i > 0; $i--) {
+            foreach ($depth[$i] as $id => $category) {
+                $parent = $depth[$i-1][$category->parentId];
+                if (empty($parent->children)) {
+                    $parent->children = array();
+                }
+                $parent->children[] = $category;
+            }
+        }
+
+        $categories = $depth[0];
+    }
+
 
     $editstr[] = <<<EDIT
     <div id="editInterface" class="contentArea">
-        <div class="editprogressdiv">
+        <div id="editprogressdiv">
             Updatable progress bar area
         </div>
-        <div class="editmaindiv">
-            <span class="editthumbspan">
-                Area for thumbnail
+        <div id="editmaindiv">
+            <span id="editthumbspan">
+                <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="Thumbnail" />
             </span>
-            <span class="editcontentspan">
-                Area for content editing
-                <label for="edittitle">Title: </label><input id="edittitle" type="text" /><br />
-                <label for="editdescription">Description: </label><input id="editdescription" type="text" /><br/>
-                <label for="editcategoriestext">Categories: </label>
-                <div id="editcategories">
-                    <input id="editcategoriestext" type="text" />
-                    <div id="editcategoriestreeview">
+            <span id="editcontentspan">
+                <div class="editentry">
+                    <label for="edittitle">Title: </label>
+                    <input id="edittitle" type="text" colspan="30" />
+                </div>
+                <div class="editentry">
+                <label for="editdescription">Description: </label>
+                <input id="editdescription" type="text" colspan="30" />
+                </div>
+                <div class="editentry">
+                <label for="edittags">Tags: </label>
+                <input id="edittags" type="text" colspan="30" />
+                </div>
+                <div class="editentry">
+                    <label for="editcategoriestext">Categories: </label>
+                    <span id="editcategories">
+                        <input id="editcategoriesids" type="hidden" />
+                        <input id="editcategoriestext" type="text" colspan="30" disabled />
+                        <div id="editcategoriestreeview">
 EDIT;
-    if (!empty($edit->categorylist)) {
+    if (!empty($categories)) {
         $editstr[] = '<ul>';
-        foreach ($edit->categorylist['categories']->objects as $index => $category) {
-            $editstr[] = "<li>$category->name</li>";
+        foreach ($categories as $category) {
+            $editstr[] = constructCategoryMarkup($category);
         }
         $editstr[] = '</ul>';
     }
     $editstr[] = <<<EDIT
-                    </div>
+                        </div>
+                    </span>
                 </div>
             </span>
+        </div>
+        <div id="editfooterdiv">
+            <input id="editupdate" type="submit" value="Update" />
         </div>
     </div>
 EDIT;
 
     $interfaceNodes['edit'] = implode('', $editstr);
+    $interfaceNodes['editstyles'] = <<<STYLES
+    <style>
+    #editprogressdiv {
+        display: block;
+        float  : left;
+        height : 60px;
+    }
+    #editmaindiv {
+        display: block;
+        float  : left;
+        height : 200px;
+    }
+    #editfooterdiv {
+        display: block;
+        float  : left;
+        height : 40px;
+    }
+    #editthumbspan {
+        display: block;
+        float  : left;
+        width  : 110px;
+    }
+    #editcontentspan {
+        display: block;
+        float  : left;
+        width  : 390px;
+    }
+    #contribkalturathumb {
+        width : 100px;
+        height: 75px;
+        border: 1px solid #000;
+        margin-left: 4px;
+    }
+    .editentry {
+        display: block;
+    }
+    .editentry label {
+        width  : 70px;
+        display: inline-block;
+    }
+    .editentry input,
+    .editentry > span {
+        width  : 300px;
+        display: inline-block;
+    }
+    #editcategoriestreeview {
+        overflow: auto;
+        height  : 120px;
+    }
+    </style>
+STYLES;
+
+    $interfaceNodes['editdata'] = array(
+        'categorylist'      => $edit->categorylist['categories'],
+    );
 
     $interfaceNodes['select'] = <<<SELECT
     <div id="selectionInterface" class="contentArea">
@@ -124,24 +229,8 @@ SELECT;
     </div>
 SELECT;
 
-    $interfaceNodes['selectdata'] = array(
-        'videourl'          => $select->videourl,
-        'audiourl'          => $select->audiourl,
-        'videouploadurl'    => $select->videouploadurl,
-        'audiouploadurl'    => $select->audiouploadurl,
-        'audiolistpublic'   => $select->audiolistpublic,
-        'videolistpublic'   => $select->videolistpublic,
-        'audiolistprivate'  => $select->audiolistprivate,
-        'videolistprivate'  => $select->videolistprivate,
-    );
-
-    $interfaceNodes['styles'] = <<<STYLES
+    $interfaceNodes['selectstyles'] = <<<STYLES
     <style>
-    #overlayContainer {
-        background: #CCC;
-        width     : 500px;
-        height    : 300px;
-    }
     .yui3-tabview-panel,
     .yui3-tabview,
     #overlayContainer .contentArea {
@@ -157,28 +246,19 @@ SELECT;
         height: 90px;
         width : 120px;
     }
-    .editprogressdiv {
-        display: block;
-        float: left;
-        height: 60px;
-    }
-    .editmaindiv {
-        display: block;
-        float: left;
-        height: 240px;
-    }
-    .editthumbspan {
-        display: block;
-        float: left;
-        width: 100px;
-    }
-    .editcontentspan {
-        display: block;
-        float: left;
-        width: 400px;
-    }
     </style>
 STYLES;
+
+    $interfaceNodes['selectdata'] = array(
+        'videourl'          => $select->videourl,
+        'audiourl'          => $select->audiourl,
+        'videouploadurl'    => $select->videouploadurl,
+        'audiouploadurl'    => $select->audiouploadurl,
+        'audiolistpublic'   => $select->audiolistpublic,
+        'videolistpublic'   => $select->videolistpublic,
+        'audiolistprivate'  => $select->audiolistprivate,
+        'videolistprivate'  => $select->videolistprivate,
+    );
 
     return $interfaceNodes;
 }
@@ -216,72 +296,17 @@ function constructMediaPager($mediatype, $data) {
 
     return $listhtml . $controlshtml;
 }
-////////////////////////////////////////////////////////////////
-/*
-var back    = Y.one(ob.passthrough.target+' .pageb');
-var forward = Y.one(ob.passthrough.target+' .pagef');
-
-if (ob.passthrough.page <= 1) {
-    back.setAttribute('disabled', true);
-}
-else {
-    back.setAttribute('disabled', false);
-    back.on(
-        {
-            click: function (e) {
-                e.preventDefault();
-
-                multiJAX([{
-                    action: ob.passthrough.action,
-                    passthrough: {
-                        target: ob.passthrough.target,
-                        action: ob.passthrough.action,
-                        type:   ob.passthrough.type,
-                        page:   ob.passthrough.page-1
-                    },
-                    params: {
-                        mediatype: ob.passthrough.type,
-                        page: ob.passthrough.page-1
-                    },
-                    callback: $this._mediaListCallback
-                }]);
-
-                return false;
-            }
+function constructCategoryMarkup($category) {
+    $editstr = array();
+    $editstr[] = "<li>$category->name";
+    if (!empty($category->children)) {
+        $editstr[] = '<ul>';
+        foreach ($category->children as $c) {
+            $editstr[] = constructCategoryMarkup($c);
         }
-    );
+        $editstr[] = '</ul>';
+    }
+    $editstr[] = '</li>';
+    return implode('', $editstr);
 }
-
-if (ob.passthrough.page >= ob.response.page.count) {
-    forward.setAttribute('disabled', true);
-}
-else {
-    forward.setAttribute('disabled', false);
-    forward.on(
-        {
-            click: function (e) {
-                e.preventDefault();
-
-                multiJAX([{
-                    action: ob.passthrough.action,
-                    passthrough: {
-                        target: ob.passthrough.target,
-                        action: ob.passthrough.action,
-                        type:   ob.passthrough.type,
-                        page:   ob.passthrough.page-1
-                    },
-                    params: {
-                        mediatype: ob.passthrough.type,
-                        page: ob.passthrough.page+1
-                    },
-                    callback: $this._mediaListCallback
-                }]);
-
-                return false;
-            }
-        }
-    );
-}
-*/
-///////////////////////////////////////////
 ?>

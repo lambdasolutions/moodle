@@ -45,7 +45,7 @@ foreach ($actions as $index => $action) {
 }
 
 function handleAction($action, $params=array()) {
-    global $USER, $CFG;
+    global $USER, $CFG, $DB;
     switch ($action) {
         case 'playerurl':
             $entry = null;
