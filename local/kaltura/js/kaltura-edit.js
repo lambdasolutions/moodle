@@ -132,6 +132,9 @@ function addEntryComplete(entry) {
                         Y.one('head').appendChild(node);
                         $this.domnode = Y.one('#overlayContainer');
 
+                        node = Y.Node.create('<base href="' + M.cfg.wwwroot + '/local/kaltura/objects/"><!--[if lte IE 6]></base><!-->');
+                        Y.one('head').prepend(node);
+
                         Y.one('#contribClose').on('click', function (e) {
                             e.preventDefault();
                             $this._destroyInterface();
@@ -271,25 +274,33 @@ function addEntryComplete(entry) {
                         }
                     ]);
 
-                    this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview');
+                    /*
+                     * Apparently YUI2 mangles the original data almost as bad as the DOM nodes,
+                     * so make a copy of the data. Without doing this, loading the edit interface,
+                     * closing then loading again results in depth information not being kept.
+                     */
+                    var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
+                    /* Create treeview with YUI2 */
+                    this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
+                    //this.tree.buildTreeFromObject(treedata);
                     this.tree.subscribe('clickEvent', function (e) {
-                        console.log(e.node);
-                        var textbox = Y.one('#editcategoriestext');
-                        var idlist  = Y.one('#editcategoriesids');
-                        var categoriestext = textbox.get('value');
-                        var categoriesids  = idlist.get('value');
-                        var sep = '';
+                        var textbox         = Y.one('#editcategoriestext'),
+                            idlist          = Y.one('#editcategoriesids'),
+                            categoriestext  = textbox.get('value'),
+                            categoriesids   = idlist.get('value'),
+                            sep             = '';
+
                         if (categoriestext != '') {
                             sep = ', ';
                         }
                         if (categoriesids != '') {
                             sep = ',';
-                            if (categoriesids.indexOf(e.node.data.catid) > -1) {
+                            if (categoriesids.indexOf(e.node.data.catId) > -1) {
                                 return;
                             }
                         }
-                        categoriestext += sep + e.node.fullName;
-                        categoriesids  += sep + e.node.id;
+                        categoriestext += sep + e.node.data.catFullName;
+                        categoriesids  += sep + e.node.data.catId;
                         textbox.set('value', categoriestext);
                         idlist.set('value', categoriesids);
                     });
@@ -298,6 +309,7 @@ function addEntryComplete(entry) {
                 _destroyInterface: function () {
                     this.domnode.setStyles({display: 'none'});
                     this.domnode.remove(true);
+                    Y.one('base').remove();
                     delete(window.kalturaWiz);
                 },
                 _swfLoadCallback: function (ob) {
@@ -334,11 +346,12 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.tags != '') {
                         Y.one('#edittags').set('value', ob.response.entry.tags);
                     }
-                    if (ob.upload == false) {
-                        Y.one('#edittitle').set('disabled');
+                    console.log(ob);
+                    if (!ob.passthrough.upload) {
+                        Y.one('#edittitle').set('disabled', 1);
                     }
-                    if (ob.response.entry.description != '') {
-                        Y.one('#editdescription').set('disabled');
+                    if (ob.response.entry.description) {
+                        Y.one('#editdescription').set('disabled', 1);
                     }
                     console.log(ob.response);
                 },

@@ -28,7 +28,13 @@ STYLES;
             if (empty($depth[$category->depth])) {
                 $depth[$category->depth] = array();
             }
-            $depth[$category->depth][$category->id] = $category;
+            $c              = new stdclass;
+            $c->type        = 'text';
+            $c->label       = $category->name;
+            $c->catFullName = $category->fullName;
+            $c->parentId    = $category->parentId;
+            $c->catId       = $category->id;
+            $depth[$category->depth][$category->id] = $c;
         }
 
         for ($i = count($depth)-1; $i > 0; $i--) {
@@ -41,9 +47,8 @@ STYLES;
             }
         }
 
-        $categories = $depth[0];
+        $categories = array_values($depth[0]);
     }
-
 
     $editstr[] = <<<EDIT
     <div id="editInterface" class="contentArea">
@@ -73,15 +78,6 @@ STYLES;
                         <input id="editcategoriesids" type="hidden" />
                         <input id="editcategoriestext" type="text" colspan="30" disabled />
                         <div id="editcategoriestreeview">
-EDIT;
-    if (!empty($categories)) {
-        $editstr[] = '<ul>';
-        foreach ($categories as $category) {
-            $editstr[] = constructCategoryMarkup($category);
-        }
-        $editstr[] = '</ul>';
-    }
-    $editstr[] = <<<EDIT
                         </div>
                     </span>
                 </div>
@@ -143,11 +139,14 @@ EDIT;
         overflow: auto;
         height  : 120px;
     }
+    span.fullName {
+        display: none;
+    }
     </style>
 STYLES;
 
     $interfaceNodes['editdata'] = array(
-        'categorylist'      => $edit->categorylist['categories'],
+        'categorylist'      => $categories,
     );
 
     $interfaceNodes['select'] = <<<SELECT
