@@ -82,7 +82,7 @@ function addEntryComplete(entry) {
             load_scaffold = function (self) {
                 Y.io(_ajaxurl,
                     {
-                        data: 'actions[0]=getdomnodes_tmp',
+                        data: 'actions[0]=getdomnodes',
                         on: {
                             success: function (i, o, a) {
                                 scaffold = Y.JSON.parse(o.responseText)[0];
@@ -128,12 +128,12 @@ function addEntryComplete(entry) {
 
                         var node = Y.Node.create($this.interfaceNodes.root);
                         Y.one(document.body).appendChild(node);
-                        node = Y.Node.create($this.interfaceNodes.rootstyles);
-                        Y.one('head').appendChild(node);
                         $this.domnode = Y.one('#overlayContainer');
 
                         node = Y.Node.create('<base href="' + M.cfg.wwwroot + '/local/kaltura/objects/"><!--[if lte IE 6]></base><!-->');
                         Y.one('head').prepend(node);
+
+                        Y.one(document.body).removeClass('yui3-skin-sam');
 
                         Y.one('#contribClose').on('click', function (e) {
                             e.preventDefault();
@@ -158,10 +158,7 @@ function addEntryComplete(entry) {
 
                     /* Fetch and insert dom tree */
 
-                    var node = Y.Node.create($this.interfaceNodes.selectstyles);
-                    Y.one(document.head).append(node);
-
-                    node = Y.Node.create(this.interfaceNodes.select);
+                    var node = Y.Node.create(this.interfaceNodes.select);
                     root.append(node);
                     this.currentnode = Y.one('#selectionInterface');
 
@@ -246,8 +243,6 @@ function addEntryComplete(entry) {
                     var node = this.interfaceNodes.edit;
                     Y.one('#kalturahtmlcontrib').append(node);
 
-                    var node = Y.Node.create($this.interfaceNodes.editstyles);
-                    Y.one('head').append(node);
                     this.currentnode = Y.one('#editInterface');
 
                     try {

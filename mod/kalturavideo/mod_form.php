@@ -35,6 +35,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
         global $CFG, $DB, $PAGE;
         $PAGE->requires->js('/local/kaltura/js/kaltura-edit.js');
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
+        $PAGE->requires->css('/local/kaltura/styles.css');
 
         $mform = $this->_form;
 

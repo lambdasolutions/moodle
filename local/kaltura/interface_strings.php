@@ -10,16 +10,6 @@ function construct_interface($select, $edit) {
         <input type="submit" value="Close" id="contribClose"/>
     </div>
 ROOT;
-    $interfaceNodes['rootstyles'] = <<<STYLES
-    <style>
-    #overlayContainer {
-        background: #CCC;
-        width     : 500px;
-        height    : 300px;
-        border    : 1px solid #000;
-    }
-    </style>
-STYLES;
 
     $categories = array();
     $depth      = array();
@@ -90,61 +80,6 @@ STYLES;
 EDIT;
 
     $interfaceNodes['edit'] = implode('', $editstr);
-    $interfaceNodes['editstyles'] = <<<STYLES
-    <style>
-    #editprogressdiv {
-        display: block;
-        float  : left;
-        height : 60px;
-    }
-    #editmaindiv {
-        display: block;
-        float  : left;
-        height : 200px;
-    }
-    #editfooterdiv {
-        display: block;
-        float  : left;
-        height : 40px;
-    }
-    #editthumbspan {
-        display: block;
-        float  : left;
-        width  : 110px;
-    }
-    #editcontentspan {
-        display: block;
-        float  : left;
-        width  : 390px;
-    }
-    #contribkalturathumb {
-        width : 100px;
-        height: 75px;
-        border: 1px solid #000;
-        margin-left: 4px;
-    }
-    .editentry {
-        display: block;
-    }
-    .editentry label {
-        width  : 70px;
-        display: inline-block;
-    }
-    .editentry input,
-    .editentry > span {
-        width  : 300px;
-        display: inline-block;
-    }
-    #editcategoriestreeview {
-        overflow: auto;
-        height  : 120px;
-    }
-    span.fullName {
-        display: none;
-    }
-    </style>
-STYLES;
-
     $interfaceNodes['editdata'] = array(
         'categorylist'      => $categories,
     );
@@ -227,26 +162,6 @@ SELECT;
         </div>
     </div>
 SELECT;
-
-    $interfaceNodes['selectstyles'] = <<<STYLES
-    <style>
-    .yui3-tabview-panel,
-    .yui3-tabview,
-    #overlayContainer .contentArea {
-        width : 100%;
-        height: 100%;
-    }
-    .hidden, .hidden * {
-        display: none;
-        width  : 0px;
-        height : 0px;
-    .kalThumb {
-        float : left;
-        height: 90px;
-        width : 120px;
-    }
-    </style>
-STYLES;
 
     $interfaceNodes['selectdata'] = array(
         'videourl'          => $select->videourl,
