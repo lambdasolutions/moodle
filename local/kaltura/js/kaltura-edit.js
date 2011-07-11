@@ -90,7 +90,7 @@ function addEntryComplete(entry) {
                             failure: function (i, o, a) {
                                 setTimeout(function () {self(self);}, 1000);
                             }
-                        },
+                        }
                     }
                 );
             };
@@ -124,7 +124,6 @@ function addEntryComplete(entry) {
                         setTimeout($this._buildRootInterface, 1000);
                     } else {
                         $this.interfaceNodes = scaffold;
-                        console.debug(scaffold);
 
                         var node = Y.Node.create($this.interfaceNodes.root);
                         Y.one(document.body).appendChild(node);
@@ -217,14 +216,14 @@ function addEntryComplete(entry) {
                     /* Load webcam recorder */
                     this._swfLoadCallback({
                         passthrough: {
-                            target: '#webcamtab',
+                            target: '#webcamtab'
                         },
                         response: $this.interfaceNodes.selectdata.videourl
                     });
                     /* Load mic recorder */
                     this._swfLoadCallback({
                         passthrough: {
-                            target: '#mictab',
+                            target: '#mictab'
                         },
                         response: $this.interfaceNodes.selectdata.audiourl
                     });
@@ -259,11 +258,11 @@ function addEntryComplete(entry) {
                             action: 'geteditdata',
                             passthrough: {
                                 entryid: $this.entryid,
-                                upload : $this.upload,
+                                upload : $this.upload
                             },
                             params: {
                                 entryid: $this.entryid,
-                                upload : $this.upload,
+                                upload : $this.upload
                             },
                             successCallback: $this._populateEditCallback
                         }
@@ -382,10 +381,6 @@ function addEntryComplete(entry) {
                             );
                         }
                     }
-                    Y.all(ob.passthrough.target+' .thumb img').setStyles({
-                        background: '#000000',
-                        /*padding: '0.5em'*/
-                    });
 
                     window.kalturaWiz.pageButtonHandlers({
                         action   : ob.passthrough.action,
@@ -532,7 +527,7 @@ function addEntryComplete(entry) {
                 },
                 destroy: function () {
                     window.kalturaWiz._destroyInterface();
-                },
+                }
             };
             contribWiz.fn.init.prototype = contribWiz.prototype;
             return contribWiz;
