@@ -82,7 +82,7 @@ function addEntryComplete(entry) {
             load_scaffold = function (self) {
                 Y.io(_ajaxurl,
                     {
-                        data: 'actions[0]=getdomnodes',
+                        data: 'actions[0]=getdomnodes_tmp',
                         on: {
                             success: function (i, o, a) {
                                 scaffold = Y.JSON.parse(o.responseText)[0];

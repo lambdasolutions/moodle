@@ -27,6 +27,7 @@ require('../../config.php');
 require_once("lib.php");
 require_once($CFG->dirroot.'/local/kaltura/client/KalturaClient.php');
 require_once($CFG->dirroot.'/local/kaltura/interface_strings.php');
+require_once($CFG->dirroot.'/local/kaltura/tmp_interface.php');
 
 $actions       = optional_param('actions', '', PARAM_CLEAN);
 $params        = optional_param('params', null, PARAM_CLEAN);
@@ -165,6 +166,13 @@ function handleAction($action, $params=array()) {
 
             $edit->categorylist         = handleAction('getcategorylist');
             return construct_interface($select, $edit);
+            break;
+
+        case 'getdomnodes_tmp':
+            $select = new stdClass;
+            $edit   = new stdClass;
+
+            return construct_interface_tmp($select, $edit);
             break;
 
         case 'videouploadurl':
