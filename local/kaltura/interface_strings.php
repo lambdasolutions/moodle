@@ -193,10 +193,10 @@ function constructMediaPager($mediatype, $data) {
 
     foreach ($data['objects'] as $entry) {
         if ($mediatype == 'audio') {
-            $thumbhtml = '<span><div class="kalThumb">' . $entry->name . '</div></span>';
+            $thumbhtml = '<span><div class="kalthumb">' . $entry->name . '</div></span>';
         }
         else { //Assume video
-            $thumbhtml = '<img src="' . $entry->thumbnailUrl . '" type="image/jpeg" width="120px" height="90px" alt="' . $entry->name . '"/>';
+            $thumbhtml = '<img src="' . $entry->thumbnailUrl . '" type="image/jpeg" class="kalthumb" alt="' . $entry->name . '"/>';
         }
 
         $listhtml .= '<span class="thumb">'

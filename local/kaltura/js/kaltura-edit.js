@@ -129,9 +129,6 @@ function addEntryComplete(entry) {
                         Y.one(document.body).appendChild(node);
                         $this.domnode = Y.one('#overlayContainer');
 
-                        node = Y.Node.create('<base href="' + M.cfg.wwwroot + '/local/kaltura/objects/"><!--[if lte IE 6]></base><!-->');
-                        Y.one('head').prepend(node);
-
                         Y.one(document.body).removeClass('yui3-skin-sam');
 
                         Y.one('#contribClose').on('click', function (e) {
@@ -276,7 +273,6 @@ function addEntryComplete(entry) {
                     var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
                     /* Create treeview with YUI2 */
                     this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
-                    //this.tree.buildTreeFromObject(treedata);
                     this.tree.subscribe('clickEvent', function (e) {
                         var textbox         = Y.one('#editcategoriestext'),
                             idlist          = Y.one('#editcategoriesids'),
@@ -303,19 +299,22 @@ function addEntryComplete(entry) {
                 _destroyInterface: function () {
                     this.domnode.setStyles({display: 'none'});
                     this.domnode.remove(true);
-                    Y.one('base').remove();
                     delete(window.kalturaWiz);
                 },
                 _swfLoadCallback: function (ob) {
+                    fixedAttributes = {
+                        wmode: ob.response.wmode,
+                        allowScriptAccess:"always",
+                        allowNetworking:"all",
+                        allowFullScreen: "TRUE"
+                    };
+                    if (ob.response.base) {
+                        fixedAttributes.base = ob.response.base;
+                    }
                     var swf = new Y.SWF(ob.passthrough.target, ob.response.url,
                         {
                             version: "9.0.124",
-                            fixedAttributes: {
-                                wmode: ob.response.wmode,
-                                allowScriptAccess:"always",
-                                allowNetworking:"all",
-                                allowFullScreen: "TRUE"
-                            },
+                            fixedAttributes: fixedAttributes,
                             flashVars: ob.response.params
                         }
                     );
@@ -372,8 +371,8 @@ function addEntryComplete(entry) {
                                         +'<a href="#" onClick="contribWiz.fn.selectedEntry({entryId: \'' + n.id + '\', upload: false});return false;" class="kalturavideo" status="' + n.status + '" id="' + n.id + '">'
                                             + (
                                                 ob.passthrough.type === 'audio' ?
-                                                    '<span><div style="float:left;height:90px;width:120px">' + n.name + '</div></span>' :
-                                                    '<img src="' + n.thumbnailUrl + '" type="image/jpeg" width="120px" height="90px" alt="' + n.name + '"/>'
+                                                    '<span><div class="kalthumb">' + n.name + '</div></span>' :
+                                                    '<img src="' + n.thumbnailUrl + '" type="image/jpeg" class="kalthumb" alt="' + n.name + '"/>'
                                                 )
                                         +'</a>'
                                     +'</span>'
