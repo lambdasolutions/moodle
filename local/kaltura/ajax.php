@@ -180,21 +180,23 @@ function handleAction($action, $params=array()) {
         case 'videouploadurl':
             $client = kalturaClientSession();
             $config = $client->getConfig();
+            $base   = $CFG->wwwroot.'/local/kaltura/objects/';
 
             //get ui conf id
             $ui_conf_id = 4436601;
 
-            return array('url' => $client->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->id, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->id, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'audiouploadurl':
             $client = kalturaClientSession();
             $config = $client->getConfig();
+            $base   = $CFG->wwwroot.'/local/kaltura/objects/';
 
             //get ui conf id
             $ui_conf_id = 4971641;
 
-            return array('url' => $client->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->id, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->id, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'geteditdata':
