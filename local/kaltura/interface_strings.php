@@ -42,39 +42,41 @@ ROOT;
 
     $editstr[] = <<<EDIT
     <div id="editInterface" class="contentArea">
-        <div id="editprogressdiv">
-            Updatable progress bar area
-        </div>
-        <div id="editmaindiv">
-            <span id="editthumbspan">
-                <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="Thumbnail" />
-            </span>
-            <span id="editcontentspan">
-                <div class="editentry">
-                    <label for="edittitle">Title: </label>
-                    <input id="edittitle" type="text" colspan="30" />
-                </div>
-                <div class="editentry">
-                <label for="editdescription">Description: </label>
-                <input id="editdescription" type="text" colspan="30" />
-                </div>
-                <div class="editentry">
-                <label for="edittags">Tags: </label>
-                <input id="edittags" type="text" colspan="30" />
-                </div>
-                <div class="editentry">
-                    <label for="editcategoriestext">Categories: </label>
-                    <span id="editcategories">
-                        <input id="editcategoriesids" type="hidden" />
-                        <input id="editcategoriestext" type="text" colspan="30" disabled />
-                        <div id="editcategoriestreeview">
-                        </div>
-                    </span>
-                </div>
-            </span>
-        </div>
-        <div id="editfooterdiv">
-            <input id="editupdate" type="submit" value="Update" />
+        <div id="edit-inner">
+            <input type="hidden" id="editentryid" />
+            <div id="editprogressdiv">
+            </div>
+            <div id="editmaindiv">
+                <span id="editthumbspan">
+                    <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="Thumbnail" />
+                </span>
+                <span id="editcontentspan">
+                    <div class="editentry">
+                        <label for="edittitle">Title: </label>
+                        <input id="edittitle" type="text" colspan="30" />
+                    </div>
+                    <div class="editentry">
+                    <label for="editdescription">Description: </label>
+                    <input id="editdescription" type="text" colspan="30" />
+                    </div>
+                    <div class="editentry">
+                    <label for="edittags">Tags: </label>
+                    <input id="edittags" type="text" colspan="30" />
+                    </div>
+                    <div class="editentry">
+                        <label for="editcategoriestext">Categories: </label>
+                        <span id="editcategories">
+                            <input id="editcategoriesids" type="hidden" />
+                            <input id="editcategoriestext" type="text" colspan="30" disabled />
+                            <div id="editcategoriestreeview">
+                            </div>
+                        </span>
+                    </div>
+                </span>
+            </div>
+            <div id="editfooterdiv">
+                <input id="editupdate" type="submit" value="Update" />
+            </div>
         </div>
     </div>
 EDIT;
@@ -103,6 +105,7 @@ EDIT;
                         <div id="uploadvideotab" class="contentArea">
                             <label for="uploadvideospan">Upload Video</label>
                             <span id="uploadvideospan">
+                                <div id="uploadvideo"></div>
                                 <input type="submit" id="uploadvideobutton" value="Upload" />
                             </span>
                         </div>
@@ -137,6 +140,7 @@ SELECT;
                         <div id="uploadaudiotab" class="contentArea">
                             <label for="uploadaudiospan">Upload Audio</label>
                             <span id="uploadaudiospan">
+                                <div id="uploadaudio"></div>
                                 <input type="submit" id="uploadaudiobutton" value="Upload" />
                             </span>
                         </div>
