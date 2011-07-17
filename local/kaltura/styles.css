@@ -125,18 +125,17 @@ padding-left: 7px;}
 #editcontentspan input[type=text] {padding:5px 4px;}
 #editcategoriestreeview .ygtvitem {padding:0 4px;}
 
-#kalturahtmlcontrib {background: url(images/k-video-ul-bg.png) top repeat-x white;padding-top:1px;}
+#kalturahtmlcontrib {}
 
 #editInterface #edit-content {
 width: auto;
 height: auto !important;
 background: #E9E9E9;
-margin:0px 4px 4px;
 }
 
-#editInterface #edit-inner {border:1px solid #E7E7E7;border-top:none;padding:0;background:none;margin-left:0;}
-  #editInterface ul.yui3-tabview-list {background: url(images/k-video-ul-bg.png);height:40px;list-style:none;}
-    #editInterface ul.yui3-tabview-list li {padding-bottom:0;line-height:40px;background: url(images/k-video-li-bg.png);width:137px;height:40px;text-align:center;}
+#editInterface #edit-inner {background:white;border:1px solid #E7E7E7;border-top:none;padding:4px;margin-left:0;margin-top:-3px;}
+  #editInterface ul.yui3-tabview-list {background: url(images/k-video-ul-bg.png);height:40px;list-style:none;margin-left:-1px;}
+    #editInterface ul.yui3-tabview-list li {list-style:none;padding-bottom:0;line-height:40px;background: url(images/k-video-li-bg.png);width:137px;height:40px;text-align:center;}
     #editInterface ul.yui3-tabview-list li.yui3-tab-selected {background: url(images/k-video-li-bg-selected.png);color:#5e5e5e;}
     #editInterface ul.yui3-tabview-list li a {color:#aeaeae;font-weight:bold;}
     #editInterface ul.yui3-tabview-list li.yui3-tab-selected a,  #editInterface ul.yui3-tabview-list li a:hover {color:#5e5e5e;}
