@@ -51,13 +51,16 @@
     }
     .editentry input,
     .editentry > span {
-        width  : 300px;
+        width  : 290px;
         display: inline-block;
     }
     #editcategoriestreeview {
         overflow: auto;
         height  : 120px;
-        width:304px;
+        width:300px;
+        border:1px solid darkgrey;
+        margin-top:8px;
+        background:white;
     }
     span.fullName {
         display: none;
@@ -66,7 +69,7 @@
 /* Selection interface */
     .yui3-tabview-panel,
     .yui3-tabview,
-    #overlayContainer .contentArea {
+    #overlayContainer .contentArea {width:auto;
     }
     .hidden, .hidden * {
         display: none;
@@ -74,9 +77,14 @@
         height : 0px;
     }
     img.kalthumb {
-        float : left;
-        height: 117px;
-        width : 157px;
+         float : left;
+         height: 117px;
+         width : 157px;
+    }
+     #uploadvideo,
+    #uploadaudio {
+        height:30px;
+         width :70px;
     }
 
 
@@ -112,5 +120,24 @@ padding-top: 4px;
 padding-right: 7px;
 padding-bottom: 4px;
 padding-left: 7px;}
-#editInterface {border:1px solid #E7E7E7;background:white;}
+#editInterface {margin-left:0;}
 #editcontentspan .editentry {padding:4px 0;}
+#editcontentspan input[type=text] {padding:5px 4px;}
+#editcategoriestreeview .ygtvitem {padding:0 4px;}
+
+#kalturahtmlcontrib {background: url(images/k-video-ul-bg.png) top repeat-x white;padding-top:1px;}
+
+#editInterface #edit-content {
+width: auto;
+height: auto !important;
+background: #E9E9E9;
+margin:0px 4px 4px;
+}
+
+#editInterface #edit-inner {border:1px solid #E7E7E7;border-top:none;padding:0;background:none;margin-left:0;}
+  #editInterface ul.yui3-tabview-list {background: url(images/k-video-ul-bg.png);height:40px;list-style:none;}
+    #editInterface ul.yui3-tabview-list li {padding-bottom:0;line-height:40px;background: url(images/k-video-li-bg.png);width:137px;height:40px;text-align:center;}
+    #editInterface ul.yui3-tabview-list li.yui3-tab-selected {background: url(images/k-video-li-bg-selected.png);color:#5e5e5e;}
+    #editInterface ul.yui3-tabview-list li a {color:#aeaeae;font-weight:bold;}
+    #editInterface ul.yui3-tabview-list li.yui3-tab-selected a,  #editInterface ul.yui3-tabview-list li a:hover {color:#5e5e5e;}
+        #editInterface ul.yui3-tabview-list li a {padding:0;margin:0;display:block;}

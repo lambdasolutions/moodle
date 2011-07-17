@@ -42,7 +42,11 @@ ROOT;
 
     $editstr[] = <<<EDIT
     <div id="editInterface" class="contentArea">
+             <ul class="yui3-tabview-list" >
+                        <li class="yui3-tab-selected"><a href="">Edit Information</a></li>
+                    </ul>
         <div id="edit-inner">
+		<div id="edit-content">
             <input type="hidden" id="editentryid" />
             <div id="editprogressdiv">
             </div>
@@ -77,6 +81,7 @@ ROOT;
             <div id="editfooterdiv">
                 <input id="editupdate" type="submit" value="Update" />
             </div>
+			</div>
         </div>
     </div>
 EDIT;
