@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die;
 
 function xmldb_local_kaltura_upgrade($oldversion) {
-    global $CFG, $DB;
+    global $CFG, $DB, $OUTPUT;
 
     $dbman = $DB->get_manager();
 
@@ -54,20 +54,15 @@ function xmldb_local_kaltura_upgrade($oldversion) {
             // Get list of userid,username pairs for each userid
             $userids_to_fetch = array_unique(array_values($userids));
             list($sql, $params) = $DB->get_in_or_equal($userids_to_fetch);
-            $records = $DB->get_records_select('user','id '.$sql, $params, '', 'id, username');
+            $records = $DB->get_records_select('user','id '.$sql, $params, '', 'id, email');
 
             // update each entry with userid as username of pair
             foreach ($media->objects as $m) {
-                if (array_key_exists($m->id, $records)) {
+                if (array_key_exists($m->userId, $records)) {
                     $item = new KalturaMediaEntry();
                     $user = $records[$m->userId];
-                    $item->userId = $user->username;
-                    $client->media->update($m->id, $item);
-                }
-                else {
-                    $item = new KalturaMediaEntry();
-                    $item->userId = 'catadmin';
-                    print "Updating $m->id: userid: $m->userId -> $item->userId\n";
+                    $item->userId = $user->email;
+                    print $OUTPUT->box("Updating '$m->name' ($m->id): userid: $m->userId -> $item->userId");
                     $client->media->update($m->id, $item);
                 }
             }
