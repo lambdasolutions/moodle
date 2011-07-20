@@ -38,4 +38,5 @@ $string['myaudio'] = 'My Audio';
 $string['myvideo'] = 'My Video';
 $string['sharedaudio'] = 'Shared Audio';
 $string['sharedvideo'] = 'Shared Video';
+$string['extratext'] = '';
 ?>
