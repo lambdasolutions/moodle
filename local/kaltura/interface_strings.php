@@ -2,12 +2,35 @@
 
 function construct_interface($select, $edit) {
     global $CFG;
+
+    $strs = new stdClass;
+    $strs->close = get_string('close', 'local_kaltura');
+    $strs->thumbnail = get_string('thumbnail', 'local_kaltura');
+    $strs->editinfo = get_string('editinfo', 'local_kaltura');
+    $strs->title = get_string('title', 'local_kaltura');
+    $strs->description = get_string('description', 'local_kaltura');
+    $strs->tags = get_string('tags', 'local_kaltura');
+    $strs->categories = get_string('categories', 'local_kaltura');
+    $strs->update = get_string('update', 'local_kaltura');
+    $strs->upload = get_string('upload', 'local_kaltura');
+    $strs->uploadvideo = get_string('uploadvideo', 'local_kaltura');
+    $strs->uploadaudio = get_string('uploadaudio', 'local_kaltura');
+    $strs->video = get_string('video', 'local_kaltura');
+    $strs->audio = get_string('audio', 'local_kaltura');
+    $strs->uploadfromfile = get_string('uploadfromfile', 'local_kaltura');
+    $strs->recordfrommicrophone = get_string('recordfrommicrophone', 'local_kaltura');
+    $strs->recordfromwebcam = get_string('recordfromwebcam', 'local_kaltura');
+    $strs->myaudio = get_string('myaudio', 'local_kaltura');
+    $strs->myvideo = get_string('myvideo', 'local_kaltura');
+    $strs->sharedaudio = get_string('sharedaudio', 'local_kaltura');
+    $strs->sharedvideo = get_string('sharedvideo', 'local_kaltura');
+
     $interfaceNodes = array();
 
     $interfaceNodes['root'] = <<<ROOT
     <div id="overlayContainer">
         <div id="kalturahtmlcontrib" class="contentArea"></div>
-        <input type="submit" value="Close" id="contribClose"/>
+        <input type="submit" value="$strs->close" id="contribClose"/>
     </div>
 ROOT;
 
@@ -43,7 +66,7 @@ ROOT;
     $editstr[] = <<<EDIT
     <div id="editInterface" class="contentArea">
              <ul class="yui3-tabview-list" >
-                        <li class="yui3-tab-selected"><a href="">Edit Information</a></li>
+                        <li class="yui3-tab-selected"><a href="">$strs->editinfo</a></li>
                     </ul>
         <div id="edit-inner">
 		<div id="edit-content">
@@ -52,23 +75,23 @@ ROOT;
             </div>
             <div id="editmaindiv">
                 <span id="editthumbspan">
-                    <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="Thumbnail" />
+                    <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="$strs->thumbnail" />
                 </span>
                 <span id="editcontentspan">
                     <div class="editentry">
-                        <label for="edittitle">Title: </label>
+                        <label for="edittitle">$strs->title</label>
                         <input id="edittitle" type="text" colspan="30" />
                     </div>
                     <div class="editentry">
-                    <label for="editdescription">Description: </label>
-                    <input id="editdescription" type="text" colspan="30" />
+                        <label for="editdescription">$strs->description</label>
+                        <input id="editdescription" type="text" colspan="30" />
                     </div>
                     <div class="editentry">
-                    <label for="edittags">Tags: </label>
-                    <input id="edittags" type="text" colspan="30" />
+                        <label for="edittags">$strs->tags</label>
+                        <input id="edittags" type="text" colspan="30" />
                     </div>
                     <div class="editentry">
-                        <label for="editcategoriestext">Categories: </label>
+                        <label for="editcategoriestext">$strs->categories</label>
                         <span id="editcategories">
                             <input id="editcategoriesids" type="hidden" />
                             <input id="editcategoriestext" type="text" colspan="30" disabled />
@@ -79,7 +102,7 @@ ROOT;
                 </span>
             </div>
             <div id="editfooterdiv">
-                <input id="editupdate" type="submit" value="Update" />
+                <input id="editupdate" type="submit" value="$strs->update" />
             </div>
 			</div>
         </div>
@@ -94,24 +117,24 @@ EDIT;
     $interfaceNodes['select'] = <<<SELECT
     <div id="selectionInterface" class="contentArea">
         <ul>
-            <li><a href="#videotab">Video</a></li>
-            <li><a href="#audiotab">Audio</a></li>
+            <li><a href="#videotab">$strs->video</a></li>
+            <li><a href="#audiotab">$strs->audio</a></li>
         </ul>
         <div>
             <div id="videotab" class="contentArea">
                 <div id="videotabview" class="contentArea">
                     <ul>
-                        <li><a href="#uploadvideotab">Upload from File</a></li>
-                        <li><a href="#webcamtab">Record from Webcam</a></li>
-                        <li><a href="#myvideo">My Video</a></li>
-                        <li><a href="#sharedvideo">Shared Video</a></li>
+                        <li><a href="#uploadvideotab">$strs->uploadfromfile</a></li>
+                        <li><a href="#webcamtab">$strs->recordfromwebcam</a></li>
+                        <li><a href="#myvideo">$strs->myvideo</a></li>
+                        <li><a href="#sharedvideo">$strs->sharedvideo</a></li>
                     </ul>
                     <div class="contentArea">
                         <div id="uploadvideotab" class="contentArea">
-                            <label for="uploadvideospan">Upload Video</label>
+                            <label for="uploadvideospan">$strs->uploadvideo</label>
                             <span id="uploadvideospan">
                                 <div id="uploadvideo"></div>
-                                <input type="submit" id="uploadvideobutton" value="Upload" />
+                                <input type="submit" id="uploadvideobutton" value="$strs->upload" />
                             </span>
                         </div>
                         <div id="webcamtab" class="contentArea">
@@ -136,17 +159,17 @@ SELECT;
             <div id="audiotab" class="contentArea">
                 <div id="audiotabview" class="contentArea">
                     <ul>
-                        <li><a href="#uploadaudiotab">Upload from File</a></li>
-                        <li><a href="#mictab">Record from Microphone</a></li>
-                        <li><a href="#myaudio">My Audio</a></li>
-                        <li><a href="#sharedaudio">Shared Audio</a></li>
+                        <li><a href="#uploadaudiotab">$strs->uploadfromfile</a></li>
+                        <li><a href="#mictab">$strs->recordfrommicrophone</a></li>
+                        <li><a href="#myaudio">$strs->myaudio</a></li>
+                        <li><a href="#sharedaudio">$strs->sharedaudio</a></li>
                     </ul>
                     <div class="contentArea">
                         <div id="uploadaudiotab" class="contentArea">
-                            <label for="uploadaudiospan">Upload Audio</label>
+                            <label for="uploadaudiospan">$strs->uploadaudio</label>
                             <span id="uploadaudiospan">
                                 <div id="uploadaudio"></div>
-                                <input type="submit" id="uploadaudiobutton" value="Upload" />
+                                <input type="submit" id="uploadaudiobutton" value="$strs->upload" />
                             </span>
                         </div>
                         <div id="mictab" class="contentArea">
@@ -218,18 +241,5 @@ function constructMediaPager($mediatype, $data) {
     $listhtml .= '</span>';
 
     return $listhtml . $controlshtml;
-}
-function constructCategoryMarkup($category) {
-    $editstr = array();
-    $editstr[] = "<li>$category->name";
-    if (!empty($category->children)) {
-        $editstr[] = '<ul>';
-        foreach ($category->children as $c) {
-            $editstr[] = constructCategoryMarkup($c);
-        }
-        $editstr[] = '</ul>';
-    }
-    $editstr[] = '</li>';
-    return implode('', $editstr);
 }
 ?>
