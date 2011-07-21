@@ -33,15 +33,16 @@ function kalturaClientSession($admin=false) {
     $config = new KalturaConfiguration($partnerId);
     $config->serviceUrl = $serviceUrl;
     $client = new KalturaClient($config);
+    $id = $USER->email;
 
     if ($admin) {
         $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'admin_secret'));
-        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::ADMIN);
+        $ks = $client->session->start($secret, $id, KalturaSessionType::ADMIN);
         $client->setKs($ks);
     }
     else {
         $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'secret'));
-        $ks = $client->session->start($secret, $USER->id, KalturaSessionType::USER);
+        $ks = $client->session->start($secret, $id, KalturaSessionType::USER);
         $client->setKs($ks);
     }
     return $client;
@@ -58,7 +59,7 @@ function kalturaCWSession_setup($admin=false) {
     $uiId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'uploader_'.$uploader_type));
     $url = $serviceUrl."/kcw/ui_conf_id/".$uiId;
 
-    return array('url'=>$url, 'params'=>array('sessionId'=>$client->getKs(),'uiConfId'=>$uiId,'partnerId'=>$config->partnerId, 'userId'=>$USER->id));
+    return array('url'=>$url, 'params'=>array('sessionId'=>$client->getKs(),'uiConfId'=>$uiId,'partnerId'=>$config->partnerId, 'userId'=>$USER->email));
 }
 
 function kalturaGlobals_js($config) {
