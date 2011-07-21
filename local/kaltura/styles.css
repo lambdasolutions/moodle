@@ -20,7 +20,7 @@
     cursor:pointer;
 }
 /* Edit interface */
-    #editprogressdiv {
+#editprogressdiv {
     display: block;
     height : auto;
     padding: 10px;
@@ -188,6 +188,15 @@ span.fullName {
 #overlayContainer .contentArea {
     width:auto;
 }
+.kalhide,
+.kalhide * {
+    z-index: -1px;
+}
+.kalhide object,
+.kalhide embed {
+    width: 0px;
+    height: 0px;
+}
 .hidden,
 .hidden * {
     display: none;
@@ -199,9 +208,11 @@ img.kalthumb {
     height: 117px;
     width : 157px;
 }
-#uploadvideo,  #uploadaudio {
+#uploadvideo,
+#uploadaudio {
     height:30px;
     width :70px;
+    border: 1px solid black;
 }
 #selectionInterface ul.yui3-tabview-list {
     padding-left:125px;

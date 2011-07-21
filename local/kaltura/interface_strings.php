@@ -115,6 +115,12 @@ EDIT;
     );
 
     $interfaceNodes['select'] = <<<SELECT
+    <div class="flashOverlay" id="videooverlay">
+        <div id="uploadvideo"></div>
+    </div>
+    <div class="flashOverlay" id="audiooverlay">
+        <div id="uploadaudio"></div>
+    </div>
     <div id="selectionInterface" class="contentArea">
         <ul>
             <li><a href="#videotab">$strs->video</a></li>
@@ -133,7 +139,6 @@ EDIT;
                         <div id="uploadvideotab" class="contentArea">
                             <label for="uploadvideospan">$strs->uploadvideo</label>
                             <span id="uploadvideospan">
-                                <div id="uploadvideo"></div>
                                 <input type="submit" id="uploadvideobutton" value="$strs->upload" />
                             </span>
                         </div>
@@ -168,7 +173,6 @@ SELECT;
                         <div id="uploadaudiotab" class="contentArea">
                             <label for="uploadaudiospan">$strs->uploadaudio</label>
                             <span id="uploadaudiospan">
-                                <div id="uploadaudio"></div>
                                 <input type="submit" id="uploadaudiobutton" value="$strs->upload" />
                             </span>
                         </div>

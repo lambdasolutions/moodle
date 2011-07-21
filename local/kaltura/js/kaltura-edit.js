@@ -54,12 +54,7 @@ function replaceVideoButton(buttonselector) {
 }
 
 function addEntryComplete(entry) {
-    alert('entry: '+entry.entryId);
-    YUI().use('node', function (Y) {
-        var entryId = entry.entryId;
-        Y.one('input[name=kalturavideo]').set('value',entryId);
-        initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
-    });
+    window.kalturaWiz.selectedEntry({entryid: entry.entryId});
 }
 
 (function (a, b) {
@@ -67,7 +62,7 @@ function addEntryComplete(entry) {
         navigator = window.navigator,
         location  = window.location;
 
-    YUI().use('node', 'io', 'event', 'json-parse', 'overlay', 'tabview', 'swf', 'yui2-treeview', function (Y) {
+    YUI().use('node', 'io', 'event', 'json-parse', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
         var contribWiz = (function () {
             /* Define a few things... */
 
@@ -94,6 +89,20 @@ function addEntryComplete(entry) {
                     }
                 );
             };
+
+            //YUI 3.3.0 has something similar
+            Y.mix(Y.Node.prototype, {
+                hide: function() {
+                    if (!(this.hasClass('hidden'))) {
+                        this.addClass('hidden');
+                    }
+                },
+                show: function() {
+                    if (this.hasClass('hidden')) {
+                        this.removeClass('hidden');
+                    }
+                },
+            });
 
             load_scaffold(load_scaffold);
 
@@ -175,6 +184,49 @@ function addEntryComplete(entry) {
                     renderables.audiotabs.render();
                     renderables.overlay.render();
 
+                    /* The video tab is the first to show up, with upload showing. So let's hide audio upload. */
+                    Y.one('#audiooverlay').hide();
+
+                    /* We're overlaying these flash objects, so let's switch them when events occur. */
+                    renderables.toptabs.on('selectionChange', function(e) {
+                        console.log('toptabs selectionChange fired');
+
+                        var tab = e.newVal._parentNode.one('[tabindex=0]');
+                        if (tab.hash != '#video') {
+                            Y.one('#videooverlay').hide();
+                        }
+                        else if (tab.hash != '#audio') {
+                            Y.one('#audiooverlay').hide();
+                        }
+                        console.log(renderables.videotabs);
+                    });
+                    renderables.videotabs.on('selectionChange', function(e) {
+                        console.log('videotabs selectionChange fired');
+
+                        Y.one('#audiooverlay').hide();
+
+                        var tab = e.newVal._parentNode.one('[tabindex=0]');
+                        if (tab.hash != '#uploadvideotab') {
+                            Y.one('#videooverlay').hide();
+                        }
+                        else {
+                            Y.one('#videooverlay').show();
+                        }
+                    });
+                    renderables.audiotabs.on('selectionChange', function(e) {
+                        console.log('audiotabs selectionChange fired');
+
+                        Y.one('#videooverlay').hide();
+
+                        var tab = e.newVal._parentNode.one('[tabindex=0]');
+                        if (tab.hash != '#uploadaudiotab') {
+                            Y.one('#audiooverlay').hide();
+                        }
+                        else {
+                            Y.one('#audiooverlay').show();
+                        }
+                    });
+
                     pages = Array(
                         {
                             target: '#sharedaudio',
@@ -199,17 +251,42 @@ function addEntryComplete(entry) {
                     );
                     for (var i = 0; i < pages.length; i++) {
                         var ob = pages[i];
+                        try {
+                            var page      = window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.current,
+                                pagecount = window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.count;
+                        }
+                        catch (err) {
+                            var page = 1,
+                                pagecount = 1;
+                        }
+
                         $this.pageButtonHandlers({
                             action   : 'list' + ob.access,
                             target   : ob.target,
                             type     : ob.type,
-                            page     : window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.current,
-                            pagecount: window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.count
+                            page     : page,
+                            pagecount: pagecount
                         });
                     }
 
 
                     /* Load dynamic contents */
+                    /* Load video upload button */
+                    this._uploadUrlCallback({
+                        passthrough: {
+                            target: '#uploadvideo',
+                            delegate: 'window.kalturaWiz.videoUploadDelegate'
+                        },
+                        response: $this.interfaceNodes.selectdata.videouploadurl
+                    });
+                    /* Load audio upload button */
+                    this._uploadUrlCallback({
+                        passthrough: {
+                            target: '#uploadaudio',
+                            delegate: 'window.kalturaWiz.audioUploadDelegate'
+                        },
+                        response: $this.interfaceNodes.selectdata.audiouploadurl
+                    });
                     /* Load webcam recorder */
                     this._swfLoadCallback({
                         passthrough: {
@@ -225,45 +302,45 @@ function addEntryComplete(entry) {
                         response: $this.interfaceNodes.selectdata.audiourl
                     });
                 },
-                _buildEditInterface: function (upload) {
-                    var $this = this;
+                _buildEditInterface: function () {
+                    var $this = window.kalturaWiz;
 
-                    if (this.upload) {
-                        this.currentnode.addClass('hidden');
-                        this.previousnode = this.currentnode;
-                    }
-                    else {
-                        this.currentnode.get('parentNode').remove(true);
-                    }
+                    this.currentnode.addClass('hidden');
+                    this.previousnode = this.currentnode;
+                    //if ($this.upload) {
+                        $this.progressbar = new Y.YUI2.widget.ProgressBar({
+                            minValue:0,
+                            maxValue:100,
+                            height:"30px",
+                            width:"150px"
+                        }).render('editprogressdiv');
+                        if ($this.progressvalue) {
+                            $this.progressbar.set('value', this.progressvalue);
+                        }
+                        $this.progressbar.redraw();
+                    //}
 
                     var node = this.interfaceNodes.edit;
                     Y.one('#kalturahtmlcontrib').append(node);
 
                     this.currentnode = Y.one('#editInterface');
 
-                    try {
-                        if (!this.entryid) {
-                            this.entryid = '';
-                        }
+                    if ((!this.upload) || (this.upload && this.entryid)) {
+                        this.multiJAX([
+                            {
+                                action: 'geteditdata',
+                                passthrough: {
+                                    entryid: $this.entryid,
+                                    upload : $this.upload
+                                },
+                                params: {
+                                    entryid: $this.entryid,
+                                    upload : $this.upload
+                                },
+                                successCallback: $this._populateEditCallback
+                            }
+                        ]);
                     }
-                    catch (err) {
-                        this.entryid = '';
-                    }
-
-                    this.multiJAX([
-                        {
-                            action: 'geteditdata',
-                            passthrough: {
-                                entryid: $this.entryid,
-                                upload : $this.upload
-                            },
-                            params: {
-                                entryid: $this.entryid,
-                                upload : $this.upload
-                            },
-                            successCallback: $this._populateEditCallback
-                        }
-                    ]);
 
                     /*
                      * Apparently YUI2 mangles the original data almost as bad as the DOM nodes,
@@ -311,7 +388,11 @@ function addEntryComplete(entry) {
                     if (ob.response.base) {
                         fixedAttributes.base = ob.response.base;
                     }
-                    var swf = new Y.SWF(ob.passthrough.target, ob.response.url,
+                    if (!this.swf) {
+                        this.swf = {};
+                    }
+                    var name = ob.passthrough.target.split('#').join('');
+                    this.swf[name] = new Y.SWF(ob.passthrough.target, ob.response.url,
                         {
                             version: "9.0.124",
                             fixedAttributes: fixedAttributes,
@@ -320,10 +401,11 @@ function addEntryComplete(entry) {
                     );
                 },
                 _uploadUrlCallback: function (ob) {
-                    /*ob.response.params.delegate = ob.pasthrough.delegate;*/
-                    /*this._swfLoadCallback(ob);*/
+                    ob.response.params.jsDelegate = ob.passthrough.delegate;
+                    this._swfLoadCallback(ob);
                 },
                 _populateEditCallback: function (ob) {
+                    Y.one('#editentryid').set('value', ob.response.entry.id);
                     Y.one('#edittitle').set('value', ob.response.entry.name);
                     Y.one('#editdescription').set('value', ob.response.entry.description);
                     if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
@@ -331,7 +413,6 @@ function addEntryComplete(entry) {
                     }
                     if (ob.response.entry.categoriesIds != undefined) {
                         Y.one('#editcategoriesids').set('value', ob.response.entry.categoriesIds);
-
                     }
                     if (ob.response.entry.categories != undefined) {
                         Y.one('#editcategoriestext').set('value', ob.response.entry.categories);
@@ -339,14 +420,12 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.tags != '') {
                         Y.one('#edittags').set('value', ob.response.entry.tags);
                     }
-                    console.log(ob);
                     if (!ob.passthrough.upload) {
                         Y.one('#edittitle').set('disabled', 1);
                     }
                     if (ob.response.entry.description) {
                         Y.one('#editdescription').set('disabled', 1);
                     }
-                    console.log(ob.response);
                 },
                 _mediaListCallback: function (ob) {
                     var $this = this;
@@ -522,7 +601,104 @@ function addEntryComplete(entry) {
 
                     //TODO: separate data fetching, fetch here
 
-                    this._buildEditInterface(ob.upload);
+                    this._buildEditInterface();
+                },
+                audioUploadDelegate: {
+                    selectHandler:function(){
+                        console.log('selectHandler called');
+                        var $this = window.kalturaWiz;
+                        $this.upload = true;
+                        $this.swf['uploadaudio'].callSWF('upload');
+                        $this._buildEditInterface();
+                    },
+                    entriesAddedHandler:function(entries){
+                        console.log('entriesAddedHandler called');
+                        var $this = window.kalturaWiz,
+                            entry = entries[0];
+                        Y.one('#editentryid').set('value', entry.id);
+                        if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
+                            Y.one('#contribkalturathumb').set('src', entry.thumbnailUrl);
+                        }
+                        if (!Y.one('#edittitle').get('value')) {
+                            Y.one('#edittitle').set('value', entry.name);
+                        }
+                    },
+                    progressHandler: function (args) {
+                        console.log('progressHandler called');
+                        var $this = window.kalturaWiz;
+                        if ($this.progressbar) {
+                            var progvalue = args[0]/args[1]*100;
+                            if (progvalue > $this.progressvalue) {
+                                $this.progressvalue = progvalue;
+                                $this.progressbar.set('value', progvalue);
+                            }
+                        }
+                    }
+                },
+                videoUploadDelegate: {
+                    uploadErrorHandler: function () {
+                        console.log('uploadErrorHandler called');
+                        console.log(arguments);
+                    },
+                    addEntryFailedHandler: function () {
+                        console.log('addEntryFailedHandler called');
+                        console.log(arguments);
+                    },
+                    uiConfErrorHandler: function () {
+                        console.log('uiConfErrorHandler called');
+                        console.log(arguments);
+                    },
+                    readyHandler: function () {
+                        console.log('readyHandler called');
+                        console.log(arguments);
+                    },
+                    singleUploadCompleteHandler: function (args) {
+                        console.log('singleUploadCompleteHandler called');
+                        console.log(arguments);
+                    },
+                    allUploadsCompleteHandler: function () {
+                        console.log('allUploadsCompleteHandler called');
+                        console.log(arguments);
+                    },
+                    selectHandler: function (){
+                        console.log('selectHandler called');
+                        console.log(arguments);
+                        var $this = window.kalturaWiz;
+                        $this.upload = true;
+                        $this.swf['uploadvideo'].callSWF('upload');
+                        $this._buildEditInterface();
+                    },
+                    entriesAddedHandler: function (entries){
+                        console.log('entriesAddedHandler called');
+                        console.log(arguments);
+                        var $this = window.kalturaWiz,
+                            entry = entries[0];
+                        Y.one('#editentryid').set('value', entry.id);
+                        if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
+                            Y.one('#contribkalturathumb').set('src', entry.thumbnailUrl);
+                        }
+                        if (!Y.one('#edittitle').get('value')) {
+                            Y.one('#edittitle').set('value', entry.name);
+                        }
+                    },
+                    progressHandler: function (args) {
+                        console.log('progressHandler called');
+                        console.log(arguments);
+                        var $this = window.kalturaWiz;
+                        if (!$this.progressvalue) {
+                            $this.progressvalue = 0;
+                        }
+                        if ($this.progressbar) {
+                            console.log('progressbar exists');
+                            var progvalue = args[0]/args[1]*100;
+                            if (progvalue > $this.progressvalue) {
+                                console.log('setting progress value: '+progvalue);
+                                $this.progressvalue = progvalue;
+                                $this.progressbar.set('value', progvalue);
+                                console.log('actually setting progress value: '+progvalue);
+                            }
+                        }
+                    }
                 },
                 destroy: function () {
                     window.kalturaWiz._destroyInterface();

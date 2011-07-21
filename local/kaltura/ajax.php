@@ -132,7 +132,7 @@ function handleAction($action, $params=array()) {
         case 'listprivate':
             list($client, $filter, $pager) = buildListFilter($params);
 
-            $filter->userIdEqual = $USER->id;
+            $filter->userIdEqual = $USER->email;
 
             $results = $client->media->listAction($filter, $pager);
             $count   = $client->media->count($filter);
@@ -163,8 +163,8 @@ function handleAction($action, $params=array()) {
             $select->audiourl           = handleAction('audiourl');
             $select->videolistpublic    = handleAction('listpublic', array('mediatype' => 'video'));
             $select->audiolistpublic    = handleAction('listpublic', array('mediatype' => 'audio'));
-            $select->videolistprivate   = handleAction('listpublic', array('mediatype' => 'video'));
-            $select->audiolistprivate   = handleAction('listpublic', array('mediatype' => 'audio'));
+            $select->videolistprivate   = handleAction('listprivate', array('mediatype' => 'video'));
+            $select->audiolistprivate   = handleAction('listprivate', array('mediatype' => 'audio'));
 
             $edit->categorylist         = handleAction('getcategorylist');
             return construct_interface($select, $edit);
@@ -185,7 +185,7 @@ function handleAction($action, $params=array()) {
             //get ui conf id
             $ui_conf_id = 4436601;
 
-            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->id, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->email, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'audiouploadurl':
@@ -196,7 +196,7 @@ function handleAction($action, $params=array()) {
             //get ui conf id
             $ui_conf_id = 4971641;
 
-            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->id, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->email, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'geteditdata':
