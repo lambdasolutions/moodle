@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-18) unstable; urgency=low
+
+  * local/kaltura: WIP testing
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 21 Jul 2011 14:40:19 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-17) unstable; urgency=low
 
   * adding WIP HTML interface to demonstration
