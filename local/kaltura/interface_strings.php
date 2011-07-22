@@ -30,8 +30,14 @@ function construct_interface($select, $edit) {
     $interfaceNodes['root'] = <<<ROOT
     <div id="overlayContainer">
         <div id="kalturahtmlcontrib" class="contentArea"></div>
-        <input type="submit" value="$strs->close" id="contribClose"/>
+        <input type="submit" value="$strs->close" id="contribClose"/>    <div class="flashOverlay" id="videooverlay">
+        <div id="uploadvideo"></div>
     </div>
+    <div class="flashOverlay" id="audiooverlay">
+        <div id="uploadaudio"></div>
+    </div>        
+    </div>
+
 ROOT;
 
     $categories = array();
@@ -107,6 +113,7 @@ ROOT;
 			</div>
         </div>
     </div>
+
 EDIT;
 
     $interfaceNodes['edit'] = implode('', $editstr);
@@ -115,12 +122,6 @@ EDIT;
     );
 
     $interfaceNodes['select'] = <<<SELECT
-    <div class="flashOverlay" id="videooverlay">
-        <div id="uploadvideo"></div>
-    </div>
-    <div class="flashOverlay" id="audiooverlay">
-        <div id="uploadaudio"></div>
-    </div>
     <div id="selectionInterface" class="contentArea">
         <ul>
             <li><a href="#videotab">$strs->video</a></li>
@@ -141,6 +142,7 @@ EDIT;
                             <span id="uploadvideospan">
                                 <input type="submit" id="uploadvideobutton" value="$strs->upload" />
                             </span>
+         
                         </div>
                         <div id="webcamtab" class="contentArea">
                         </div>
