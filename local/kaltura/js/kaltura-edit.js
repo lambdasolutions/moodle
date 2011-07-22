@@ -184,6 +184,12 @@ function addEntryComplete(entry) {
                     renderables.audiotabs.render();
                     renderables.overlay.render();
 
+                    /**/
+                    var d = $("#uploadvideospan");
+                    var offset = d.offset();
+                    $('videooverlay').css({top: offset.top; left: offset.left;});
+                    $('audiooverlay').css({top: offset.top; left: offset.left;});
+
                     /* The video tab is the first to show up, with upload showing. So let's hide audio upload. */
                     Y.one('#audiooverlay').hide();
 
