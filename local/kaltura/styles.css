@@ -1,5 +1,5 @@
 /* Root node */
-    #overlayContainer {
+#overlayContainer {
     background: none;
     width : 635px;
     height : auto;
@@ -212,7 +212,6 @@ img.kalthumb {
 #uploadaudio {
     height:30px;
     width :70px;
-    border: 1px solid black;
 }
 #selectionInterface ul.yui3-tabview-list {
     padding-left:125px;

@@ -30,12 +30,13 @@ function construct_interface($select, $edit) {
     $interfaceNodes['root'] = <<<ROOT
     <div id="overlayContainer">
         <div id="kalturahtmlcontrib" class="contentArea"></div>
-        <input type="submit" value="$strs->close" id="contribClose"/>    <div class="flashOverlay" id="videooverlay">
-        <div id="uploadvideo"></div>
-    </div>
-    <div class="flashOverlay" id="audiooverlay">
-        <div id="uploadaudio"></div>
-    </div>        
+        <input type="submit" value="$strs->close" id="contribClose"/>
+        <div class="flashOverlay" id="videooverlay">
+            <div id="uploadvideo"></div>
+        </div>
+        <div class="flashOverlay" id="audiooverlay">
+            <div id="uploadaudio"></div>
+        </div>
     </div>
 
 ROOT;

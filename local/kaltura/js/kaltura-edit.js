@@ -168,64 +168,74 @@ function addEntryComplete(entry) {
                     this.currentnode = Y.one('#selectionInterface');
 
                     /* YUIfy DOM sections */
-                    var renderables         = {};
-                    renderables.toptabs     = new Y.TabView({srcNode:'#selectionInterface'});
-                    renderables.videotabs   = new Y.TabView({srcNode:'#videotabview'});
-                    renderables.audiotabs   = new Y.TabView({srcNode:'#audiotabview'});
+                    this.renderables         = {};
+                    this.renderables.toptabs     = new Y.TabView({srcNode:'#selectionInterface'});
+                    this.renderables.videotabs   = new Y.TabView({srcNode:'#videotabview'});
+                    this.renderables.audiotabs   = new Y.TabView({srcNode:'#audiotabview'});
 
-                    renderables.overlay = new Y.Overlay({
+                    this.renderables.overlay = new Y.Overlay({
                         srcNode:'#overlayContainer',
                         centered: true
                     });
 
                     /* Render YUI parts */
-                    renderables.toptabs.render();
-                    renderables.videotabs.render();
-                    renderables.audiotabs.render();
-                    renderables.overlay.render();
+                    this.renderables.toptabs.render();
+                    this.renderables.videotabs.render();
+                    this.renderables.audiotabs.render();
+                    this.renderables.overlay.render();
 
-                    /**/
-                    var d = $("#uploadvideospan");
-                    var offset = d.offset();
-                    $('videooverlay').css({top: offset.top; left: offset.left;});
-                    $('audiooverlay').css({top: offset.top; left: offset.left;});
+                    /* attempt to move flash button to the right place.. */
+                    var d = Y.one("#uploadvideobutton");
+                    var offset = d.getXY();
+                    Y.all('.flashOverlay').setStyles({position: 'absolute', float: 'left'});
+                    Y.one('#videooverlay').setXY(offset);
+                    Y.one('#audiooverlay').setXY(offset);
 
                     /* The video tab is the first to show up, with upload showing. So let's hide audio upload. */
                     Y.one('#audiooverlay').hide();
 
                     /* We're overlaying these flash objects, so let's switch them when events occur. */
-                    renderables.toptabs.on('selectionChange', function(e) {
-                        console.log('toptabs selectionChange fired');
-
+                    this.renderables.toptabs.on('selectionChange', function(e) {
                         var tab = e.newVal._parentNode.one('[tabindex=0]');
-                        if (tab.hash != '#video') {
+                        if (tab.get('href') != location.href + '#videotab') {
                             Y.one('#videooverlay').hide();
-                        }
-                        else if (tab.hash != '#audio') {
-                            Y.one('#audiooverlay').hide();
-                        }
-                        console.log(renderables.videotabs);
-                    });
-                    renderables.videotabs.on('selectionChange', function(e) {
-                        console.log('videotabs selectionChange fired');
 
+                            var subtab = Y.one('#audiotab .yui3-tab-selected a');
+                            if (subtab.get('href') != location.href + '#uploadaudiotab') {
+                                Y.one('#audiooverlay').hide();
+                            }
+                            else {
+                                Y.one('#audiooverlay').show();
+                            }
+                        }
+                        else if (tab.get('href') != location.href + '#audiotab') {
+                            Y.one('#audiooverlay').hide();
+
+                            var subtab = Y.one('#videotab .yui3-tab-selected a');
+                            if (subtab.get('href') != location.href + '#uploadvideotab') {
+                                Y.one('#videooverlay').hide();
+                            }
+                            else {
+                                Y.one('#videooverlay').show();
+                            }
+                        }
+                    });
+                    this.renderables.videotabs.on('selectionChange', function(e) {
                         Y.one('#audiooverlay').hide();
 
                         var tab = e.newVal._parentNode.one('[tabindex=0]');
-                        if (tab.hash != '#uploadvideotab') {
+                        if (tab.get('href') != location.href + '#uploadvideotab') {
                             Y.one('#videooverlay').hide();
                         }
                         else {
                             Y.one('#videooverlay').show();
                         }
                     });
-                    renderables.audiotabs.on('selectionChange', function(e) {
-                        console.log('audiotabs selectionChange fired');
-
+                    this.renderables.audiotabs.on('selectionChange', function(e) {
                         Y.one('#videooverlay').hide();
 
                         var tab = e.newVal._parentNode.one('[tabindex=0]');
-                        if (tab.hash != '#uploadaudiotab') {
+                        if (tab.get('href') != location.href + '#uploadaudiotab') {
                             Y.one('#audiooverlay').hide();
                         }
                         else {
