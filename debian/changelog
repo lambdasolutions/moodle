@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-19) unstable; urgency=low
+
+  * local/kaltura: version 1.1
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 26 Jul 2011 01:01:30 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-18) unstable; urgency=low
 
   * local/kaltura: WIP testing
