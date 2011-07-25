@@ -87,7 +87,8 @@ span.fullName {
 .yui3-tabview {
     margin-top:-3px;
 }
-#selectionInterface #videotabview, #selectionInterface #audiotabview {
+#selectionInterface #videotabview,
+#selectionInterface #audiotabview {
     border:1px solid #E7E7E7;
     border-top:none;
     padding-top:4px;
