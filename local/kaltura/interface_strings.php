@@ -95,7 +95,7 @@ function construct_interface($select, $edit) {
                 </span>
             </div>
             <div id="editfooterdiv">
-                <input id="editupdate" type="submit" value="$strs->update" />
+                <input id="editupdate" type="submit" value="$strs->update" disabled />
             </div>
 			</div>
         </div>
@@ -216,7 +216,7 @@ function constructMediaPager($mediatype, $data) {
         }
 
         $listhtml .= '<span class="thumb">'
-                        .'<a href="#" onclick="window.kalturaWiz.selectedEntry({entryId: \'' . $entry->id . '\', upload: false});return false;" class="kalturavideo" id="' . $entry->id . '">'
+                        .'<a href="#" onclick="window.kalturaWiz.selectedEntry({entryId: \'' . $entry->id . '\', mediatype: \'' . $mediatype . '\', upload: false});return false;" class="kalturavideo" id="' . $entry->id . '">'
                             .$thumbhtml
                         .'</a>'
                     .'</span>';

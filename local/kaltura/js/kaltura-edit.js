@@ -62,7 +62,7 @@ function addEntryComplete(entry) {
         navigator = window.navigator,
         location  = window.location;
 
-    YUI().use('node', 'io', 'event', 'json-parse', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
+    YUI().use('node', 'io', 'event', 'json', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
         var contribWiz = (function () {
             /* Define a few things... */
 
@@ -95,13 +95,11 @@ function addEntryComplete(entry) {
                 hide: function() {
                     if (!(this.hasClass('hidden'))) {
                         this.addClass('hidden');
-                        console.log(this.get('id') + ' is now hidden');
                     }
                 },
                 show: function() {
                     if (this.hasClass('hidden')) {
                         this.removeClass('hidden');
-                        console.log(this.get('id') + ' is now shown');
                     }
                 },
             });
@@ -356,27 +354,27 @@ function addEntryComplete(entry) {
                 _buildEditInterface: function () {
                     var $this = window.kalturaWiz;
 
-                    this.currentnode.addClass('hidden');
-                    this.previousnode = this.currentnode;
-                    //if ($this.upload) {
+                    $this.currentnode.addClass('hidden');
+                    $this.previousnode = this.currentnode;
+                    var node = $this.interfaceNodes.edit;
+                    Y.one('#kalturahtmlcontrib').append(node);
+
+                    if ($this.upload) {
+                        var P = YUI().use('yui2-progressbar');
                         $this.progressbar = new Y.YUI2.widget.ProgressBar({
                             minValue:0,
                             maxValue:100,
                             height:"30px",
-                            width:"150px"
+                            width:"600px"
                         }).render('editprogressdiv');
                         if ($this.progressvalue) {
                             $this.progressbar.set('value', this.progressvalue);
                         }
-                        $this.progressbar.redraw();
-                    //}
-
-                    var node = this.interfaceNodes.edit;
-                    Y.one('#kalturahtmlcontrib').append(node);
+                    }
 
                     this.currentnode = Y.one('#editInterface');
 
-                    if ((!this.upload) || (this.upload && this.entryid)) {
+                    if ((!$this.upload) || ($this.upload && $this.entryid)) {
                         this.multiJAX([
                             {
                                 action: 'geteditdata',
@@ -400,8 +398,8 @@ function addEntryComplete(entry) {
                      */
                     var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
                     /* Create treeview with YUI2 */
-                    this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
-                    this.tree.subscribe('clickEvent', function (e) {
+                    $this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
+                    $this.tree.subscribe('clickEvent', function (e) {
                         var textbox         = Y.one('#editcategoriestext'),
                             idlist          = Y.one('#editcategoriesids'),
                             categoriestext  = textbox.get('value'),
@@ -422,7 +420,47 @@ function addEntryComplete(entry) {
                         textbox.set('value', categoriestext);
                         idlist.set('value', categoriesids);
                     });
-                    this.tree.render();
+                    $this.tree.render();
+
+                    Y.one('#editupdate').on('click', function (e) {
+                        var id, action, mediatype, callback;
+
+                        if ($this.upload) {
+                            id = $this.uploadtoken;
+                            action = 'addentry';
+                            mediatype = $this.uploadtype;
+                            callback = $this.addEntryComplete;
+                        }
+                        else {
+                            id = $this.entryid;
+                            action = 'updateentry';
+                            mediatype = $this.mediatype;
+                            callback = $this._updatedVideo;
+                        }
+
+                        var title       = Y.one('#edittitle').get('value'),
+                            description = Y.one('#editdescription').get('value'),
+                            tags        = Y.one('#edittags').get('value'),
+                            categories  = Y.one('#editcategoriesids').get('value');
+
+                        $this.multiJAX([{
+                            action: action,
+                            params: {
+                                token: id,
+                                entrydata: encodeURI(Y.JSON.stringify({
+                                    title: title,
+                                    description: description,
+                                    tags: tags,
+                                    categories: categories
+                                }))
+                            },
+                            passthrough: {
+                                id: id
+                            },
+                            successCallback: callback
+                        }]);
+                        $this.domnode.hide();
+                    });
                 },
                 _destroyInterface: function () {
                     $this = window.kalturaWiz;
@@ -479,6 +517,7 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.description) {
                         Y.one('#editdescription').set('disabled', 1);
                     }
+                    Y.one('#editupdate').set('disabled', false);
                 },
                 _mediaListCallback: function (ob) {
                     var $this = window.kalturaWiz;
@@ -496,7 +535,7 @@ function addEntryComplete(entry) {
                             Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').appendChild(
                                 Y.Node.create(
                                     '<span class="thumb">'
-                                        +'<a href="#" onClick="contribWiz.fn.selectedEntry({entryId: \'' + n.id + '\', upload: false});return false;" class="kalturavideo" id="' + n.id + '">'
+                                        +'<a href="#" onClick="contribWiz.fn.selectedEntry({entryId: \'' + n.id + '\', mediatype: \'' + ob.passthrough.type + '\', upload: false});return false;" class="kalturavideo" id="' + n.id + '">'
                                             + (
                                                 ob.passthrough.type === 'audio' ?
                                                     '<span><div class="kalthumb">' + n.name + '</div></span>' :
@@ -611,7 +650,6 @@ function addEntryComplete(entry) {
                         }
                     }
                     str = str.replace(/&$/,'');
-                    console.log(str);
 
                     Y.io(_ajaxurl,
                         {
@@ -639,42 +677,49 @@ function addEntryComplete(entry) {
                         }
                     );
                 },
-                addEntryComplete: function (entry) {
-                    var entryId = entry.entryId;
-                    Y.one('input[name=kalturavideo]').set('value', entryId);
-                    initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
+                _updatedVideo: function (ob) {
+                    if (ob.response.entry) {
+                        window.kalturaWiz._useEntry(ob.response.entry.id);
+                    }
+                    else {
+                        window.kalturaWiz._useEntry(ob.passthrough.id);
+                    }
+                },
+                _useEntry: function (id) {
+                    Y.one('input[name=kalturavideo]').set('value', id);
+                    initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: id});
+                    window.kalturaWiz._destroyInterface();
+                },
+                _addEntryComplete: function (ob) {
+                    $this = window.kalturaWiz;
+                    $this.addEntryComplete(ob.response.entry.id);
                 },
                 selectedEntry: function (ob) {
-                    this.entryid = ob.entryId;
-                    this.upload  = ob.upload;
+                    $this = window.kalturaWiz;
+                    $this.entryid = ob.entryId;
+                    $this.mediatype = ob.mediatype;
+                    $this.upload  = ob.upload;
 
-                    //TODO: separate data fetching, fetch here
-
-                    this._buildEditInterface();
+                    $this._buildEditInterface();
                 },
                 audioUploadDelegate: {
-                    selectHandler:function(){
-                        console.log('selectHandler called');
+                    singleUploadCompleteHandler: function (args) {
+                        $this = window.kalturaWiz;
+                        $this.uploadtoken = args[0].token;
+                        $this.uploadtype  = 'audio';
+                        Y.one('#editupdate').set('disabled', false);
+                    },
+                    selectHandler: function (){
                         var $this = window.kalturaWiz;
                         $this.upload = true;
-                        $this.swf['uploadaudio'].callSWF('upload');
+                        $this.swf['uploadvideo'].callSWF('upload');
                         $this._buildEditInterface();
                     },
-                    entriesAddedHandler:function(entries){
-                        console.log('entriesAddedHandler called');
-                        var $this = window.kalturaWiz,
-                            entry = entries[0];
-                        Y.one('#editentryid').set('value', entry.id);
-                        if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
-                            Y.one('#contribkalturathumb').set('src', entry.thumbnailUrl);
-                        }
-                        if (!Y.one('#edittitle').get('value')) {
-                            Y.one('#edittitle').set('value', entry.name);
-                        }
-                    },
                     progressHandler: function (args) {
-                        console.log('progressHandler called');
                         var $this = window.kalturaWiz;
+                        if (!$this.progressvalue) {
+                            $this.progressvalue = 0;
+                        }
                         if ($this.progressbar) {
                             var progvalue = args[0]/args[1]*100;
                             if (progvalue > $this.progressvalue) {
@@ -685,66 +730,28 @@ function addEntryComplete(entry) {
                     }
                 },
                 videoUploadDelegate: {
-                    uploadErrorHandler: function () {
-                        console.log('uploadErrorHandler called');
-                        console.log(arguments);
-                    },
-                    addEntryFailedHandler: function () {
-                        console.log('addEntryFailedHandler called');
-                        console.log(arguments);
-                    },
-                    uiConfErrorHandler: function () {
-                        console.log('uiConfErrorHandler called');
-                        console.log(arguments);
-                    },
-                    readyHandler: function () {
-                        console.log('readyHandler called');
-                        console.log(arguments);
-                    },
                     singleUploadCompleteHandler: function (args) {
-                        console.log('singleUploadCompleteHandler called');
-                        console.log(arguments);
-                    },
-                    allUploadsCompleteHandler: function () {
-                        console.log('allUploadsCompleteHandler called');
-                        console.log(arguments);
+                        $this = window.kalturaWiz;
+                        $this.uploadtoken = args[0].token;
+                        $this.uploadtype  = 'video';
+                        Y.one('#editupdate').set('disabled', false);
                     },
                     selectHandler: function (){
-                        console.log('selectHandler called');
-                        console.log(arguments);
                         var $this = window.kalturaWiz;
                         $this.upload = true;
                         $this.swf['uploadvideo'].callSWF('upload');
                         $this._buildEditInterface();
                     },
-                    entriesAddedHandler: function (entries){
-                        console.log('entriesAddedHandler called');
-                        console.log(arguments);
-                        var $this = window.kalturaWiz,
-                            entry = entries[0];
-                        Y.one('#editentryid').set('value', entry.id);
-                        if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
-                            Y.one('#contribkalturathumb').set('src', entry.thumbnailUrl);
-                        }
-                        if (!Y.one('#edittitle').get('value')) {
-                            Y.one('#edittitle').set('value', entry.name);
-                        }
-                    },
                     progressHandler: function (args) {
-                        console.log('progressHandler called');
-                        console.log(arguments);
                         var $this = window.kalturaWiz;
                         if (!$this.progressvalue) {
                             $this.progressvalue = 0;
                         }
                         if ($this.progressbar) {
-                            console.log('progressbar exists');
                             var progvalue = args[0]/args[1]*100;
                             if (progvalue > $this.progressvalue) {
-                                console.log('setting progress value: '+progvalue);
                                 $this.progressvalue = progvalue;
                                 $this.progressbar.set('value', progvalue);
-                                console.log('actually setting progress value: '+progvalue);
                             }
                         }
                     }

@@ -215,6 +215,58 @@ function handleAction($action, $params=array()) {
             return array('categories' => $client->category->listAction());
             break;
 
+        case 'addentry':
+            $token = $params['token'];
+            $client = kalturaClientSession();
+            $config = $client->getConfig();
+
+            $entrydata = json_decode($params['entrydata']);
+
+            $entry                 = new KalturaMediaEntry();
+            $entry->name           = $entrydata->title;
+            $entry->description    = $entrydata->description;
+            $entry->tags           = $entrydata->tags;
+            $entry->categoriesIds  = $entrydata->categories;
+
+            if ($entrydata->mediatype == 'video') {
+                $entry->mediaType = KalturaMediaType::VIDEO;
+            }
+            else {//Assume audio for now
+                $entry->mediaType = KalturaMediaType::VIDEO;
+            }
+            return array(
+                'entry' => $client->media->addFromUploadedFile($entry, $token)
+            );
+
+            break;
+
+        case 'updateentry':
+            $client  = kalturaClientSession();
+            $config  = $client->getConfig();
+
+            $entryid = $params['token'];
+            $entrydata = json_decode($params['entrydata']);
+
+            $entry                = new KalturaMediaEntry();
+            $entry->name          = $entrydata->title;
+            $entry->description   = $entrydata->description;
+            $entry->tags          = $entrydata->tags;
+            $entry->categoriesIds = $entrydata->categories;
+
+            if (empty($entry->description)) {
+                return array(
+                    'entry' => $client->media->update($entryid, $entry),
+                );
+            }
+            else {
+                return array(
+                    'entry' => $client->media->addFromEntry($entryid, $entry),
+                );
+            }
+
+            break;
+
+
         default:
             break;
     }
