@@ -39,4 +39,8 @@ $string['myvideo'] = 'My Video';
 $string['sharedaudio'] = 'Shared Audio';
 $string['sharedvideo'] = 'Shared Video';
 $string['extratext'] = '';
+$string['kuploadvideo'] = '';
+$string['kuploadaudio'] = '';
+$string['identifier'] = 'Identifier Attribute';
+$string['identifier-explanation'] = 'Which user attribute to use to identify the user to Kaltura';
 ?>

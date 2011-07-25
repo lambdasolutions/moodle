@@ -131,8 +131,9 @@ function handleAction($action, $params=array()) {
 
         case 'listprivate':
             list($client, $filter, $pager) = buildListFilter($params);
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
 
-            $filter->userIdEqual = $USER->email;
+            $filter->userIdEqual = $USER->{$identifier};
 
             $results = $client->media->listAction($filter, $pager);
             $count   = $client->media->count($filter);
@@ -178,25 +179,23 @@ function handleAction($action, $params=array()) {
             break;
 
         case 'videouploadurl':
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+            $ui_conf_id = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'kupload_video'));
             $client = kalturaClientSession();
             $config = $client->getConfig();
             $base   = $CFG->wwwroot.'/local/kaltura/objects/';
 
-            //get ui conf id
-            $ui_conf_id = 4436601;
-
-            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->email, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->{$identifier}, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'audiouploadurl':
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+            $ui_conf_id = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'kupload_audio'));
             $client = kalturaClientSession();
             $config = $client->getConfig();
             $base   = $CFG->wwwroot.'/local/kaltura/objects/';
 
-            //get ui conf id
-            $ui_conf_id = 4971641;
-
-            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->email, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->{$identifier}, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'geteditdata':
