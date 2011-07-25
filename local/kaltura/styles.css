@@ -271,3 +271,11 @@ img.kalthumb {
     font-size:0.8em;
     color:#5E5E5E;
 }
+
+/* Player specifics */
+.kalturaPlayer,
+.kalturaPlayerEdit {
+    width :400px;
+    height:290px;
+    background-color: #eee;
+}

@@ -27,7 +27,6 @@ function initialisevideo(obj) {
         if (player == undefined) {
             return false;
         }
-        player.setStyles({width:400,height:290});
         if (player.hasChildNodes()) {
             player.one('*').remove(true);
         }
