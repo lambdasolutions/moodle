@@ -40,8 +40,8 @@ function xmldb_local_kaltura_upgrade($oldversion) {
         $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
 
         if (empty($identifier)) {
-            //Not sure if identifier is set by this time, so assume email if not.
-            $identifier = 'email';
+            //Not sure if identifier is set by this time, so assume username if not.
+            $identifier = 'username';
         }
 
         if (!empty($partnerId) && !empty($secret)) {
