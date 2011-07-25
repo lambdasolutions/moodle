@@ -20,6 +20,7 @@ $string['secretdesc'] = 'Secret as was recieved in your email registration confi
 $string['adminsecret'] = 'Admin Secret';
 $string['adminsecretdesc'] = 'Admin secret as was recieved in your email registration confirmation. Do NOT change this value';
 $string['close'] = 'Close';
+$string['thumbnail'] = 'Thumbnail';
 $string['editinfo'] = 'Edit Information';
 $string['title'] = 'Title: ';
 $string['description'] = 'Description: ';
