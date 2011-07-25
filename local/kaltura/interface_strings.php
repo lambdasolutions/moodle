@@ -1,4 +1,26 @@
 <?PHP
+/**
+ * Kaltura Local Plugin for Moodle 2
+ * Copyright (C) 2011 Catalyst IT (http://www.catalyst.net.nz)
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @package    local
+ * @subpackage kaltura
+ * @author     Brett Wilkins <brett@catalyst.net.nz>
+ * @license    http://www.gnu.org/licenses/agpl.html GNU Affero GPL v3 or later
+ */
 
 function construct_interface($select, $edit) {
     global $CFG;
@@ -26,13 +48,6 @@ function construct_interface($select, $edit) {
     $strs->sharedvideo = get_string('sharedvideo', 'local_kaltura');
 
     $interfaceNodes = array();
-
-    $interfaceNodes['root'] = <<<ROOT
-    <div id="overlayContainer">
-        <div id="kalturahtmlcontrib" class="contentArea"></div>
-        <input type="submit" value="$strs->close" id="contribClose"/>
-    </div>
-ROOT;
 
     $categories = array();
     $depth      = array();
@@ -102,11 +117,12 @@ ROOT;
                 </span>
             </div>
             <div id="editfooterdiv">
-                <input id="editupdate" type="submit" value="$strs->update" />
+                <input id="editupdate" type="submit" value="$strs->update" disabled />
             </div>
 			</div>
         </div>
     </div>
+
 EDIT;
 
     $interfaceNodes['edit'] = implode('', $editstr);
@@ -115,12 +131,6 @@ EDIT;
     );
 
     $interfaceNodes['select'] = <<<SELECT
-    <div class="flashOverlay" id="videooverlay">
-        <div id="uploadvideo"></div>
-    </div>
-    <div class="flashOverlay" id="audiooverlay">
-        <div id="uploadaudio"></div>
-    </div>
     <div id="selectionInterface" class="contentArea">
         <ul>
             <li><a href="#videotab">$strs->video</a></li>
@@ -145,18 +155,14 @@ EDIT;
                         <div id="webcamtab" class="contentArea">
                         </div>
                         <div id="myvideo" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistprivate);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                         <div id="sharedvideo" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistpublic);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -179,18 +185,14 @@ SELECT;
                         <div id="mictab" class="contentArea">
                         </div>
                         <div id="myaudio" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistprivate);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                         <div id="sharedaudio" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistpublic);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -222,27 +224,27 @@ function constructMediaPager($mediatype, $data) {
     if ($data['page']['current'] == 1) {
         $pagebdisabled = ' disabled="disabled" ';
     }
-    $listhtml = '<span class="' . $mediatype . 'container">';
-    $controlshtml =  '<span class="controls">'
+    $listhtml = '<div class="' . $mediatype . 'container">';
+    $controlshtml =  '<div class="controls">'
                     .'<a href="#" class="pageb"' . $pagebdisabled . '>&lt;</a> Page ' . $data['page']['current'] . ' <a href="#" class="pagef"' . $pagefdisabled . '>&gt;</a>'
-                    .'</span>';
+                    .'</div>';
 
     foreach ($data['objects'] as $entry) {
         if ($mediatype == 'audio') {
             $thumbhtml = '<span><div class="kalthumb">' . $entry->name . '</div></span>';
         }
         else { //Assume video
-            $thumbhtml = '<img src="' . $entry->thumbnailUrl . '" type="image/jpeg" class="kalthumb" alt="' . $entry->name . '"/>';
+            $thumbhtml = '<img src="' . $entry->thumbnailUrl . '" type="image/jpeg" class="kalthumb" alt="' . $entry->name . '" title="' . $entry->name . '"/>';
         }
 
         $listhtml .= '<span class="thumb">'
-                        .'<a href="#" onclick="window.kalturaWiz.selectedEntry({entryId: \'' . $entry->id . '\', upload: false});return false;" class="kalturavideo" id="' . $entry->id . '">'
+                        .'<a href="#" onclick="window.kalturaWiz.selectedEntry({entryId: \'' . $entry->id . '\', mediatype: \'' . $mediatype . '\', upload: false});return false;" class="kalturavideo" id="' . $entry->id . '">'
                             .$thumbhtml
                         .'</a>'
                     .'</span>';
     }
 
-    $listhtml .= '</span>';
+    $listhtml .= '</div>';
 
     return $listhtml . $controlshtml;
 }

@@ -1,7 +1,31 @@
+/**
+ * Kaltura Local Plugin for Moodle 2
+ * Copyright (C) 2011 Catalyst IT (http://www.catalyst.net.nz)
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @package    local
+ * @subpackage kaltura
+ * @author     Brett Wilkins <brett@catalyst.net.nz>
+ * @license    http://www.gnu.org/licenses/agpl.html GNU Affero GPL v3 or later
+ */
+
 /* Root node */
-    #overlayContainer {
-    background: none;
+#overlayContainer {
+    background: white;
     width : 635px;
+    min-height: 448px;
     height : auto;
     margin-left:125px;
     border : none;
@@ -53,6 +77,12 @@
     border: none;
     margin-left:157px;
 }
+.loadingicon {
+    height: 55px;
+    width : 54px;
+    margin-left: 290px;
+    margin-top: 170px;
+}
 .editentry {
     display: block;
 }
@@ -61,7 +91,8 @@
     display: inline-block;
     padding-right:10px;
 }
-.editentry input,  .editentry > span {
+.editentry input,
+.editentry > span {
     width : 290px;
     display: inline-block;
 }
@@ -79,7 +110,8 @@ span.fullName {
 .yui3-tabview {
     margin-top:-3px;
 }
-#selectionInterface #videotabview, #selectionInterface #audiotabview {
+#selectionInterface #videotabview,
+#selectionInterface #audiotabview {
     border:1px solid #E7E7E7;
     border-top:none;
     padding-top:4px;
@@ -188,6 +220,11 @@ span.fullName {
 #overlayContainer .contentArea {
     width:auto;
 }
+.contentarea .controls {
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+}
 .kalhide,
 .kalhide * {
     z-index: -1px;
@@ -203,7 +240,7 @@ span.fullName {
     width : 0px;
     height : 0px;
 }
-img.kalthumb {
+.kalthumb {
     float : left;
     height: 117px;
     width : 157px;
@@ -212,7 +249,6 @@ img.kalthumb {
 #uploadaudio {
     height:30px;
     width :70px;
-    border: 1px solid black;
 }
 #selectionInterface ul.yui3-tabview-list {
     padding-left:125px;
@@ -271,4 +307,12 @@ img.kalthumb {
     padding-left:5px;
     font-size:0.8em;
     color:#5E5E5E;
+}
+
+/* Player specifics */
+.kalturaPlayer,
+.kalturaPlayerEdit {
+    width :400px;
+    height:290px;
+    background-color: #eee;
 }

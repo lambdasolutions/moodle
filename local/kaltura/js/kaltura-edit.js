@@ -62,7 +62,7 @@ function addEntryComplete(entry) {
         navigator = window.navigator,
         location  = window.location;
 
-    YUI().use('node', 'io', 'event', 'json-parse', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
+    YUI().use('node', 'io', 'event', 'json', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
         var contribWiz = (function () {
             /* Define a few things... */
 
@@ -129,97 +129,146 @@ function addEntryComplete(entry) {
                         $this = this;
                     }
 
-                    if (scaffold === '') {
+                    if (!$this.rootRendered) {
+                        /* Ugly in-line html... but it's a necessary evil */
+                        var node =   '<div id="overlayContainer">'
+                                        +'<div id="kalturahtmlcontrib" class="contentArea"></div>'
+                                        +'<input type="submit" id="contribClose"/>'
+                                        +'<div class="flashOverlay" id="videooverlay">'
+                                            +'<div id="uploadvideo"></div>'
+                                        +'</div>'
+                                        +'<div class="flashOverlay" id="audiooverlay">'
+                                            +'<div id="uploadaudio"></div>'
+                                        +'</div>'
+                                        +'<img id="kalLoadingImg" src="' + M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif" class="loadingicon" alt="Loading..."/>'
+                                    +'</div>';
+                        Y.one(document.body).append(node);
+                        $this.domnode = Y.one('#overlayContainer');
+
+                        Y.one('#videooverlay').hide();
+                        Y.one('#audiooverlay').hide();
+
+                        $this.renderables         = {};
+                        $this.renderables.overlay = new Y.Overlay({
+                            srcNode:'#overlayContainer',
+                            centered: true
+                        });
+                        $this.renderables.overlay.render();
+
+                        Y.one(document.body).removeClass('yui3-skin-sam');
+                        Y.one('#contribClose').on('click', function (e) {
+                            e.preventDefault();
+                            $this._destroyInterface();
+                            return false;
+                        });
+                        $this.rootRendered = true;
+                    }
+
+
+                    if (scaffold == '' || scaffold == undefined) {
                         setTimeout($this._buildRootInterface, 1000);
                     } else {
                         $this.interfaceNodes = scaffold;
 
-                        var node = Y.Node.create($this.interfaceNodes.root);
-                        Y.one(document.body).appendChild(node);
-                        $this.domnode = Y.one('#overlayContainer');
-
-                        Y.one(document.body).removeClass('yui3-skin-sam');
-
-                        Y.one('#contribClose').on('click', function (e) {
-                            e.preventDefault();
-                            $this._destroyInterface();
-
-                            return false;
-                        });
-
-                        setTimeout(function() {$this._buildSelectionInterface(Y.one('#kalturahtmlcontrib'));}, 200);
+                        try {
+                            /* Remove loading image */
+                            Y.one('#kalLoadingImg').remove();
+                        }
+                        catch (err) {}
+                        setTimeout($this._buildSelectionInterface, 200);
                     }
                 },
-                _buildSelectionInterface: function (root) {
+                _buildSelectionInterface: function () {
                     /* Assign this to another value so it is still valid when defining another object */
-                    var $this = this;
+                    var $this = window.kalturaWiz;
 
                     try {
-                        if (this.currentnode) {
-                            this.currentnode.destroy();
+                        if ($this.currentnode) {
+                            $this.currentnode.remove(true);
                         }
                     }
                     catch (err) {};
 
                     /* Fetch and insert dom tree */
 
-                    var node = Y.Node.create(this.interfaceNodes.select);
-                    root.append(node);
-                    this.currentnode = Y.one('#selectionInterface');
+                    var node = Y.Node.create($this.interfaceNodes.select);
+                    Y.one('#kalturahtmlcontrib').append(node);
+                    $this.currentnode = Y.one('#selectionInterface');
 
                     /* YUIfy DOM sections */
-                    var renderables         = {};
-                    renderables.toptabs     = new Y.TabView({srcNode:'#selectionInterface'});
-                    renderables.videotabs   = new Y.TabView({srcNode:'#videotabview'});
-                    renderables.audiotabs   = new Y.TabView({srcNode:'#audiotabview'});
-
-                    renderables.overlay = new Y.Overlay({
-                        srcNode:'#overlayContainer',
-                        centered: true
-                    });
+                    $this.renderables.toptabs     = new Y.TabView({srcNode:'#selectionInterface'});
+                    $this.renderables.videotabs   = new Y.TabView({srcNode:'#videotabview'});
+                    $this.renderables.audiotabs   = new Y.TabView({srcNode:'#audiotabview'});
 
                     /* Render YUI parts */
-                    renderables.toptabs.render();
-                    renderables.videotabs.render();
-                    renderables.audiotabs.render();
-                    renderables.overlay.render();
+                    $this.renderables.toptabs.render();
+                    $this.renderables.videotabs.render();
+                    $this.renderables.audiotabs.render();
 
-                    /* The video tab is the first to show up, with upload showing. So let's hide audio upload. */
+                    /* Show upload divs for setting position */
+                    Y.one('#videooverlay').show();
+                    Y.one('#audiooverlay').show();
+
+                    /* attempt to move flash button to the right place.. */
+                    var d = Y.one("#uploadvideobutton");
+                    var offset = d.getXY();
+                    Y.all('.flashOverlay').setStyles({position: 'absolute', float: 'left'});
+                    Y.one('#videooverlay').setXY(offset);
+                    Y.one('#audiooverlay').setXY(offset);
+
+                    /* The video tab is the first to show up, with upload showing, so lets hide audio upload */
                     Y.one('#audiooverlay').hide();
 
                     /* We're overlaying these flash objects, so let's switch them when events occur. */
-                    renderables.toptabs.on('selectionChange', function(e) {
-                        console.log('toptabs selectionChange fired');
-
+                    $this.renderables.toptabs.on('selectionChange', function(e) {
+                        /* location.href will occasionally contain a pesky # on the end already */
+                        var href = location.origin + location.pathname + location.search;
                         var tab = e.newVal._parentNode.one('[tabindex=0]');
-                        if (tab.hash != '#video') {
+                        if (tab.get('href') != href + '#videotab') {
                             Y.one('#videooverlay').hide();
-                        }
-                        else if (tab.hash != '#audio') {
-                            Y.one('#audiooverlay').hide();
-                        }
-                        console.log(renderables.videotabs);
-                    });
-                    renderables.videotabs.on('selectionChange', function(e) {
-                        console.log('videotabs selectionChange fired');
 
+                            var subtab = Y.one('#audiotab .yui3-tab-selected a');
+                            if (subtab.get('href') != href + '#uploadaudiotab') {
+                                Y.one('#audiooverlay').hide();
+                            }
+                            else {
+                                Y.one('#audiooverlay').show();
+                            }
+                        }
+                        else if (tab.get('href') != href + '#audiotab') {
+                            Y.one('#audiooverlay').hide();
+
+                            var subtab = Y.one('#videotab .yui3-tab-selected a');
+                            if (subtab.get('href') != href + '#uploadvideotab') {
+                                Y.one('#videooverlay').hide();
+                            }
+                            else {
+                                Y.one('#videooverlay').show();
+                            }
+                        }
+                    });
+                    $this.renderables.videotabs.on('selectionChange', function(e) {
                         Y.one('#audiooverlay').hide();
 
+                        /* location.href will occasionally contain a pesky # on the end already */
+                        var href = location.origin + location.pathname + location.search;
+
                         var tab = e.newVal._parentNode.one('[tabindex=0]');
-                        if (tab.hash != '#uploadvideotab') {
+                        if (tab.get('href') != href + '#uploadvideotab') {
                             Y.one('#videooverlay').hide();
                         }
                         else {
                             Y.one('#videooverlay').show();
                         }
                     });
-                    renderables.audiotabs.on('selectionChange', function(e) {
-                        console.log('audiotabs selectionChange fired');
-
+                    $this.renderables.audiotabs.on('selectionChange', function(e) {
                         Y.one('#videooverlay').hide();
 
+                        /* location.href will occasionally contain a pesky # on the end already */
+                        var href = location.origin + location.pathname + location.search;
+
                         var tab = e.newVal._parentNode.one('[tabindex=0]');
-                        if (tab.hash != '#uploadaudiotab') {
+                        if (tab.get('href') != href + '#uploadaudiotab') {
                             Y.one('#audiooverlay').hide();
                         }
                         else {
@@ -227,7 +276,7 @@ function addEntryComplete(entry) {
                         }
                     });
 
-                    pages = Array(
+                    var pages = Array(
                         {
                             target: '#sharedaudio',
                             type  : 'audio',
@@ -272,7 +321,7 @@ function addEntryComplete(entry) {
 
                     /* Load dynamic contents */
                     /* Load video upload button */
-                    this._uploadUrlCallback({
+                    $this._uploadUrlCallback({
                         passthrough: {
                             target: '#uploadvideo',
                             delegate: 'window.kalturaWiz.videoUploadDelegate'
@@ -280,7 +329,7 @@ function addEntryComplete(entry) {
                         response: $this.interfaceNodes.selectdata.videouploadurl
                     });
                     /* Load audio upload button */
-                    this._uploadUrlCallback({
+                    $this._uploadUrlCallback({
                         passthrough: {
                             target: '#uploadaudio',
                             delegate: 'window.kalturaWiz.audioUploadDelegate'
@@ -288,14 +337,14 @@ function addEntryComplete(entry) {
                         response: $this.interfaceNodes.selectdata.audiouploadurl
                     });
                     /* Load webcam recorder */
-                    this._swfLoadCallback({
+                    $this._swfLoadCallback({
                         passthrough: {
                             target: '#webcamtab'
                         },
                         response: $this.interfaceNodes.selectdata.videourl
                     });
                     /* Load mic recorder */
-                    this._swfLoadCallback({
+                    $this._swfLoadCallback({
                         passthrough: {
                             target: '#mictab'
                         },
@@ -305,27 +354,27 @@ function addEntryComplete(entry) {
                 _buildEditInterface: function () {
                     var $this = window.kalturaWiz;
 
-                    this.currentnode.addClass('hidden');
-                    this.previousnode = this.currentnode;
-                    //if ($this.upload) {
+                    $this.currentnode.addClass('hidden');
+                    $this.previousnode = this.currentnode;
+                    var node = $this.interfaceNodes.edit;
+                    Y.one('#kalturahtmlcontrib').append(node);
+
+                    if ($this.upload) {
+                        var P = YUI().use('yui2-progressbar');
                         $this.progressbar = new Y.YUI2.widget.ProgressBar({
                             minValue:0,
                             maxValue:100,
                             height:"30px",
-                            width:"150px"
+                            width:"600px"
                         }).render('editprogressdiv');
                         if ($this.progressvalue) {
                             $this.progressbar.set('value', this.progressvalue);
                         }
-                        $this.progressbar.redraw();
-                    //}
-
-                    var node = this.interfaceNodes.edit;
-                    Y.one('#kalturahtmlcontrib').append(node);
+                    }
 
                     this.currentnode = Y.one('#editInterface');
 
-                    if ((!this.upload) || (this.upload && this.entryid)) {
+                    if ((!$this.upload) || ($this.upload && $this.entryid)) {
                         this.multiJAX([
                             {
                                 action: 'geteditdata',
@@ -349,8 +398,8 @@ function addEntryComplete(entry) {
                      */
                     var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
                     /* Create treeview with YUI2 */
-                    this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
-                    this.tree.subscribe('clickEvent', function (e) {
+                    $this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
+                    $this.tree.subscribe('clickEvent', function (e) {
                         var textbox         = Y.one('#editcategoriestext'),
                             idlist          = Y.one('#editcategoriesids'),
                             categoriestext  = textbox.get('value'),
@@ -371,11 +420,53 @@ function addEntryComplete(entry) {
                         textbox.set('value', categoriestext);
                         idlist.set('value', categoriesids);
                     });
-                    this.tree.render();
+                    $this.tree.render();
+
+                    Y.one('#editupdate').on('click', function (e) {
+                        var id, action, mediatype, callback;
+
+                        if ($this.upload) {
+                            id = $this.uploadtoken;
+                            action = 'addentry';
+                            mediatype = $this.uploadtype;
+                            callback = $this.addEntryComplete;
+                        }
+                        else {
+                            id = $this.entryid;
+                            action = 'updateentry';
+                            mediatype = $this.mediatype;
+                            callback = $this._updatedVideo;
+                        }
+
+                        var title       = Y.one('#edittitle').get('value'),
+                            description = Y.one('#editdescription').get('value'),
+                            tags        = Y.one('#edittags').get('value'),
+                            categories  = Y.one('#editcategoriesids').get('value');
+
+                        $this.multiJAX([{
+                            action: action,
+                            params: {
+                                token: id,
+                                entrydata: encodeURI(Y.JSON.stringify({
+                                    title: title,
+                                    description: description,
+                                    tags: tags,
+                                    categories: categories
+                                }))
+                            },
+                            passthrough: {
+                                id: id
+                            },
+                            successCallback: callback
+                        }]);
+                        $this.domnode.hide();
+                    });
                 },
                 _destroyInterface: function () {
-                    this.domnode.setStyles({display: 'none'});
-                    this.domnode.remove(true);
+                    $this = window.kalturaWiz;
+                    $this.rootRendered = false;
+                    $this.domnode.setStyles({display: 'none'});
+                    $this.domnode.remove(true);
                     delete(window.kalturaWiz);
                 },
                 _swfLoadCallback: function (ob) {
@@ -426,19 +517,16 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.description) {
                         Y.one('#editdescription').set('disabled', 1);
                     }
+                    Y.one('#editupdate').set('disabled', false);
                 },
                 _mediaListCallback: function (ob) {
-                    var $this = this;
-                    if (!ob.passthrough.page) {
-                        ob.passthrough.page = 1;
-                    }
-
+                    var $this = window.kalturaWiz;
                     if (ob.response) {
                         Y.one(ob.passthrough.target+' .controls').setContent('');
                         Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').setContent('');
                     }
 
-                    var node = Y.Node.create('<a href="#" class="pageb">&lt;</a>Page ' + ob.passthrough.page + '<a href="#" class="pagef">&gt;</a>');
+                    var node = Y.Node.create('<a href="#" class="pageb">&lt;</a>Page ' + ob.response.page.current + '<a href="#" class="pagef">&gt;</a>');
                     Y.one(ob.passthrough.target+' .controls').appendChild(node);
 
                     for (var i = 0; i < ob.response.count; i++) {
@@ -447,11 +535,11 @@ function addEntryComplete(entry) {
                             Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').appendChild(
                                 Y.Node.create(
                                     '<span class="thumb">'
-                                        +'<a href="#" onClick="contribWiz.fn.selectedEntry({entryId: \'' + n.id + '\', upload: false});return false;" class="kalturavideo" status="' + n.status + '" id="' + n.id + '">'
+                                        +'<a href="#" onClick="contribWiz.fn.selectedEntry({entryId: \'' + n.id + '\', mediatype: \'' + ob.passthrough.type + '\', upload: false});return false;" class="kalturavideo" id="' + n.id + '">'
                                             + (
                                                 ob.passthrough.type === 'audio' ?
                                                     '<span><div class="kalthumb">' + n.name + '</div></span>' :
-                                                    '<img src="' + n.thumbnailUrl + '" type="image/jpeg" class="kalthumb" alt="' + n.name + '"/>'
+                                                    '<img src="' + n.thumbnailUrl + '" type="image/jpeg" class="kalthumb" alt="' + n.name + '" title="' + n.name + '"/>'
                                                 )
                                         +'</a>'
                                     +'</span>'
@@ -460,11 +548,11 @@ function addEntryComplete(entry) {
                         }
                     }
 
-                    window.kalturaWiz.pageButtonHandlers({
+                    $this.pageButtonHandlers({
                         action   : ob.passthrough.action,
                         target   : ob.passthrough.target,
                         type     : ob.passthrough.type,
-                        page     : ob.passthrough.page,
+                        page     : ob.response.page.current,
                         pagecount: ob.response.page.count
                     });
                 },
@@ -562,7 +650,6 @@ function addEntryComplete(entry) {
                         }
                     }
                     str = str.replace(/&$/,'');
-                    console.log(str);
 
                     Y.io(_ajaxurl,
                         {
@@ -590,42 +677,49 @@ function addEntryComplete(entry) {
                         }
                     );
                 },
-                addEntryComplete: function (entry) {
-                    var entryId = entry.entryId;
-                    Y.one('input[name=kalturavideo]').set('value', entryId);
-                    initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: entryId});
+                _updatedVideo: function (ob) {
+                    if (ob.response.entry) {
+                        window.kalturaWiz._useEntry(ob.response.entry.id);
+                    }
+                    else {
+                        window.kalturaWiz._useEntry(ob.passthrough.id);
+                    }
+                },
+                _useEntry: function (id) {
+                    Y.one('input[name=kalturavideo]').set('value', id);
+                    initialisevideo({playerselector: '.kalturaPlayerEdit', entryid: id});
+                    window.kalturaWiz._destroyInterface();
+                },
+                _addEntryComplete: function (ob) {
+                    $this = window.kalturaWiz;
+                    $this.addEntryComplete(ob.response.entry.id);
                 },
                 selectedEntry: function (ob) {
-                    this.entryid = ob.entryId;
-                    this.upload  = ob.upload;
+                    $this = window.kalturaWiz;
+                    $this.entryid = ob.entryId;
+                    $this.mediatype = ob.mediatype;
+                    $this.upload  = ob.upload;
 
-                    //TODO: separate data fetching, fetch here
-
-                    this._buildEditInterface();
+                    $this._buildEditInterface();
                 },
                 audioUploadDelegate: {
-                    selectHandler:function(){
-                        console.log('selectHandler called');
+                    singleUploadCompleteHandler: function (args) {
+                        $this = window.kalturaWiz;
+                        $this.uploadtoken = args[0].token;
+                        $this.uploadtype  = 'audio';
+                        Y.one('#editupdate').set('disabled', false);
+                    },
+                    selectHandler: function (){
                         var $this = window.kalturaWiz;
                         $this.upload = true;
-                        $this.swf['uploadaudio'].callSWF('upload');
+                        $this.swf['uploadvideo'].callSWF('upload');
                         $this._buildEditInterface();
                     },
-                    entriesAddedHandler:function(entries){
-                        console.log('entriesAddedHandler called');
-                        var $this = window.kalturaWiz,
-                            entry = entries[0];
-                        Y.one('#editentryid').set('value', entry.id);
-                        if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
-                            Y.one('#contribkalturathumb').set('src', entry.thumbnailUrl);
-                        }
-                        if (!Y.one('#edittitle').get('value')) {
-                            Y.one('#edittitle').set('value', entry.name);
-                        }
-                    },
                     progressHandler: function (args) {
-                        console.log('progressHandler called');
                         var $this = window.kalturaWiz;
+                        if (!$this.progressvalue) {
+                            $this.progressvalue = 0;
+                        }
                         if ($this.progressbar) {
                             var progvalue = args[0]/args[1]*100;
                             if (progvalue > $this.progressvalue) {
@@ -636,66 +730,28 @@ function addEntryComplete(entry) {
                     }
                 },
                 videoUploadDelegate: {
-                    uploadErrorHandler: function () {
-                        console.log('uploadErrorHandler called');
-                        console.log(arguments);
-                    },
-                    addEntryFailedHandler: function () {
-                        console.log('addEntryFailedHandler called');
-                        console.log(arguments);
-                    },
-                    uiConfErrorHandler: function () {
-                        console.log('uiConfErrorHandler called');
-                        console.log(arguments);
-                    },
-                    readyHandler: function () {
-                        console.log('readyHandler called');
-                        console.log(arguments);
-                    },
                     singleUploadCompleteHandler: function (args) {
-                        console.log('singleUploadCompleteHandler called');
-                        console.log(arguments);
-                    },
-                    allUploadsCompleteHandler: function () {
-                        console.log('allUploadsCompleteHandler called');
-                        console.log(arguments);
+                        $this = window.kalturaWiz;
+                        $this.uploadtoken = args[0].token;
+                        $this.uploadtype  = 'video';
+                        Y.one('#editupdate').set('disabled', false);
                     },
                     selectHandler: function (){
-                        console.log('selectHandler called');
-                        console.log(arguments);
                         var $this = window.kalturaWiz;
                         $this.upload = true;
                         $this.swf['uploadvideo'].callSWF('upload');
                         $this._buildEditInterface();
                     },
-                    entriesAddedHandler: function (entries){
-                        console.log('entriesAddedHandler called');
-                        console.log(arguments);
-                        var $this = window.kalturaWiz,
-                            entry = entries[0];
-                        Y.one('#editentryid').set('value', entry.id);
-                        if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
-                            Y.one('#contribkalturathumb').set('src', entry.thumbnailUrl);
-                        }
-                        if (!Y.one('#edittitle').get('value')) {
-                            Y.one('#edittitle').set('value', entry.name);
-                        }
-                    },
                     progressHandler: function (args) {
-                        console.log('progressHandler called');
-                        console.log(arguments);
                         var $this = window.kalturaWiz;
                         if (!$this.progressvalue) {
                             $this.progressvalue = 0;
                         }
                         if ($this.progressbar) {
-                            console.log('progressbar exists');
                             var progvalue = args[0]/args[1]*100;
                             if (progvalue > $this.progressvalue) {
-                                console.log('setting progress value: '+progvalue);
                                 $this.progressvalue = progvalue;
                                 $this.progressbar.set('value', progvalue);
-                                console.log('actually setting progress value: '+progvalue);
                             }
                         }
                     }

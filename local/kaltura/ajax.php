@@ -122,7 +122,7 @@ function handleAction($action, $params=array()) {
             return array(
                 'page' => array(
                     'count' => $pagecount,
-                    'current' => $pager->pageIndex,
+                    'current' => (int) $pager->pageIndex,
                 ),
                 'count' => $count,
                 'objects' => $results->objects,
@@ -131,8 +131,9 @@ function handleAction($action, $params=array()) {
 
         case 'listprivate':
             list($client, $filter, $pager) = buildListFilter($params);
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
 
-            $filter->userIdEqual = $USER->email;
+            $filter->userIdEqual = $USER->{$identifier};
 
             $results = $client->media->listAction($filter, $pager);
             $count   = $client->media->count($filter);
@@ -146,7 +147,7 @@ function handleAction($action, $params=array()) {
             return array(
                 'page' => array(
                     'count' => $pagecount,
-                    'current' => $pager->pageIndex,
+                    'current' => (int) $pager->pageIndex,
                 ),
                 'count' => $count,
                 'objects' => $results->objects,
@@ -178,25 +179,23 @@ function handleAction($action, $params=array()) {
             break;
 
         case 'videouploadurl':
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+            $ui_conf_id = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'kupload_video'));
             $client = kalturaClientSession();
             $config = $client->getConfig();
             $base   = $CFG->wwwroot.'/local/kaltura/objects/';
 
-            //get ui conf id
-            $ui_conf_id = 4436601;
-
-            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->email, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->{$identifier}, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'audiouploadurl':
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+            $ui_conf_id = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'kupload_audio'));
             $client = kalturaClientSession();
             $config = $client->getConfig();
             $base   = $CFG->wwwroot.'/local/kaltura/objects/';
 
-            //get ui conf id
-            $ui_conf_id = 4971641;
-
-            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->email, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
+            return array('url' => $config->serviceUrl.'/kupload/ui_conf_id/'.$ui_conf_id, 'base' => $base, 'params' => array('ks' => $client->getKs(), 'uid' => $USER->{$identifier}, 'partnerId' => $config->partnerId, 'subPId' => $config->partnerId*100, 'uiConfId' => $ui_conf_id), 'wmode' => 'transparent');
             break;
 
         case 'geteditdata':
@@ -215,6 +214,58 @@ function handleAction($action, $params=array()) {
 
             return array('categories' => $client->category->listAction());
             break;
+
+        case 'addentry':
+            $token = $params['token'];
+            $client = kalturaClientSession();
+            $config = $client->getConfig();
+
+            $entrydata = json_decode($params['entrydata']);
+
+            $entry                 = new KalturaMediaEntry();
+            $entry->name           = $entrydata->title;
+            $entry->description    = $entrydata->description;
+            $entry->tags           = $entrydata->tags;
+            $entry->categoriesIds  = $entrydata->categories;
+
+            if ($entrydata->mediatype == 'video') {
+                $entry->mediaType = KalturaMediaType::VIDEO;
+            }
+            else {//Assume audio for now
+                $entry->mediaType = KalturaMediaType::VIDEO;
+            }
+            return array(
+                'entry' => $client->media->addFromUploadedFile($entry, $token)
+            );
+
+            break;
+
+        case 'updateentry':
+            $client  = kalturaClientSession();
+            $config  = $client->getConfig();
+
+            $entryid = $params['token'];
+            $entrydata = json_decode($params['entrydata']);
+
+            $entry                = new KalturaMediaEntry();
+            $entry->name          = $entrydata->title;
+            $entry->description   = $entrydata->description;
+            $entry->tags          = $entrydata->tags;
+            $entry->categoriesIds = $entrydata->categories;
+
+            if (empty($entry->description)) {
+                return array(
+                    'entry' => $client->media->update($entryid, $entry),
+                );
+            }
+            else {
+                return array(
+                    'entry' => $client->media->addFromEntry($entryid, $entry),
+                );
+            }
+
+            break;
+
 
         default:
             break;

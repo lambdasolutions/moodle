@@ -28,12 +28,14 @@ require_once($CFG->dirroot."/local/kaltura/client/KalturaClient.php");
 
 function kalturaClientSession($admin=false) {
     global $DB, $USER;
-    $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
+    $partnerId  = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
     $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
+    $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+
     $config = new KalturaConfiguration($partnerId);
     $config->serviceUrl = $serviceUrl;
     $client = new KalturaClient($config);
-    $id = $USER->email;
+    $id = $USER->{$identifier};
 
     if ($admin) {
         $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'admin_secret'));

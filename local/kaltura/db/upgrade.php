@@ -1,9 +1,8 @@
 <?php
 /**
- * Kaltura Video Resource for Moodle 2
- * Copyright (C) 2009 Petr Skoda  (http://skodak.org)
+ * Kaltura Local Plugin for Moodle 2
  * Copyright (C) 2011 Catalyst IT (http://www.catalyst.net.nz)
- *
+ * 
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Affero General Public License as published by
  * the Free Software Foundation, either version 3 of the License, or
@@ -17,8 +16,8 @@
  * You should have received a copy of the GNU Affero General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package    mod
- * @subpackage kalturavideo
+ * @package    local
+ * @subpackage kaltura
  * @author     Brett Wilkins <brett@catalyst.net.nz>
  * @license    http://www.gnu.org/licenses/agpl.html GNU Affero GPL v3 or later
  */
@@ -34,9 +33,16 @@ function xmldb_local_kaltura_upgrade($oldversion) {
         require_once(dirname(dirname(__FILE__)).'/lib.php');
 
         // If have kaltura details
-        $partnerId = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
+        $partnerId  = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
         $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
-        $secret = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'admin_secret'));
+        $secret     = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'admin_secret'));
+        $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+
+        if (empty($identifier)) {
+            //Not sure if identifier is set by this time, so assume username if not.
+            $identifier = 'username';
+        }
+
         if (!empty($partnerId) && !empty($secret)) {
             $client = kalturaClientSession(true);
 
@@ -53,20 +59,22 @@ function xmldb_local_kaltura_upgrade($oldversion) {
 
             // Get list of userid,username pairs for each userid
             $userids_to_fetch = array_unique(array_values($userids));
-            list($sql, $params) = $DB->get_in_or_equal($userids_to_fetch);
-            $records = $DB->get_records_select('user','id '.$sql, $params, '', 'id, email');
+            if (!empty($userids_to_fetch)) {
+                list($sql, $params) = $DB->get_in_or_equal($userids_to_fetch);
+                $records = $DB->get_records_select('user','id '.$sql, $params, '', 'id, '.$identifier);
 
-            // update each entry with userid as username of pair
-            foreach ($media->objects as $m) {
-                if (array_key_exists($m->userId, $records)) {
-                    $item = new KalturaMediaEntry();
-                    $user = $records[$m->userId];
-                    $item->userId = $user->email;
-                    print $OUTPUT->box("Updating '$m->name' ($m->id): userid: $m->userId -> $item->userId");
-                    $client->media->update($m->id, $item);
+                // update each entry with userid as username of pair
+                foreach ($media->objects as $m) {
+                    if (array_key_exists($m->userId, $records)) {
+                        $item = new KalturaMediaEntry();
+                        $user = $records[$m->userId];
+                        $item->userId = $user->{$identifier};
+                        print $OUTPUT->box("Updating '$m->name' ($m->id): userid: $m->userId -> $item->userId");
+                        $client->media->update($m->id, $item);
+                    }
                 }
             }
-        };
+        }
 
         upgrade_plugin_savepoint(true, 2011071800, 'local', 'kaltura');
     }
