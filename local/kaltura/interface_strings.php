@@ -27,20 +27,6 @@ function construct_interface($select, $edit) {
 
     $interfaceNodes = array();
 
-    $interfaceNodes['root'] = <<<ROOT
-    <div id="overlayContainer">
-        <div id="kalturahtmlcontrib" class="contentArea"></div>
-        <input type="submit" value="$strs->close" id="contribClose"/>
-        <div class="flashOverlay" id="videooverlay">
-            <div id="uploadvideo"></div>
-        </div>
-        <div class="flashOverlay" id="audiooverlay">
-            <div id="uploadaudio"></div>
-        </div>
-    </div>
-
-ROOT;
-
     $categories = array();
     $depth      = array();
     if (!empty($edit->categorylist)) {
@@ -143,23 +129,18 @@ EDIT;
                             <span id="uploadvideospan">
                                 <input type="submit" id="uploadvideobutton" value="$strs->upload" />
                             </span>
-         
                         </div>
                         <div id="webcamtab" class="contentArea">
                         </div>
                         <div id="myvideo" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistprivate);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                         <div id="sharedvideo" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistpublic);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -182,18 +163,14 @@ SELECT;
                         <div id="mictab" class="contentArea">
                         </div>
                         <div id="myaudio" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistprivate);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                         <div id="sharedaudio" class="contentArea">
-                            <div>
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistpublic);
     $interfaceNodes['select'] .= <<<SELECT
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -225,17 +202,17 @@ function constructMediaPager($mediatype, $data) {
     if ($data['page']['current'] == 1) {
         $pagebdisabled = ' disabled="disabled" ';
     }
-    $listhtml = '<span class="' . $mediatype . 'container">';
-    $controlshtml =  '<span class="controls">'
+    $listhtml = '<div class="' . $mediatype . 'container">';
+    $controlshtml =  '<div class="controls">'
                     .'<a href="#" class="pageb"' . $pagebdisabled . '>&lt;</a> Page ' . $data['page']['current'] . ' <a href="#" class="pagef"' . $pagefdisabled . '>&gt;</a>'
-                    .'</span>';
+                    .'</div>';
 
     foreach ($data['objects'] as $entry) {
         if ($mediatype == 'audio') {
             $thumbhtml = '<span><div class="kalthumb">' . $entry->name . '</div></span>';
         }
         else { //Assume video
-            $thumbhtml = '<img src="' . $entry->thumbnailUrl . '" type="image/jpeg" class="kalthumb" alt="' . $entry->name . '"/>';
+            $thumbhtml = '<img src="' . $entry->thumbnailUrl . '" type="image/jpeg" class="kalthumb" alt="' . $entry->name . '" title="' . $entry->name . '"/>';
         }
 
         $listhtml .= '<span class="thumb">'
@@ -245,7 +222,7 @@ function constructMediaPager($mediatype, $data) {
                     .'</span>';
     }
 
-    $listhtml .= '</span>';
+    $listhtml .= '</div>';
 
     return $listhtml . $controlshtml;
 }

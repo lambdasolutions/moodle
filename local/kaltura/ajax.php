@@ -122,7 +122,7 @@ function handleAction($action, $params=array()) {
             return array(
                 'page' => array(
                     'count' => $pagecount,
-                    'current' => $pager->pageIndex,
+                    'current' => (int) $pager->pageIndex,
                 ),
                 'count' => $count,
                 'objects' => $results->objects,
@@ -147,7 +147,7 @@ function handleAction($action, $params=array()) {
             return array(
                 'page' => array(
                     'count' => $pagecount,
-                    'current' => $pager->pageIndex,
+                    'current' => (int) $pager->pageIndex,
                 ),
                 'count' => $count,
                 'objects' => $results->objects,

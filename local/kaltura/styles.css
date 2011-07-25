@@ -1,7 +1,8 @@
 /* Root node */
 #overlayContainer {
-    background: none;
+    background: white;
     width : 635px;
+    min-height: 448px;
     height : auto;
     margin-left:125px;
     border : none;
@@ -53,6 +54,12 @@
     border: none;
     margin-left:157px;
 }
+.loadingicon {
+    height: 55px;
+    width : 54px;
+    margin-left: 290px;
+    margin-top: 170px;
+}
 .editentry {
     display: block;
 }
@@ -61,7 +68,8 @@
     display: inline-block;
     padding-right:10px;
 }
-.editentry input,  .editentry > span {
+.editentry input,
+.editentry > span {
     width : 290px;
     display: inline-block;
 }
@@ -188,6 +196,11 @@ span.fullName {
 #overlayContainer .contentArea {
     width:auto;
 }
+.contentarea .controls {
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+}
 .kalhide,
 .kalhide * {
     z-index: -1px;
@@ -203,7 +216,7 @@ span.fullName {
     width : 0px;
     height : 0px;
 }
-img.kalthumb {
+.kalthumb {
     float : left;
     height: 117px;
     width : 157px;
