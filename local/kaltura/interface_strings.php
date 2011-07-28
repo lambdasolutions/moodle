@@ -46,8 +46,12 @@ function construct_interface($select, $edit) {
     $strs->myvideo = get_string('myvideo', 'local_kaltura');
     $strs->sharedaudio = get_string('sharedaudio', 'local_kaltura');
     $strs->sharedvideo = get_string('sharedvideo', 'local_kaltura');
+    $strs->next = get_string('next', 'local_kaltura');
+    $strs->previous = get_string('previous', 'local_kaltura');
+    $strs->page = get_string('page', 'local_kaltura');
 
     $interfaceNodes = array();
+    $interfaceNodes['strings'] = $strs;
 
     $categories = array();
     $depth      = array();
@@ -216,17 +220,21 @@ SELECT;
 }
 
 function constructMediaPager($mediatype, $data) {
-    $pagebdisabled = '';
-    $pagefdisabled = '';
+    $next = get_string('next', 'local_kaltura');
+    $previous = get_string('previous', 'local_kaltura');
+    $page = get_string('page', 'local_kaltura');
+
+    $pagebhref = 'href="#"';
+    $pagefhref = 'href="#"';
     if ($data['page']['current'] === $data['page']['count']) {
-        $pagefdisabled = ' disabled="disabled" ';
+        $pagefhref = '';
     }
     if ($data['page']['current'] == 1) {
-        $pagebdisabled = ' disabled="disabled" ';
+        $pagebhref = '';
     }
     $listhtml = '<div class="' . $mediatype . 'container">';
     $controlshtml =  '<div class="controls">'
-                    .'<a href="#" class="pageb"' . $pagebdisabled . '>&lt;</a> Page ' . $data['page']['current'] . ' <a href="#" class="pagef"' . $pagefdisabled . '>&gt;</a>'
+                    .'<a ' . $pagebhref . ' class="pageb">' . $previous . '</a> ' . $page . ' ' . $data['page']['current'] . ' of ' . $data['page']['count'] . ' <a ' . $pagefhref . ' class="pagef">' . $next . '</a>'
                     .'</div>';
 
     foreach ($data['objects'] as $entry) {
@@ -246,6 +254,6 @@ function constructMediaPager($mediatype, $data) {
 
     $listhtml .= '</div>';
 
-    return $listhtml . $controlshtml;
+    return $controlshtml . $listhtml;
 }
 ?>

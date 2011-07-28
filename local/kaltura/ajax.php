@@ -48,6 +48,8 @@ function handleAction($action, $params=array()) {
     global $USER, $CFG, $DB;
     switch ($action) {
         case 'playerurl':
+            $partnerId  = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
+            $serviceUrl = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'server_uri'));
             $entry = null;
             if (!empty($params['id'])) {
                 $cm = get_coursemodule_from_id('kalturavideo', $params['id'], 0, false, MUST_EXIST);
@@ -59,7 +61,11 @@ function handleAction($action, $params=array()) {
             }
 
             $url = kalturaPlayerUrlBase();
-            return array('url' => $url.$entry->kalturavideo, 'params' => array());
+
+            $ui_conf_id = 5209112;
+            $scriptUrl = $serviceUrl . '/p/' . $partnerId . '/sp/' . $partnerId * 100 . '/embedIframeJs/ui_conf_id/' . $ui_conf_id . '/partner_id/' . $partnerId;
+
+            return array('url' => $url . $entry->kalturavideo, 'html5url' =>$scriptUrl, 'params' => array());
             break;
 
         case 'cwurl':
@@ -225,7 +231,9 @@ function handleAction($action, $params=array()) {
             $entry->name           = $entrydata->title;
             $entry->description    = $entrydata->description;
             $entry->tags           = $entrydata->tags;
-            $entry->categoriesIds  = $entrydata->categories;
+            if ($entrydata->categories) {
+                $entry->categoriesIds = $entrydata-categories;
+            }
 
             if ($entrydata->mediatype == 'video') {
                 $entry->mediaType = KalturaMediaType::VIDEO;
@@ -250,7 +258,9 @@ function handleAction($action, $params=array()) {
             $entry->name          = $entrydata->title;
             $entry->description   = $entrydata->description;
             $entry->tags          = $entrydata->tags;
-            $entry->categoriesIds = $entrydata->categories;
+            if ($entrydata->categories) {
+                $entry->categoriesIds = $entrydata-categories;
+            }
 
             if (empty($entry->description)) {
                 return array(
@@ -273,7 +283,7 @@ function handleAction($action, $params=array()) {
 }
 
 function buildListFilter($params) {
-    $client = kalturaClientSession();
+    $client = kalturaClientSession(true);
     $config = $client->getConfig();
 
     $pager = new KalturaFilterPager();
