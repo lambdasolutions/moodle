@@ -4601,7 +4601,7 @@ function forum_get_subscribe_link($forum, $context, $messages = array(), $cantac
         return $messages['cantaccessgroup'];
     } else {
         if (!is_enrolled($context, $USER, '', true)) {
-            return get_string('no');
+            return '';
         }
         if (is_null($subscribed_forums)) {
             $subscribed = forum_is_subscribed($USER->id, $forum);
@@ -6954,7 +6954,7 @@ function forum_discussion_update_last_post($discussionid) {
  * @return array
  */
 function forum_get_view_actions() {
-    return array('view discussion','search','forum','forums','subscribers');
+    return array('view discussion', 'search', 'forum', 'forums', 'subscribers', 'view forum');
 }
 
 /**
