@@ -43,6 +43,10 @@
 #contribClose:hover {
     cursor:pointer;
 }
+#kalConnectionIssue {
+    position:absolute;
+    top:50%;
+}
 /* Edit interface */
 #editprogressdiv {
     display: block;

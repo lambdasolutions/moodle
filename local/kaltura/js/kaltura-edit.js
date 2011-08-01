@@ -75,6 +75,10 @@ function addEntryComplete(entry) {
             scaffold = '',
 
             load_scaffold = function (self) {
+                var count = 0;
+                if (arguments.length > 1) {
+                    count = arguments[1];
+                }
                 Y.io(_ajaxurl,
                     {
                         data: 'actions[0]=getdomnodes',
@@ -83,7 +87,14 @@ function addEntryComplete(entry) {
                                 scaffold = Y.JSON.parse(o.responseText)[0];
                             },
                             failure: function (i, o, a) {
-                                setTimeout(function () {self(self);}, 1000);
+                                if (count < 10) {
+                                    setTimeout(function () {self(self, count+1);}, 1000);
+                                }
+                                else {
+                                    //Hide loading image, show connection error
+                                    Y.one('#kalLoadingImg').hide();
+                                    Y.one('#kalConnectionIssue').show();
+                                }
                             }
                         }
                     }
@@ -140,7 +151,8 @@ function addEntryComplete(entry) {
                                         +'<div class="flashOverlay" id="audiooverlay">'
                                             +'<div id="uploadaudio"></div>'
                                         +'</div>'
-                                        +'<img id="kalLoadingImg" src="' + M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif" class="loadingicon" alt="Loading..."/>'
+                                        +'<img id="kalLoadingImg" src="' + M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif" class="loadingicon" alt="' + window.kaltura.strs.loading + '" title="' + window.kaltura.strs.loading + '"/>'
+                                        +'<span id="kalConnectionIssue" class="hidden">' + window.kaltura.strs.connectionissue + '</span>'
                                     +'</div>';
                         Y.one(document.body).append(node);
                         $this.domnode = Y.one('#overlayContainer');

@@ -46,4 +46,6 @@ $string['identifier-explanation'] = 'Which user attribute to use to identify the
 $string['next'] = 'Next';
 $string['previous'] = 'Previous';
 $string['page'] = 'Page';
+$string['loading'] = 'Loading...';
+$string['connectionissue'] = 'There was an issue connecting to the Kaltura remote server. Please try again later.';
 ?>
