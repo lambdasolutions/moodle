@@ -351,14 +351,14 @@ function addEntryComplete(entry) {
                     /* Load webcam recorder */
                     $this._swfLoadCallback({
                         passthrough: {
-                            target: '#webcamtab'
+                            target: '#webcamtab .flashTarget'
                         },
                         response: $this.interfaceNodes.selectdata.videourl
                     });
                     /* Load mic recorder */
                     $this._swfLoadCallback({
                         passthrough: {
-                            target: '#mictab'
+                            target: '#mictab .flashTarget'
                         },
                         response: $this.interfaceNodes.selectdata.audiourl
                     });

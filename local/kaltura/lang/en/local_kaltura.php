@@ -39,8 +39,8 @@ $string['myaudio'] = 'My Audio';
 $string['myvideo'] = 'My Video';
 $string['sharedaudio'] = 'Shared Audio';
 $string['sharedvideo'] = 'Shared Video';
-$string['kuploadvideo'] = '';
-$string['kuploadaudio'] = '';
+$string['kuploadvideo'] = 'Webcam Recorder';
+$string['kuploadaudio'] = 'Microphone Recorder';
 $string['identifier'] = 'Identifier Attribute';
 $string['identifier-explanation'] = 'Which user attribute to use to identify the user to Kaltura';
 $string['next'] = 'Next';
@@ -48,4 +48,15 @@ $string['previous'] = 'Previous';
 $string['page'] = 'Page';
 $string['loading'] = 'Loading...';
 $string['connectionissue'] = 'There was an issue connecting to the Kaltura remote server. Please try again later.';
+
+//Help strings
+$string['uploadvideofilehelp'] = '';
+$string['uploadaudiofilehelp'] = '';
+$string['recordwebcamhelp'] = '';
+$string['recordmicrophonehelp'] = '';
+$string['myvideohelp'] = '';
+$string['myaudiohelp'] = '';
+$string['sharedvideohelp'] = '';
+$string['sharedaudiohelp'] = '';
+$string['edithelp'] = '';
 ?>

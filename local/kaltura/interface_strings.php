@@ -49,6 +49,16 @@ function construct_interface($select, $edit) {
     $strs->next = get_string('next', 'local_kaltura');
     $strs->previous = get_string('previous', 'local_kaltura');
     $strs->page = get_string('page', 'local_kaltura');
+    //Help strings
+    $strs->uploadvideofilehelp = get_string('uploadvideofilehelp', 'local_kaltura');
+    $strs->uploadaudiofilehelp = get_string('uploadaudiofilehelp', 'local_kaltura');
+    $strs->recordwebcamhelp = get_string('recordwebcamhelp', 'local_kaltura');
+    $strs->recordmicrophonehelp = get_string('recordmicrophonehelp', 'local_kaltura');
+    $strs->myvideohelp = get_string('myvideohelp', 'local_kaltura');
+    $strs->myaudiohelp = get_string('myaudiohelp', 'local_kaltura');
+    $strs->sharedvideohelp = get_string('sharedvideohelp', 'local_kaltura');
+    $strs->sharedaudiohelp = get_string('sharedaudiohelp', 'local_kaltura');
+    $strs->edithelp = get_string('edithelp', 'local_kaltura');
 
     $interfaceNodes = array();
     $interfaceNodes['strings'] = $strs;
@@ -96,6 +106,7 @@ function construct_interface($select, $edit) {
                 <span id="editthumbspan">
                     <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="$strs->thumbnail" />
                 </span>
+                <span class="help">$strs->edithelp</span>
                 <span id="editcontentspan">
                     <div class="editentry">
                         <label for="edittitle">$strs->title</label>
@@ -155,18 +166,23 @@ EDIT;
                             <span id="uploadvideospan">
                                 <input type="submit" id="uploadvideobutton" value="$strs->upload" />
                             </span>
+                            <span class="help">$strs->uploadvideohelp</span>
                         </div>
                         <div id="webcamtab" class="contentArea">
+                            <div class="flashTarget"></div>
+                            <div class="help">$strs->recordwebcamhelp</div>
                         </div>
                         <div id="myvideo" class="contentArea">
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistprivate);
     $interfaceNodes['select'] .= <<<SELECT
+                            <span class="help">$strs->myvideohelp</span>
                         </div>
                         <div id="sharedvideo" class="contentArea">
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistpublic);
     $interfaceNodes['select'] .= <<<SELECT
+                            <span class="help">$strs->sharedvideohelp</span>
                         </div>
                     </div>
                 </div>
@@ -185,18 +201,23 @@ SELECT;
                             <span id="uploadaudiospan">
                                 <input type="submit" id="uploadaudiobutton" value="$strs->upload" />
                             </span>
+                            <span class="help">$strs->uploadaudiohelp</span>
                         </div>
                         <div id="mictab" class="contentArea">
+                            <div class="flashTarget"></div>
+                            <div class="help">$strs->recordmicrophonehelp</div>
                         </div>
                         <div id="myaudio" class="contentArea">
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistprivate);
     $interfaceNodes['select'] .= <<<SELECT
+                            <span class="help">$strs->myaudiohelp</span>
                         </div>
                         <div id="sharedaudio" class="contentArea">
 SELECT;
     $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistpublic);
     $interfaceNodes['select'] .= <<<SELECT
+                            <span class="help">$strs->sharedaudiohelp</span>
                         </div>
                     </div>
                 </div>
