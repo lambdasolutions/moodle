@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-22) unstable; urgency=low
+
+  * local/kaltura: fixing CSS cache poisoning
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 02 Aug 2011 02:02:39 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-21) unstable; urgency=low
 
   * local/kaltura: Deployment for testing
