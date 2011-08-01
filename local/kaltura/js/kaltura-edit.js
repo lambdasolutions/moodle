@@ -104,13 +104,13 @@ function addEntryComplete(entry) {
             //YUI 3.3.0 has something similar
             Y.mix(Y.Node.prototype, {
                 hide: function() {
-                    if (!(this.hasClass('hidden'))) {
-                        this.addClass('hidden');
+                    if (!(this.hasClass('kalhidden'))) {
+                        this.addClass('kalhidden');
                     }
                 },
                 show: function() {
-                    if (this.hasClass('hidden')) {
-                        this.removeClass('hidden');
+                    if (this.hasClass('kalhidden')) {
+                        this.removeClass('kalhidden');
                     }
                 },
             });
@@ -152,7 +152,7 @@ function addEntryComplete(entry) {
                                             +'<div id="uploadaudio"></div>'
                                         +'</div>'
                                         +'<img id="kalLoadingImg" src="' + M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif" class="loadingicon" alt="' + window.kaltura.strs.loading + '" title="' + window.kaltura.strs.loading + '"/>'
-                                        +'<span id="kalConnectionIssue" class="hidden">' + window.kaltura.strs.connectionissue + '</span>'
+                                        +'<span id="kalConnectionIssue" class="kalhidden">' + window.kaltura.strs.connectionissue + '</span>'
                                     +'</div>';
                         Y.one(document.body).append(node);
                         $this.domnode = Y.one('#overlayContainer');
@@ -366,7 +366,7 @@ function addEntryComplete(entry) {
                 _buildEditInterface: function () {
                     var $this = window.kalturaWiz;
 
-                    $this.currentnode.addClass('hidden');
+                    $this.currentnode.addClass('kalhidden');
                     $this.previousnode = this.currentnode;
                     var node = $this.interfaceNodes.edit;
                     Y.one('#kalturahtmlcontrib').append(node);
