@@ -54,7 +54,7 @@ function replaceVideoButton(buttonselector) {
 }
 
 function addEntryComplete(entry) {
-    window.kalturaWiz.selectedEntry({entryid: entry.entryId});
+    window.kalturaWiz.injestRecordedEntry(entry);
 }
 
 (function (a, b) {
@@ -75,6 +75,10 @@ function addEntryComplete(entry) {
             scaffold = '',
 
             load_scaffold = function (self) {
+                var count = 0;
+                if (arguments.length > 1) {
+                    count = arguments[1];
+                }
                 Y.io(_ajaxurl,
                     {
                         data: 'actions[0]=getdomnodes',
@@ -83,7 +87,14 @@ function addEntryComplete(entry) {
                                 scaffold = Y.JSON.parse(o.responseText)[0];
                             },
                             failure: function (i, o, a) {
-                                setTimeout(function () {self(self);}, 1000);
+                                if (count < 10) {
+                                    setTimeout(function () {self(self, count+1);}, 1000);
+                                }
+                                else {
+                                    //Hide loading image, show connection error
+                                    Y.one('#kalLoadingImg').hide();
+                                    Y.one('#kalConnectionIssue').show();
+                                }
                             }
                         }
                     }
@@ -140,7 +151,8 @@ function addEntryComplete(entry) {
                                         +'<div class="flashOverlay" id="audiooverlay">'
                                             +'<div id="uploadaudio"></div>'
                                         +'</div>'
-                                        +'<img id="kalLoadingImg" src="' + M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif" class="loadingicon" alt="Loading..."/>'
+                                        +'<img id="kalLoadingImg" src="' + M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif" class="loadingicon" alt="' + window.kaltura.strs.loading + '" title="' + window.kaltura.strs.loading + '"/>'
+                                        +'<span id="kalConnectionIssue" class="hidden">' + window.kaltura.strs.connectionissue + '</span>'
                                     +'</div>';
                         Y.one(document.body).append(node);
                         $this.domnode = Y.one('#overlayContainer');
@@ -339,14 +351,14 @@ function addEntryComplete(entry) {
                     /* Load webcam recorder */
                     $this._swfLoadCallback({
                         passthrough: {
-                            target: '#webcamtab'
+                            target: '#webcamtab .flashTarget'
                         },
                         response: $this.interfaceNodes.selectdata.videourl
                     });
                     /* Load mic recorder */
                     $this._swfLoadCallback({
                         passthrough: {
-                            target: '#mictab'
+                            target: '#mictab .flashTarget'
                         },
                         response: $this.interfaceNodes.selectdata.audiourl
                     });
@@ -429,7 +441,7 @@ function addEntryComplete(entry) {
                             id = $this.uploadtoken;
                             action = 'addentry';
                             mediatype = $this.uploadtype;
-                            callback = $this.addEntryComplete;
+                            callback = $this._addEntryComplete;
                         }
                         else {
                             id = $this.entryid;
@@ -451,7 +463,8 @@ function addEntryComplete(entry) {
                                     title: title,
                                     description: description,
                                     tags: tags,
-                                    categories: categories
+                                    categories: categories,
+                                    mediatype: mediatype
                                 }))
                             },
                             passthrough: {
@@ -520,13 +533,24 @@ function addEntryComplete(entry) {
                     Y.one('#editupdate').set('disabled', false);
                 },
                 _mediaListCallback: function (ob) {
-                    var $this = window.kalturaWiz;
+                    var $this      = window.kalturaWiz,
+                        strs       = $this.interfaceNodes.strings,
+                        page       = ob.response.page,
+                        pagebhref  = 'href="#"',
+                        pagefhref  = 'href="#"';
+
                     if (ob.response) {
                         Y.one(ob.passthrough.target+' .controls').setContent('');
                         Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').setContent('');
                     }
 
-                    var node = Y.Node.create('<a href="#" class="pageb">&lt;</a>Page ' + ob.response.page.current + '<a href="#" class="pagef">&gt;</a>');
+                    if (page.count == 1 || page.current == page.count) {
+                        pagefhref = '';
+                    }
+                    if (page.current == 1) {
+                        pagebhref = '';
+                    }
+                    var node = Y.Node.create('<a ' + pagebhref + ' class="pageb">' + strs.previous + '</a>' + strs.page + ' ' + ob.response.page.current + ' of ' + ob.response.page.count + '<a ' + pagefhref + ' class="pagef">' + strs.next + '</a>');
                     Y.one(ob.passthrough.target+' .controls').appendChild(node);
 
                     for (var i = 0; i < ob.response.count; i++) {
@@ -692,7 +716,7 @@ function addEntryComplete(entry) {
                 },
                 _addEntryComplete: function (ob) {
                     $this = window.kalturaWiz;
-                    $this.addEntryComplete(ob.response.entry.id);
+                    $this._useEntry(ob.response.entry.id);
                 },
                 selectedEntry: function (ob) {
                     $this = window.kalturaWiz;
@@ -701,6 +725,10 @@ function addEntryComplete(entry) {
                     $this.upload  = ob.upload;
 
                     $this._buildEditInterface();
+                },
+                injestRecordedEntry: function(entry) {
+                    console.log('injest called');
+                    console.log(arguments);
                 },
                 audioUploadDelegate: {
                     singleUploadCompleteHandler: function (args) {
@@ -712,7 +740,7 @@ function addEntryComplete(entry) {
                     selectHandler: function (){
                         var $this = window.kalturaWiz;
                         $this.upload = true;
-                        $this.swf['uploadvideo'].callSWF('upload');
+                        $this.swf['uploadaudio'].callSWF('upload');
                         $this._buildEditInterface();
                     },
                     progressHandler: function (args) {
