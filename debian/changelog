@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-21) unstable; urgency=low
+
+  * local/kaltura: Deployment for testing
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Mon, 01 Aug 2011 22:12:08 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-20) unstable; urgency=low
 
   * fixing small error
