@@ -88,30 +88,6 @@ function handleAction($action, $params=array()) {
             return array('url' => $base.'video.swf', 'base' => $base, 'params' => array('ks' => $client->getKs(), 'host' => $config->serviceUrl, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'entryTags' => 'audio', 'thumbOffset' => 1));
             break;
 
-        case 'search':
-            list($client, $filter, $pager) = buildListFilter();
-
-            $filter->searchTextMatchOr($search_term);
-
-            $results = $client->media->listAction($filter, $pager);
-            $count   = $client->media->count($filter);
-            $pagecount = ceil($count/$pager->pageSize);
-
-            if ($pager->pageIndex > $pagecount) {
-                return array();
-                break;
-            }
-
-            return array(
-                'page' => array(
-                    'count' => $pagecount,
-                    'current' => $pager->pageIndex,
-                ),
-                'count' => $count,
-                'objects' => $results->objects,
-            );
-            break;
-
         case 'listpublic':
             list($client, $filter, $pager) = buildListFilter($params);
 
@@ -174,13 +150,6 @@ function handleAction($action, $params=array()) {
 
             $edit->categorylist         = handleAction('getcategorylist');
             return construct_interface($select, $edit);
-            break;
-
-        case 'getdomnodes_tmp':
-            $select = new stdClass;
-            $edit   = new stdClass;
-
-            return construct_interface_tmp($select, $edit);
             break;
 
         case 'videouploadurl':
