@@ -99,7 +99,7 @@ function construct_interface($select, $edit) {
                     </ul>
         <div id="edit-inner">
 		<div id="edit-content">
-            <input type="hidden" id="editentryid" />
+            <input type="kalhidden" id="editentryid" />
             <div id="editprogressdiv">
             </div>
             <div id="editmaindiv">
@@ -123,7 +123,7 @@ function construct_interface($select, $edit) {
                     <div class="editentry">
                         <label for="editcategoriestext">$strs->categories</label>
                         <span id="editcategories">
-                            <input id="editcategoriesids" type="hidden" />
+                            <input id="editcategoriesids" type="kalhidden" />
                             <input id="editcategoriestext" type="text" colspan="30" disabled />
                             <div id="editcategoriestreeview">
                             </div>

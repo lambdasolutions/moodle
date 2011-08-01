@@ -238,8 +238,8 @@ span.fullName {
     width: 0px;
     height: 0px;
 }
-.hidden,
-.hidden * {
+.kalhidden,
+.kalhidden * {
     display: none;
     width : 0px;
     height : 0px;
