@@ -24,7 +24,7 @@
 /* Root node */
 #overlayContainer {
     background: white;
-    width : 635px;
+    width : 653px;
     min-height: 448px;
     height : auto;
     margin-left:125px;
@@ -74,12 +74,15 @@
     display: block;
     float : none;
     width : auto;
+    clear:both;
+    padding-top:5px;
 }
 #contribkalturathumb {
     height: 117px;
     width : 157px;
     border: none;
     margin-left:157px;
+    float:left;
 }
 .loadingicon {
     height: 55px;
@@ -173,7 +176,17 @@ span.fullName {
     padding:0 4px;
 }
 #kalturahtmlcontrib {
+    width:659px !important;
 }
+
+#kalturahtmlcontrib .help {
+    display:block;
+    width:270px;
+    height:117px;
+    float:right;
+    margin-right:35px;
+}
+
 #editInterface #edit-content {
     width: auto;
     height: auto !important;
@@ -320,3 +333,7 @@ span.fullName {
     height:290px;
     background-color: #eee;
 }
+
+
+/* Hidden things */
+#editcategoriesids, #editentryid {display:none;}
