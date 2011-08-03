@@ -335,7 +335,7 @@ class assignment_base {
         echo '</div>';
         echo '</tr>';
 
-         if ($this->type == 'uploadsingle') { //@TODO: move to overload view_feedback method in the class or is uploadsingle merging into upload?
+        if ($this->type == 'uploadsingle') { //@TODO: move to overload view_feedback method in the class or is uploadsingle merging into upload?
             $responsefiles = $this->print_responsefiles($submission->userid, true);
             if (!empty($responsefiles)) {
                 echo '<tr>';
@@ -344,7 +344,7 @@ class assignment_base {
                 echo $responsefiles;
                 echo '</tr>';
             }
-         }
+        }
 
         echo '</table>';
     }
@@ -1477,6 +1477,15 @@ class assignment_base {
                     }
                     $currentposition++;
                 }
+                if ($hassubmission && ($this->assignment->assignmenttype=='upload' || $this->assignment->assignmenttype=='online' || $this->assignment->assignmenttype=='uploadsingle')) { //TODO: this is an ugly hack, where is the plugin spirit? (skodak)
+                    echo html_writer::start_tag('div', array('class' => 'mod-assignment-download-link'));
+                    echo html_writer::link(new moodle_url('/mod/assignment/submissions.php', array('id' => $this->cm->id, 'download' => 'zip')), get_string('downloadall', 'assignment'));
+                    echo html_writer::end_tag('div');
+
+                    echo html_writer::start_tag('div', array('class' => 'mod-assignment-download-link'));
+                    echo html_writer::link(new moodle_url('/mod/assignment/type/upload/bulkupload.php', array('a' => $this->assignment->id)), get_string('bulkupload', 'assignment'));
+                    echo html_writer::end_tag('div');
+                }
                 $table->print_html();  /// Print the whole table
             } else {
                 if ($filter == self::FILTER_SUBMITTED) {
@@ -1485,24 +1494,6 @@ class assignment_base {
                     echo html_writer::tag('div', get_string('norequiregrading', 'assignment'), array('class'=>'norequiregrading'));
                 }
             }
-
-            if ($hassubmission && ($this->assignment->assignmenttype=='upload' || $this->assignment->assignmenttype=='online' || $this->assignment->assignmenttype=='uploadsingle')) { //TODO: this is an ugly hack, where is the plugin spirit? (skodak)
-                echo html_writer::start_tag('div', array('class' => 'mod-assignment-download-link'));
-                echo html_writer::link(new moodle_url('/mod/assignment/submissions.php', array('id' => $this->cm->id, 'download' => 'zip')), get_string('downloadall', 'assignment'));
-                echo html_writer::end_tag('div');
-
-                echo html_writer::start_tag('div', array('class' => 'mod-assignment-download-link'));
-                echo html_writer::link(new moodle_url('/mod/assignment/type/upload/bulkupload.php', array('contextid' => $this->context->id)), get_string('bulkupload', 'assignment'));
-                echo html_writer::end_tag('div');
-            }
-            $table->print_html();  /// Print the whole table
-        } else {
-            if ($filter == self::FILTER_SUBMITTED) {
-                echo html_writer::tag('div', get_string('nosubmisson', 'assignment'), array('class'=>'nosubmisson'));
-            } else if ($filter == self::FILTER_REQUIRE_GRADING) {
-                echo html_writer::tag('div', get_string('norequiregrading', 'assignment'), array('class'=>'norequiregrading'));
-            }
-
         }
 
         /// Print quickgrade form around the table

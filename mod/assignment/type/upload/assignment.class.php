@@ -500,7 +500,7 @@ class assignment_upload extends assignment_base {
     }
 
     function upload_responsefile($mform, $options) {
-        global $CFG, $USER, $OUTPUT, $PAGE;
+        global $OUTPUT, $PAGE;
 
         $userid = required_param('userid', PARAM_INT);
         $mode   = required_param('mode', PARAM_ALPHA);
@@ -525,9 +525,8 @@ class assignment_upload extends assignment_base {
     }
 
     function upload_responsefiles($mform, $options) {
-        global $CFG, $USER, $OUTPUT, $PAGE;
+        global $USER, $OUTPUT, $PAGE;
 
-        $userid = $USER->id;
         $mode   = required_param('mode', PARAM_ALPHA);
         $offset = required_param('offset', PARAM_INT);
         $overwritefeedback = required_param('overwritefeedback', PARAM_INT);
@@ -545,15 +544,11 @@ class assignment_upload extends assignment_base {
             // Retrieve the uploaded files as an array of stored file objects
             $files = $fs->get_area_files($this->context->id, 'mod_assignment', 'temp', $this->cm->id);
 
-            foreach ($files as $f) {
+            foreach ($files as $zipfile) {
                 // $f is an instance of stored_file and '.' are directories
-                $f->get_filename();
-                // Extract the zip files
-                if ($newfile = $f->extract_to_storage($packer, $this->context->id, 'mod_assignment', 'temp', $this->cm->id, '/')) {
-                    // delete the zip files
-                    // This function removes the old database record. It does not
-                    // actually delete the file.
-                    $f->delete();
+                if (($zipfile->get_filename() != '.')) {
+                    $newfile = $zipfile->extract_to_storage($packer, $this->context->id, 'mod_assignment', 'temp', $this->cm->id, '/');
+                    $zipfile->delete();
                 }
             }
 
@@ -561,8 +556,8 @@ class assignment_upload extends assignment_base {
             $files = $fs->get_area_files($this->context->id, 'mod_assignment', 'temp', $this->cm->id);
             $errors = false;            
 
-            foreach ($files as  $f) {
-                $fullfilename = $f->get_filename();
+            foreach ($files as  $responsefile) {
+                $fullfilename = $responsefile->get_filename();
                 if ($fullfilename != '.') {
                     // filename should be of the format filename_userid.ext
                     $filedetails = pathinfo($fullfilename);
@@ -571,7 +566,7 @@ class assignment_upload extends assignment_base {
                     $skip = false;
                     $fail = false;
 
-                    if (!is_numeric($userid) || !$userexists = has_capability('mod/assignment:submit', $this->context, $userid)) {
+                    if (!is_number($userid) || !has_capability('mod/assignment:submit', $this->context, $userid)) {
                         // Stays true if any file fails
                         $errors = true;
                         // Is reset for each file
@@ -581,7 +576,7 @@ class assignment_upload extends assignment_base {
                     } else {
                     // Setting $createnew (param 2) to true creates an assignment
                     // submission object record if one does not exist already
-                        $submission = $this->get_submission($userid, true, true);                    
+                        $submission = $this->get_submission($userid, true, true);
 
                         if ($oldfile = $fs->get_file($this->context->id, 'mod_assignment', 'response', $submission->id, '/', $fullfilename)) {
                             switch ($overwritefeedback) {
@@ -604,20 +599,19 @@ class assignment_upload extends assignment_base {
                         }
                     }
 
-                    if ($skip == false && $fail == false) {
+                    if (!$skip && !$fail) {
                         // This creates a new record in the database which determines
                         // an additional virtual location for the file. The array contains
                         // all the fields that are different from the existing record.
-                        $newfile = $fs->create_file_from_storedfile(array('userid'=>$userid, 'filearea'=>'response', 'itemid'=>$submission->id, 'filename'=>$fullfilename), $f);
+                        $newfile = $fs->create_file_from_storedfile(array('userid'=>$userid, 'filearea'=>'response', 'itemid'=>$submission->id, 'filename'=>$fullfilename), $responsefile);
                     }
 
-                    $f->delete();
+                    $responsefile->delete();
                     add_to_log($this->course->id, 'assignment', 'feedback',
                             '/submissions.php?id='.$this->cm->id.'&userid='.$userid.'&mode=single&filter=0&offset=0', $log_message, $this->cm->id);
                 }
                 
             }            
-            
 
             if (!$errors) {
                 redirect($returnurl->out(false));
@@ -626,7 +620,7 @@ class assignment_upload extends assignment_base {
 
         $log_message = get_string('bulkupload_failed', 'assignment');
         add_to_log($this->course->id, 'assignment', 'feedback',
-            '/submissions.php?id='.$submission->id.'&userid='.$userid, $log_message.implode(",", $error_array));
+            '/submissions.php?id='.$this->cm->id.'&userid='.$USER->id, $log_message.implode(",", $error_array));
 
         $PAGE->set_title(get_string('bulkupload', 'assignment'));
         echo $OUTPUT->header();
@@ -650,7 +644,7 @@ class assignment_upload extends assignment_base {
         // but decided it was overkill
         $version = substr($filename, strrpos($filename, '_') + 1);
 
-        if(is_numeric($version)) {
+        if(is_number($version)) {
             // The same file name has been used already, so we increment the
             // version number
             $version += 1;
