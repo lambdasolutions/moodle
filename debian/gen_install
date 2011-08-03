@@ -1,4 +1,0 @@
-#!/bin/sh
-git ls-files  | awk -F/ '{ printf "%-30s var/www/feature-kaltura/moodle/\n", $1}' | sort | uniq | grep -v 'Makefile\|debian' > debian/install
-echo 'debian/apache.conf.template    etc/moodle-site/feature-kaltura/' >> debian/install
-echo 'debian/apache.dav.conf.template etc/moodle-site/feature-kaltura/' >> debian/install
