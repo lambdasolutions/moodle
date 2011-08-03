@@ -40,7 +40,7 @@ class assignment_kaltura extends assignment_base {
     function view() {
         global $OUTPUT, $CFG, $USER, $PAGE;
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
-        $PAGE->requires->js('/local/kaltura/style.css');
+        $PAGE->requires->css('/local/kaltura/styles.css');
 
         $edit  = optional_param('edit', 0, PARAM_BOOL);
         $saved = optional_param('saved', 0, PARAM_BOOL);
@@ -206,6 +206,7 @@ class assignment_kaltura extends assignment_base {
             return '';
         }
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
+        $PAGE->requires->css('/local/kaltura/styles.css');
 
         $output = '<script type="text/javascript">window.kaltura = {entryid: "'.$submission->data1.'"};</script>';
         $output .= '<div class="kalturaPlayer"></div>';
