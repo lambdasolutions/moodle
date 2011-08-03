@@ -53,6 +53,29 @@ $string['assignmentsubmission'] = 'Assignment submissions';
 $string['assignmenttype'] = 'Assignment type';
 $string['assignment:view'] = 'View assignment';
 $string['availabledate'] = 'Available from';
+$string['bulkupload'] = 'Bulk upload feedback files';
+$string['bulkupload_failed'] = 'Bulk upload of feedback file {$a} (failed)';
+$string['bulkupload_new'] = 'Bulk upload of feedback file {$a}';
+$string['bulkupload_overwrite'] = 'If a file with the same name already exists:';
+$string['bulkupload_overwrite_help'] = '<p>
+You can specify the action to perform if a file by the same name already exists:
+<br /><br />
+Rename will add a new file with a version number added/incremented:
+<br />
+So filename_12345.doc (where 12345 is the user id) would become filename_1_12345.doc
+(where 1 is the first version uploaded with the same name)
+<br /><br />
+Replace will overwrite the old file with the new one.
+<br /><br />
+Skip will skip the upload of that file and leave the old one in place.
+</p>';
+$string['bulkupload_rename'] = 'Rename';
+$string['bulkupload_renamed'] = 'Bulk upload of feedback file {$a} (renamed)';
+$string['bulkupload_replace'] = 'Replace';
+$string['bulkupload_replaced'] = 'Bulk upload of feedback file {$a} (replaced)';
+$string['bulkupload_skip'] = 'Skip';
+$string['bulkupload_skipped'] = 'Bulk upload of feedback file {$a} (skipped)';
+$string['bulkuploaderror'] = 'The following files could not be uploaded:';
 $string['cannotdeletefiles'] = 'An error occurred and files could not be deleted';
 $string['cannotviewassignment'] = 'You can not view this assignment';
 $string['comment'] = 'Comment';
@@ -208,6 +231,7 @@ $string['uploadfiletoobig'] = 'Sorry, but that file is too big (limit is {$a} by
 $string['uploadnofilefound'] = 'No file was found - are you sure you selected one to upload?';
 $string['uploadnotregistered'] = '\'{$a}\' was uploaded OK but submission did not register!';
 $string['uploadsuccess'] = 'Uploaded \'{$a}\' successfully';
+$string['uploadzip'] = 'Upload feedback';
 $string['usermisconf'] = 'User is misconfigured';
 $string['usernosubmit'] = 'Sorry, you are not allowed to submit an assignment.';
 $string['viewfeedback'] = 'View assignment grades and feedback';
