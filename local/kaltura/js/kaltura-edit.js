@@ -54,7 +54,7 @@ function replaceVideoButton(buttonselector) {
 }
 
 function addEntryComplete(entry) {
-    window.kalturaWiz.injestRecordedEntry(entry);
+    window.kalturaWiz.ingestRecordedEntry(entry);
 }
 
 (function (a, b) {
@@ -510,7 +510,8 @@ function addEntryComplete(entry) {
                 },
                 _populateEditCallback: function (ob) {
                     Y.one('#editentryid').set('value', ob.response.entry.id);
-                    Y.one('#edittitle').set('value', ob.response.entry.name);
+                    var title = ob.response.entry.name.replace('New Entry', '');
+                    Y.one('#edittitle').set('value', title);
                     Y.one('#editdescription').set('value', ob.response.entry.description);
                     if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
                         Y.one('#contribkalturathumb').set('src', ob.response.entry.thumbnailUrl);
@@ -524,7 +525,7 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.tags != '') {
                         Y.one('#edittags').set('value', ob.response.entry.tags);
                     }
-                    if (!ob.passthrough.upload) {
+                    if (title) {
                         Y.one('#edittitle').set('disabled', 1);
                     }
                     if (ob.response.entry.description) {
@@ -715,24 +716,26 @@ function addEntryComplete(entry) {
                     window.kalturaWiz._destroyInterface();
                 },
                 _addEntryComplete: function (ob) {
-                    $this = window.kalturaWiz;
+                    var $this = window.kalturaWiz;
                     $this._useEntry(ob.response.entry.id);
                 },
                 selectedEntry: function (ob) {
-                    $this = window.kalturaWiz;
+                    var $this = window.kalturaWiz;
                     $this.entryid = ob.entryId;
                     $this.mediatype = ob.mediatype;
                     $this.upload  = ob.upload;
 
                     $this._buildEditInterface();
                 },
-                injestRecordedEntry: function(entry) {
-                    console.log('injest called');
-                    console.log(arguments);
+                ingestRecordedEntry: function(entry) {
+                    var $this = window.kalturaWiz;
+                    var e = entry[0];
+                    e.upload = false;
+                    $this.selectedEntry(e);
                 },
                 audioUploadDelegate: {
                     singleUploadCompleteHandler: function (args) {
-                        $this = window.kalturaWiz;
+                        var $this = window.kalturaWiz;
                         $this.uploadtoken = args[0].token;
                         $this.uploadtype  = 'audio';
                         Y.one('#editupdate').set('disabled', false);
@@ -759,7 +762,7 @@ function addEntryComplete(entry) {
                 },
                 videoUploadDelegate: {
                     singleUploadCompleteHandler: function (args) {
-                        $this = window.kalturaWiz;
+                        var $this = window.kalturaWiz;
                         $this.uploadtoken = args[0].token;
                         $this.uploadtype  = 'video';
                         Y.one('#editupdate').set('disabled', false);

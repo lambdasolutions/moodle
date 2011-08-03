@@ -99,14 +99,14 @@ function construct_interface($select, $edit) {
                     </ul>
         <div id="edit-inner">
 		<div id="edit-content">
-            <input type="kalhidden" id="editentryid" />
+            <input type="hidden" id="editentryid" />
             <div id="editprogressdiv">
             </div>
             <div id="editmaindiv">
                 <span id="editthumbspan">
                     <img src="$CFG->wwwroot/local/kaltura/images/ajax-loader.gif" id="contribkalturathumb" alt="$strs->thumbnail" />
                 </span>
-                <span class="help">$strs->edithelp</span>
+                <div class="help">$strs->edithelp</div>
                 <span id="editcontentspan">
                     <div class="editentry">
                         <label for="edittitle">$strs->title</label>
@@ -123,7 +123,7 @@ function construct_interface($select, $edit) {
                     <div class="editentry">
                         <label for="editcategoriestext">$strs->categories</label>
                         <span id="editcategories">
-                            <input id="editcategoriesids" type="kalhidden" />
+                            <input id="editcategoriesids" type="hidden" />
                             <input id="editcategoriestext" type="text" colspan="30" disabled />
                             <div id="editcategoriestreeview">
                             </div>
@@ -166,7 +166,7 @@ EDIT;
                             <span id="uploadvideospan">
                                 <input type="submit" id="uploadvideobutton" value="$strs->upload" />
                             </span>
-                            <span class="help">$strs->uploadvideohelp</span>
+                            <span class="help">$strs->uploadvideofilehelp</span>
                         </div>
                         <div id="webcamtab" class="contentArea">
                             <div class="flashTarget"></div>
@@ -201,7 +201,7 @@ SELECT;
                             <span id="uploadaudiospan">
                                 <input type="submit" id="uploadaudiobutton" value="$strs->upload" />
                             </span>
-                            <span class="help">$strs->uploadaudiohelp</span>
+                            <span class="help">$strs->uploadaudiofilehelp</span>
                         </div>
                         <div id="mictab" class="contentArea">
                             <div class="flashTarget"></div>
