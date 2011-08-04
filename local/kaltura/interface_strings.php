@@ -22,7 +22,7 @@
  * @license    http://www.gnu.org/licenses/agpl.html GNU Affero GPL v3 or later
  */
 
-function construct_interface($select, $edit) {
+function construct_interface($select, $edit, $enable_shared) {
     global $CFG;
 
     $strs = new stdClass;
@@ -158,7 +158,11 @@ EDIT;
                         <li><a href="#uploadvideotab">$strs->uploadfromfile</a></li>
                         <li><a href="#webcamtab">$strs->recordfromwebcam</a></li>
                         <li><a href="#myvideo">$strs->myvideo</a></li>
-                        <li><a href="#sharedvideo">$strs->sharedvideo</a></li>
+SELECT;
+    if ($enable_shared) {
+        $interfaceNodes['select'] .= '<li><a href="#sharedvideo">' . $strs->sharedvideo . '</a></li>';
+    }
+    $interfaceNodes['select'] .= <<<SELECT
                     </ul>
                     <div class="contentArea">
                         <div id="uploadvideotab" class="contentArea">
@@ -178,12 +182,13 @@ SELECT;
     $interfaceNodes['select'] .= <<<SELECT
                             <span class="help">$strs->myvideohelp</span>
                         </div>
-                        <div id="sharedvideo" class="contentArea">
 SELECT;
-    $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistpublic);
+    if ($enable_shared) {
+        $interfaceNodes['select'] .= '<div id="sharedvideo" class="contentArea">';
+        $interfaceNodes['select'] .= constructMediaPager('video', $select->videolistpublic);
+        $interfaceNodes['select'] .= '<span class="help">' . $strs->sharedvideohelp . '</span></div>';
+    }
     $interfaceNodes['select'] .= <<<SELECT
-                            <span class="help">$strs->sharedvideohelp</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -193,7 +198,11 @@ SELECT;
                         <li><a href="#uploadaudiotab">$strs->uploadfromfile</a></li>
                         <li><a href="#mictab">$strs->recordfrommicrophone</a></li>
                         <li><a href="#myaudio">$strs->myaudio</a></li>
-                        <li><a href="#sharedaudio">$strs->sharedaudio</a></li>
+SELECT;
+    if ($enable_shared) {
+        $interfaceNodes['select'] .= '<li><a href="#sharedaudio">' . $strs->sharedaudio . '</a></li>';
+    }
+    $interfaceNodes['select'] .= <<<SELECT
                     </ul>
                     <div class="contentArea">
                         <div id="uploadaudiotab" class="contentArea">
@@ -213,12 +222,13 @@ SELECT;
     $interfaceNodes['select'] .= <<<SELECT
                             <span class="help">$strs->myaudiohelp</span>
                         </div>
-                        <div id="sharedaudio" class="contentArea">
 SELECT;
-    $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistpublic);
+    if ($enable_shared) {
+        $interfaceNodes['select'] .= '<div id="sharedaudio" class="contentArea">';
+        $interfaceNodes['select'] .= constructMediaPager('audio', $select->audiolistpublic);
+        $interfaceNodes['select'] .= '<span class="help">' . $strs->sharedaudiohelp . '</span></div>';
+    }
     $interfaceNodes['select'] .= <<<SELECT
-                            <span class="help">$strs->sharedaudiohelp</span>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -231,11 +241,13 @@ SELECT;
         'audiourl'          => $select->audiourl,
         'videouploadurl'    => $select->videouploadurl,
         'audiouploadurl'    => $select->audiouploadurl,
-        'audiolistpublic'   => $select->audiolistpublic,
-        'videolistpublic'   => $select->videolistpublic,
         'audiolistprivate'  => $select->audiolistprivate,
         'videolistprivate'  => $select->videolistprivate,
     );
+    if ($enable_shared) {
+        $interfaceNodes['selectdata']['audiolistpublic'] = $select->audiolistpublic;
+        $interfaceNodes['selectdata']['videolistpublic'] = $select->videolistpublic;
+    }
 
     return $interfaceNodes;
 }

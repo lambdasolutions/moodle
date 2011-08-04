@@ -23,6 +23,7 @@
 
 require_once($CFG->libdir.'/formslib.php');
 require_once($CFG->dirroot . '/mod/assignment/lib.php');
+require_once($CFG->dirroot . '/local/kaltura/lib.php');
 
 /**
  * Extend the base assignment class for assignments where you upload a single file
@@ -208,7 +209,7 @@ class assignment_kaltura extends assignment_base {
         $PAGE->requires->js('/local/kaltura/js/kaltura-play.js');
         $PAGE->requires->css('/local/kaltura/styles.css');
 
-        $output = '<script type="text/javascript">window.kaltura = {entryid: "'.$submission->data1.'"};</script>';
+        $output = kalturaGlobals_js(array('entryid' => $submission->data1));
         $output .= '<div class="kalturaPlayer"></div>';
 
         return $output;
@@ -272,7 +273,7 @@ class mod_assignment_kaltura_edit_form extends moodleform {
         list($data, $editoroptions) = $this->_customdata;
 
 
-        $mform->addElement('html','<script type="text/javascript">window.kaltura = {cmid: 0};</script>');
+        $mform->addElement('html', kalturaGlobals_js(array('cmid' => 0)));
         // visible elements
         $mform->addElement('html','<div class="kalturaPlayerEdit"></div>');
         $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));

@@ -62,6 +62,7 @@ class mod_kalturavideo_mod_form extends moodleform_mod {
 
         $kalturaConfig = array();
         $kalturaConfig['cmid'] = optional_param('update',0,PARAM_INT);
+        $kalturaConfig['enable_shared'] = 1;
 
         $updateJS = kalturaGlobals_js($kalturaConfig);
         $mform->addElement('html',$updateJS);
