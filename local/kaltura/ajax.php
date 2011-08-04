@@ -141,17 +141,26 @@ function handleAction($action, $params=array()) {
             $select = new stdClass;
             $edit   = new stdClass;
 
+            if (!empty($params['enable_shared'])) {
+                $enable_shared = true;
+            }
+            else {
+                $enable_shared = false;
+            }
+
             $select->videouploadurl     = handleAction('videouploadurl');
             $select->audiouploadurl     = handleAction('audiouploadurl');
             $select->videourl           = handleAction('videourl');
             $select->audiourl           = handleAction('audiourl');
-            $select->videolistpublic    = handleAction('listpublic', array('mediatype' => 'video'));
-            $select->audiolistpublic    = handleAction('listpublic', array('mediatype' => 'audio'));
             $select->videolistprivate   = handleAction('listprivate', array('mediatype' => 'video'));
             $select->audiolistprivate   = handleAction('listprivate', array('mediatype' => 'audio'));
+            if ($enable_shared) {
+                $select->videolistpublic    = handleAction('listpublic', array('mediatype' => 'video'));
+                $select->audiolistpublic    = handleAction('listpublic', array('mediatype' => 'audio'));
+            }
 
             $edit->categorylist         = handleAction('getcategorylist');
-            return construct_interface($select, $edit);
+            return construct_interface($select, $edit, $enable_shared);
             break;
 
         case 'videouploadurl':

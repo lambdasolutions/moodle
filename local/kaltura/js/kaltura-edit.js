@@ -79,9 +79,13 @@ function addEntryComplete(entry) {
                 if (arguments.length > 1) {
                     count = arguments[1];
                 }
+                var data = 'actions[0]=getdomnodes';
+                if (window.kaltura.enable_shared) {
+                    data = data + '&params[0][enable_shared]=1';
+                }
                 Y.io(_ajaxurl,
                     {
-                        data: 'actions[0]=getdomnodes',
+                        data: data,
                         on: {
                             success: function (i, o, a) {
                                 scaffold = Y.JSON.parse(o.responseText)[0];
@@ -290,19 +294,9 @@ function addEntryComplete(entry) {
 
                     var pages = Array(
                         {
-                            target: '#sharedaudio',
-                            type  : 'audio',
-                            access: 'public'
-                        },
-                        {
                             target: '#myaudio',
                             type  : 'audio',
                             access: 'private'
-                        },
-                        {
-                            target: '#sharedvideo',
-                            type  : 'video',
-                            access: 'public'
                         },
                         {
                             target: '#myvideo',
@@ -310,11 +304,25 @@ function addEntryComplete(entry) {
                             access: 'private'
                         }
                     );
+                    if (window.kaltura.enable_shared) {
+                        pages.push(
+                            {
+                                target: '#sharedaudio',
+                                type  : 'audio',
+                                access: 'public'
+                            },
+                            {
+                                target: '#sharedvideo',
+                                type  : 'video',
+                                access: 'public'
+                            }
+                        );
+                    }
                     for (var i = 0; i < pages.length; i++) {
                         var ob = pages[i];
                         try {
-                            var page      = window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.current,
-                                pagecount = window.kalturaWiz.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.count;
+                            var page      = $this.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.current,
+                                pagecount = $this.interfaceNodes.selectdata[ob.type + 'list' + ob.access].page.count;
                         }
                         catch (err) {
                             var page = 1,
@@ -582,6 +590,7 @@ function addEntryComplete(entry) {
                     });
                 },
                 pageButtonHandlers: function (ob) {
+                    console.log(ob);
                     var $this   = this,
                     back        = Y.one(ob.target+' .pageb'),
                     forward     = Y.one(ob.target+' .pagef');
