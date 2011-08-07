@@ -80,8 +80,8 @@ function addEntryComplete(entry) {
                     count = arguments[1];
                 }
                 var data = 'actions[0]=getdomnodes';
-                if (window.kaltura.enable_shared) {
-                    data = data + '&params[0][enable_shared]=1';
+                if (window.kaltura.cmid) {
+                    data = data + '&params[0][id]=' + window.kaltura.cmid;
                 }
                 Y.io(_ajaxurl,
                     {
@@ -182,7 +182,7 @@ function addEntryComplete(entry) {
 
 
                     if (scaffold == '' || scaffold == undefined) {
-                        setTimeout($this._buildRootInterface, 1000);
+                        $this.timeout = setTimeout($this._buildRootInterface, 1000);
                     } else {
                         $this.interfaceNodes = scaffold;
 
@@ -292,31 +292,34 @@ function addEntryComplete(entry) {
                         }
                     });
 
-                    var pages = Array(
-                        {
+                    var pages = Array();
+                    if ($this.interfaceNodes.selectdata['show'].audiolistprivate) {
+                        pages.push({
                             target: '#myaudio',
                             type  : 'audio',
                             access: 'private'
-                        },
-                        {
+                        });
+                    }
+                    if ($this.interfaceNodes.selectdata['show'].videolistprivate) {
+                        pages.push({
                             target: '#myvideo',
                             type  : 'video',
                             access: 'private'
-                        }
-                    );
-                    if (window.kaltura.enable_shared) {
-                        pages.push(
-                            {
-                                target: '#sharedaudio',
-                                type  : 'audio',
-                                access: 'public'
-                            },
-                            {
+                        });
+                    }
+                    if ($this.interfaceNodes.selectdata['show'].audiolistpublic) {
+                        pages.push({
+                            target: '#sharedaudio',
+                            type  : 'audio',
+                            access: 'public'
+                        });
+                    }
+                    if ($this.interfaceNodes.selectdata['show'].videolistpublic) {
+                            pages.push({
                                 target: '#sharedvideo',
                                 type  : 'video',
                                 access: 'public'
-                            }
-                        );
+                            });
                     }
                     for (var i = 0; i < pages.length; i++) {
                         var ob = pages[i];
@@ -485,6 +488,7 @@ function addEntryComplete(entry) {
                 },
                 _destroyInterface: function () {
                     $this = window.kalturaWiz;
+                    clearTimeout($this.timeout);
                     $this.rootRendered = false;
                     $this.domnode.setStyles({display: 'none'});
                     $this.domnode.remove(true);

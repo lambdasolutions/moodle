@@ -49,6 +49,9 @@ $string['page'] = 'Page';
 $string['loading'] = 'Loading...';
 $string['connectionissue'] = 'There was an issue connecting to the Kaltura remote server. Please try again later.';
 
+$string['kaltura:view'] = 'View and interact with Kaltura';
+$string['kaltura:viewshared'] = 'View shared Kaltura data';
+
 //Help strings
 $string['uploadvideofilehelp'] = '';
 $string['uploadaudiofilehelp'] = '';

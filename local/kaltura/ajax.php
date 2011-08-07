@@ -141,11 +141,19 @@ function handleAction($action, $params=array()) {
             $select = new stdClass;
             $edit   = new stdClass;
 
-            if (!empty($params['enable_shared'])) {
-                $enable_shared = true;
-            }
-            else {
-                $enable_shared = false;
+            $enable_shared=false;
+            if (is_numeric($param['id'])) {
+                $id = (int) $param['id'];
+                if (!empty($id)) {
+                    $context = get_context_instance(CONTEXT_MODULE, $id);
+                    if (has_capability('local/kaltura:viewshared', $context)) {
+                        $enable_shared = true;
+                    }
+                }
+                else {//This will happen when you're creating a new resource (i.e. probably most of the time)
+                    //Assume this is from hitting the new kaltura resource as admin/teacher
+                    $enable_shared = true;
+                }
             }
 
             $select->videouploadurl     = handleAction('videouploadurl');
