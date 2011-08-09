@@ -533,7 +533,8 @@ class assignment_upload extends assignment_base {
 
         $returnurl = new moodle_url("/mod/assignment/submissions.php", array('id'=>$this->cm->id,'mode'=>$mode,'offset'=>$offset)); //not xhtml, just url.
 
-        if ($formdata = $mform->get_data() and $this->can_manage_responsefiles()) {            
+        if ($formdata = $mform->get_data() and $this->can_manage_responsefiles()) {
+            $grading_info = grade_get_grades($this->course->id, 'mod', 'assignment', $this->assignment->id);
             $fs = get_file_storage();
             // Empty the temp directory
             $fs->delete_area_files($this->context->id, 'mod_assignment', 'temp');
@@ -573,6 +574,11 @@ class assignment_upload extends assignment_base {
                         $fail = true;
                         $error_array[] = $fullfilename;
                         $log_message = get_string('bulkupload_failed', 'assignment', $fullfilename);
+                    } else if (!empty($grading_info->items[0]->grades[$userid]->locked)) {//check to make sure the grade for this user isn't locked.
+                        $fail = true;
+                        $errors = true;
+                        $lockederror_array[] = $fullfilename;
+                        $log_message = get_string('bulkupload_locked', 'assignment', $fullfilename);
                     } else {
                     // Setting $createnew (param 2) to true creates an assignment
                     // submission object record if one does not exist already
@@ -619,8 +625,14 @@ class assignment_upload extends assignment_base {
 
         $PAGE->set_title(get_string('bulkupload', 'assignment'));
         echo $OUTPUT->header();
-        echo $OUTPUT->notification(get_string('bulkuploaderror', 'assignment'));
-        echo $OUTPUT->notification(implode("<br />", $error_array));
+        if (!empty($error_array)) {
+            echo $OUTPUT->notification(get_string('bulkuploaderror', 'assignment'));
+            echo $OUTPUT->notification(implode("<br />", $error_array));
+        }
+        if (!empty($lockederror_array)) {
+            echo $OUTPUT->notification(get_string('bulkuploadlocked', 'assignment'));
+            echo $OUTPUT->notification(implode("<br />", $error_array));
+        }
         echo $OUTPUT->continue_button($returnurl->out(true));
         echo $OUTPUT->footer();
         die;        
