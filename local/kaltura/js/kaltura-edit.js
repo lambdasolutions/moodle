@@ -414,36 +414,38 @@ function addEntryComplete(entry) {
                         ]);
                     }
 
-                    /*
-                     * Apparently YUI2 mangles the original data almost as bad as the DOM nodes,
-                     * so make a copy of the data. Without doing this, loading the edit interface,
-                     * closing then loading again results in depth information not being kept.
-                     */
-                    var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
-                    /* Create treeview with YUI2 */
-                    $this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
-                    $this.tree.subscribe('clickEvent', function (e) {
-                        var textbox         = Y.one('#editcategoriestext'),
-                            idlist          = Y.one('#editcategoriesids'),
-                            categoriestext  = textbox.get('value'),
-                            categoriesids   = idlist.get('value'),
-                            sep             = '';
+                    if (Y.one('#editcategoriestreeview')) {
+                        /*
+                         * Apparently YUI2 mangles the original data almost as bad as the DOM nodes,
+                         * so make a copy of the data. Without doing this, loading the edit interface,
+                         * closing then loading again results in depth information not being kept.
+                         */
+                        var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
+                        /* Create treeview with YUI2 */
+                        $this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
+                        $this.tree.subscribe('clickEvent', function (e) {
+                            var textbox         = Y.one('#editcategoriestext'),
+                                idlist          = Y.one('#editcategoriesids'),
+                                categoriestext  = textbox.get('value'),
+                                categoriesids   = idlist.get('value'),
+                                sep             = '';
 
-                        if (categoriestext != '') {
-                            sep = ', ';
-                        }
-                        if (categoriesids != '') {
-                            sep = ',';
-                            if (categoriesids.indexOf(e.node.data.catId) > -1) {
-                                return;
+                            if (categoriestext != '') {
+                                sep = ', ';
                             }
-                        }
-                        categoriestext += sep + e.node.data.catFullName;
-                        categoriesids  += sep + e.node.data.catId;
-                        textbox.set('value', categoriestext);
-                        idlist.set('value', categoriesids);
-                    });
-                    $this.tree.render();
+                            if (categoriesids != '') {
+                                sep = ',';
+                                if (categoriesids.indexOf(e.node.data.catId) > -1) {
+                                    return;
+                                }
+                            }
+                            categoriestext += sep + e.node.data.catFullName;
+                            categoriesids  += sep + e.node.data.catId;
+                            textbox.set('value', categoriestext);
+                            idlist.set('value', categoriesids);
+                        });
+                        $this.tree.render();
+                    }
 
                     Y.one('#editupdate').on('click', function (e) {
                         var id, action, mediatype, callback;
@@ -463,8 +465,14 @@ function addEntryComplete(entry) {
 
                         var title       = Y.one('#edittitle').get('value'),
                             description = Y.one('#editdescription').get('value'),
-                            tags        = Y.one('#edittags').get('value'),
-                            categories  = Y.one('#editcategoriesids').get('value');
+                            tags        = Y.one('#edittags').get('value');
+
+                        if (Y.one('#editcategoriesids')) {
+                            var categories  = Y.one('#editcategoriesids').get('value');
+                        }
+                        else {
+                            var categories  = '';
+                        }
 
                         $this.multiJAX([{
                             action: action,
@@ -528,11 +536,16 @@ function addEntryComplete(entry) {
                     if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
                         Y.one('#contribkalturathumb').set('src', ob.response.entry.thumbnailUrl);
                     }
-                    if (ob.response.entry.categoriesIds != undefined) {
-                        Y.one('#editcategoriesids').set('value', ob.response.entry.categoriesIds);
+                    else {
+                        Y.one('#contribkalturathumb').remove();
                     }
-                    if (ob.response.entry.categories != undefined) {
-                        Y.one('#editcategoriestext').set('value', ob.response.entry.categories);
+                    if (Y.one('#editcategoriesids')) {
+                        if (ob.response.entry.categoriesIds != undefined) {
+                            Y.one('#editcategoriesids').set('value', ob.response.entry.categoriesIds);
+                        }
+                        if (ob.response.entry.categories != undefined) {
+                            Y.one('#editcategoriestext').set('value', ob.response.entry.categories);
+                        }
                     }
                     if (ob.response.entry.tags != '') {
                         Y.one('#edittags').set('value', ob.response.entry.tags);
@@ -543,6 +556,7 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.description) {
                         Y.one('#editdescription').set('disabled', 1);
                     }
+
                     Y.one('#editupdate').set('disabled', false);
                 },
                 _mediaListCallback: function (ob) {
@@ -594,7 +608,6 @@ function addEntryComplete(entry) {
                     });
                 },
                 pageButtonHandlers: function (ob) {
-                    console.log(ob);
                     var $this   = this,
                     back        = Y.one(ob.target+' .pageb'),
                     forward     = Y.one(ob.target+' .pagef');

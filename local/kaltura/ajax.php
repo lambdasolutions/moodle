@@ -45,7 +45,7 @@ foreach ($actions as $index => $action) {
 }
 
 function handleAction($action, $params=array()) {
-    global $USER, $CFG, $DB;
+    global $USER, $CFG, $DB, $_SESSION;
     switch ($action) {
         case 'playerurl':
             $partnerId  = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
@@ -142,8 +142,8 @@ function handleAction($action, $params=array()) {
             $edit   = new stdClass;
 
             $enable_shared=false;
-            if (is_numeric($param['id'])) {
-                $id = (int) $param['id'];
+            if (is_numeric($params['id'])) {
+                $id = (int) $params['id'];
                 if (!empty($id)) {
                     $context = get_context_instance(CONTEXT_MODULE, $id);
                     if (has_capability('local/kaltura:viewshared', $context)) {
@@ -155,6 +155,8 @@ function handleAction($action, $params=array()) {
                     $enable_shared = true;
                 }
             }
+
+            $_SESSION['kaltura_use_shared'] = $enable_shared;
 
             $select->videouploadurl     = handleAction('videouploadurl');
             $select->audiouploadurl     = handleAction('audiouploadurl');
@@ -223,6 +225,18 @@ function handleAction($action, $params=array()) {
                 $entry->categoriesIds = $entrydata->categories;
             }
 
+            if (!$_SESSION['kaltura_use_shared']) { //This means they're a student...
+                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'))) {
+                    $res = handleAction('getcategorydetails', array('category' => $category_name));
+                    if (!empty($entry->categoryIds)) {
+                        $entry->categoryIds .= ',' . $res['category']->id;
+                    }
+                    else {
+                        $entry->categoryIds = $res['category']->id;
+                    }
+                }
+            }
+
             if ($entrydata->mediatype == 'video') {
                 $entry->mediaType = KalturaMediaType::VIDEO;
             }
@@ -250,6 +264,18 @@ function handleAction($action, $params=array()) {
                 $entry->categoriesIds = $entrydata->categories;
             }
 
+            if (!$_SESSION['kaltura_use_shared']) { //This means they're a student...
+                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'))) {
+                    $res = handleAction('getcategorydetails', array('category' => $category_name));
+                    if (!empty($entry->categoryIds)) {
+                        $entry->categoryIds .= ',' . $res['category']->id;
+                    }
+                    else {
+                        $entry->categoryIds = $res['category']->id;
+                    }
+                }
+            }
+
             if (empty($entry->description)) {
                 return array(
                     'entry' => $client->media->update($entryid, $entry),
@@ -263,6 +289,45 @@ function handleAction($action, $params=array()) {
 
             break;
 
+        case 'getcategorydetails':
+            $client = kalturaClientSession(true);
+
+            $categoryname = html_entity_decode($params['category']);
+
+            $filter = new KalturaCategoryFilter();
+            $filter->fullNameEqual = $categoryname;
+
+            $result = $client->category->listAction($filter);
+
+            //Assume only one category was returned - that's all we want!
+            if ($result->totalCount > 0) {
+                $category = $result->objects[0];
+                return array(
+                    'category' => $category,
+                );
+            }
+            else {
+                $category = new KalturaCategory();
+
+                if (strpos($categoryname, '>') > 0) {
+                    $parts = explode('>', $categoryname);
+                    $name = array_pop($parts);
+                    $parentname = implode('>', $parts);
+
+                    $parent = handleAction('getcategorydetails', array('category' => $parentname));
+
+                    $category->parentId = $parent['category']->id;
+                    $category->name = $name;
+                }
+                else {
+                    $category->name = $categoryname;
+                }
+
+                return array(
+                    'category' => $client->category->add($category)
+                );
+            }
+            break;
 
         default:
             break;

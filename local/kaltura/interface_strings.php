@@ -23,7 +23,7 @@
  */
 
 function construct_interface($select, $edit, $enable_shared) {
-    global $CFG;
+    global $CFG, $_SESSION;
 
     $interfaceNodes = array();
 
@@ -73,7 +73,7 @@ function constructMediaPager($mediatype, $data) {
 }
 
 function editInterface($edit) {
-    global $CFG;
+    global $CFG, $_SESSION;
 
     $strs = new stdClass;
     $strs->editinfo = get_string('editinfo', 'local_kaltura');
@@ -114,6 +114,21 @@ function editInterface($edit) {
         $categories = array_values($depth[0]);
     }
 
+    $category_dom = '';
+    if ($_SESSION['kaltura_use_shared']) {
+        $category_dom = <<<CATEGORY
+                    <div class="editentry">
+                        <label for="editcategoriestext">$strs->categories</label>
+                        <span id="editcategories">
+                            <input id="editcategoriesids" type="hidden" />
+                            <input id="editcategoriestext" type="text" colspan="30" disabled />
+                            <div id="editcategoriestreeview">
+                            </div>
+                        </span>
+                    </div>
+CATEGORY;
+    }
+
     $editstr = <<<EDIT
     <div id="editInterface" class="contentArea">
              <ul class="yui3-tabview-list" >
@@ -142,15 +157,7 @@ function editInterface($edit) {
                         <label for="edittags">$strs->tags</label>
                         <input id="edittags" type="text" colspan="30" />
                     </div>
-                    <div class="editentry">
-                        <label for="editcategoriestext">$strs->categories</label>
-                        <span id="editcategories">
-                            <input id="editcategoriesids" type="hidden" />
-                            <input id="editcategoriestext" type="text" colspan="30" disabled />
-                            <div id="editcategoriestreeview">
-                            </div>
-                        </span>
-                    </div>
+                    $category_dom
                 </span>
             </div>
             <div id="editfooterdiv">
