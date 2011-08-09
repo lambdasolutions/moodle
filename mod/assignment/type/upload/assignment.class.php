@@ -556,7 +556,11 @@ class assignment_upload extends assignment_base {
             // Retrieve the extracted files as an array of stored file objects
             $files = $fs->get_area_files($this->context->id, 'mod_assignment', 'temp', $this->cm->id);
             $errors = false;            
-
+            $countreplaced = 0;
+            $countrenamed = 0;
+            $countskipped = 0;
+            $countnew = 0;
+            $successfulfiles = array();
             foreach ($files as  $responsefile) {
                 $fullfilename = $responsefile->get_filename();
                 if ($fullfilename != '.') {
@@ -589,19 +593,23 @@ class assignment_upload extends assignment_base {
                                 case 0:
                                     $fullfilename = $this->rename_responsefile($filedetails, $userid, $fs, $submission);
                                     $log_message = get_string('bulkupload_renamed', 'assignment', $fullfilename);
+                                    $countrenamed++;
                                     break;
                                 case 1:
                                     $oldfile->delete();
                                     $log_message = get_string('bulkupload_replaced', 'assignment', $fullfilename);
+                                    $countreplaced++;
                                     break;
                                 case 2:
                                     $log_message = get_string('bulkupload_skipped', 'assignment', $fullfilename);
                                     $skip = true;
+                                    $countskipped++;
                                     break;
                             }
 
                         } else {
                             $log_message = get_string('bulkupload_new', 'assignment', $fullfilename);
+                            $countnew++;
                         }
                     }
 
@@ -617,9 +625,21 @@ class assignment_upload extends assignment_base {
                             '/submissions.php?id='.$this->cm->id.'&userid='.$userid, $log_message, $this->cm->id);
                 }
             }            
+            if (!empty($countnew)) {
+                $successfulfiles[] = get_string('bulkuploadnewfiles', 'assignment', $countnew);
+            }
+            if (!empty($countrenamed)) {
+                $successfulfiles[] = get_string('bulkuploadrenamed', 'assignment', $countrenamed);
+            }
+            if (!empty($countreplaced)) {
+                $successfulfiles[] = get_string('bulkuploadreplaced', 'assignment', $countreplaced);
+            }
+            if (!empty($countskipped)) {
+                $successfulfiles[] = get_string('bulkuploadskipped', 'assignment', $countskipped);
+            }
 
             if (!$errors) {
-                redirect($returnurl->out(false));
+                redirect($returnurl->out(false), implode(', ',$successfulfiles), 2);
             }
         }
 
