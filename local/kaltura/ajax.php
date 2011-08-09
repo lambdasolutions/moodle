@@ -226,13 +226,13 @@ function handleAction($action, $params=array()) {
             }
 
             if (!$_SESSION['kaltura_use_shared']) { //This means they're a student...
-                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'))) {
+                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'student_upload_category'))) {
                     $res = handleAction('getcategorydetails', array('category' => $category_name));
-                    if (!empty($entry->categoryIds)) {
-                        $entry->categoryIds .= ',' . $res['category']->id;
+                    if (!empty($entry->categoriesIds)) {
+                        $entry->categoriesIds .= ',' . $res['category']->id;
                     }
                     else {
-                        $entry->categoryIds = $res['category']->id;
+                        $entry->categoriesIds = $res['category']->id;
                     }
                 }
             }
@@ -265,13 +265,13 @@ function handleAction($action, $params=array()) {
             }
 
             if (!$_SESSION['kaltura_use_shared']) { //This means they're a student...
-                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'))) {
+                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'student_upload_category'))) {
                     $res = handleAction('getcategorydetails', array('category' => $category_name));
-                    if (!empty($entry->categoryIds)) {
-                        $entry->categoryIds .= ',' . $res['category']->id;
+                    if (!empty($entry->categoriesIds)) {
+                        $entry->categoriesIds .= ',' . $res['category']->id;
                     }
                     else {
-                        $entry->categoryIds = $res['category']->id;
+                        $entry->categoriesIds = $res['category']->id;
                     }
                 }
             }
