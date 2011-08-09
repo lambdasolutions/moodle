@@ -525,7 +525,7 @@ class assignment_upload extends assignment_base {
     }
 
     function upload_responsefiles($mform, $options) {
-        global $USER, $OUTPUT, $PAGE;
+        global $USER, $COURSE, $OUTPUT, $PAGE;
 
         $mode   = required_param('mode', PARAM_ALPHA);
         $offset = required_param('offset', PARAM_INT);
@@ -552,7 +552,18 @@ class assignment_upload extends assignment_base {
                     $zipfile->delete();
                 }
             }
-
+            //check for group mode stuff:
+            $groupmode = groups_get_activity_groupmode($this->cm);
+            $contextmodule = get_context_instance(CONTEXT_MODULE, $this->cm->id);
+            $groups = array();
+            if ($groupmode== SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $contextmodule)) {
+                //get list of groups this user is in in this course.
+                $groups = groups_get_all_groups($COURSE->id, $USER->id);
+                if (empty($groups)) {
+                    print_error('bulkuploadnogroups','assignment');
+                }
+                $checkgroup = true;
+            }
             // Retrieve the extracted files as an array of stored file objects
             $files = $fs->get_area_files($this->context->id, 'mod_assignment', 'temp', $this->cm->id);
             $errors = false;            
@@ -570,6 +581,10 @@ class assignment_upload extends assignment_base {
                     $userid = substr($filename, strrpos($filename, '_') + 1);
                     $skip = false;
                     $fail = false;
+                    $usergroups = array();
+                    if (is_number($userid) && $checkgroup) {
+                        $usergroups = groups_get_all_groups($COURSE->id, $userid);
+                    }
 
                     if (!is_number($userid) || !has_capability('mod/assignment:submit', $this->context, $userid)) {
                         // Stays true if any file fails
@@ -578,6 +593,13 @@ class assignment_upload extends assignment_base {
                         $fail = true;
                         $error_array[] = $fullfilename;
                         $log_message = get_string('bulkupload_failed', 'assignment', $fullfilename);
+                    } else if (($checkgroup) && !in_array($groups, $usergroups)) {
+                        // Stays true if any file fails
+                        $errors = true;
+                        // Is reset for each file
+                        $fail = true;
+                        $grouperror_array[] = $fullfilename;
+                        $log_message = get_string('bulkupload_groupfailed', 'assignment', $fullfilename);
                     } else if (!empty($grading_info->items[0]->grades[$userid]->locked)) {//check to make sure the grade for this user isn't locked.
                         $fail = true;
                         $errors = true;
@@ -651,7 +673,11 @@ class assignment_upload extends assignment_base {
         }
         if (!empty($lockederror_array)) {
             echo $OUTPUT->notification(get_string('bulkuploadlocked', 'assignment'));
-            echo $OUTPUT->notification(implode("<br />", $error_array));
+            echo $OUTPUT->notification(implode("<br />", $lockederror_array));
+        }
+        if (!empty($grouperror_array)) {
+            echo $OUTPUT->notification(get_string('bulkuploadgroupfailed', 'assignment'));
+            echo $OUTPUT->notification(implode("<br />", $grouperror_array));
         }
         echo $OUTPUT->continue_button($returnurl->out(true));
         echo $OUTPUT->footer();
