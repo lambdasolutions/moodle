@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.0.2-20110221-24) unstable; urgency=low
+
+  * local/kaltura: latest code with student categories
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 09 Aug 2011 15:53:33 +1200
+
 moodle-site-feature-kaltura (2.0.2-20110221-23) unstable; urgency=low
 
   * local/kaltura: assignment stuff working
