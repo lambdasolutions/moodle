@@ -608,19 +608,14 @@ class assignment_upload extends assignment_base {
 
                     $responsefile->delete();
                     add_to_log($this->course->id, 'assignment', 'feedback',
-                            '/submissions.php?id='.$this->cm->id.'&userid='.$userid.'&mode=single&filter=0&offset=0', $log_message, $this->cm->id);
+                            '/submissions.php?id='.$this->cm->id.'&userid='.$userid, $log_message, $this->cm->id);
                 }
-                
             }            
 
             if (!$errors) {
                 redirect($returnurl->out(false));
             }
         }
-
-        $log_message = get_string('bulkupload_failed', 'assignment');
-        add_to_log($this->course->id, 'assignment', 'feedback',
-            '/submissions.php?id='.$this->cm->id.'&userid='.$USER->id, $log_message.implode(",", $error_array));
 
         $PAGE->set_title(get_string('bulkupload', 'assignment'));
         echo $OUTPUT->header();
