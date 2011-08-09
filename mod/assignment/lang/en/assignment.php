@@ -76,6 +76,7 @@ $string['bulkupload_replaced'] = 'Bulk upload of feedback file {$a} (replaced)';
 $string['bulkupload_skip'] = 'Skip';
 $string['bulkupload_skipped'] = 'Bulk upload of feedback file {$a} (skipped)';
 $string['bulkuploaderror'] = 'The following files could not be uploaded:';
+$string['bulkupload_help'] = 'This allows a teacher to upload a set of feedback files to provide to the student - use the download all assignments link to download the files provided by the student and modify these files keeping the existing filename, zip the updated files back up and use this to upload them again.';
 $string['cannotdeletefiles'] = 'An error occurred and files could not be deleted';
 $string['cannotviewassignment'] = 'You can not view this assignment';
 $string['comment'] = 'Comment';

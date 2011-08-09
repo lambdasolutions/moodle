@@ -1484,6 +1484,7 @@ class assignment_base {
                     if ($this->assignment->assignmenttype=='upload') {
                         echo html_writer::start_tag('div', array('class' => 'mod-assignment-download-link'));
                         echo html_writer::link(new moodle_url('/mod/assignment/type/upload/bulkupload.php', array('a' => $this->assignment->id)), get_string('bulkupload', 'assignment'));
+                        echo html_writer::tag('span', $OUTPUT->help_icon('bulkupload','assignment'));
                         echo html_writer::end_tag('div');
                     }
                 }
