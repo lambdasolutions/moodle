@@ -24,6 +24,7 @@
 
 require_once(dirname(__FILE__).'/upload_form.php');
 require_once(dirname(__FILE__).'/bulkupload_form.php');
+require_once($CFG->libdir . '/gradelib.php');
 require_once($CFG->libdir . '/portfoliolib.php');
 require_once($CFG->dirroot . '/mod/assignment/lib.php');
 
