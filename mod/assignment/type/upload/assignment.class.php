@@ -556,6 +556,7 @@ class assignment_upload extends assignment_base {
             $groupmode = groups_get_activity_groupmode($this->cm);
             $contextmodule = get_context_instance(CONTEXT_MODULE, $this->cm->id);
             $groups = array();
+            $checkgroup = false;
             if ($groupmode== SEPARATEGROUPS && !has_capability('moodle/site:accessallgroups', $contextmodule)) {
                 //get list of groups this user is in in this course.
                 $groups = groups_get_all_groups($COURSE->id, $USER->id);
