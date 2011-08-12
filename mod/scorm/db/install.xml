@@ -106,7 +106,7 @@
         <FIELD NAME="primaryobj" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="false" DEFAULT="0" SEQUENCE="false" PREVIOUS="scoid" NEXT="objectiveid"/>
         <FIELD NAME="objectiveid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" PREVIOUS="primaryobj" NEXT="satisfiedbymeasure"/>
         <FIELD NAME="satisfiedbymeasure" TYPE="int" LENGTH="1" NOTNULL="true" UNSIGNED="false" DEFAULT="1" SEQUENCE="false" PREVIOUS="objectiveid" NEXT="minnormalizedmeasure"/>
-        <FIELD NAME="minnormalizedmeasure" TYPE="float" LENGTH="11" NOTNULL="true" UNSIGNED="true" DEFAULT="0.0000" SEQUENCE="false" DECIMALS="4" PREVIOUS="satisfiedbymeasure"/>
+        <FIELD NAME="minnormalizedmeasure" TYPE="float" LENGTH="11" NOTNULL="true" UNSIGNED="false" DEFAULT="0.0000" SEQUENCE="false" DECIMALS="4" PREVIOUS="satisfiedbymeasure"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" NEXT="scorm_objective_uniq"/>

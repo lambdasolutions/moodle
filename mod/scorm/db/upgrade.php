@@ -571,6 +571,13 @@ function xmldb_scorm_upgrade($oldversion) {
 
         upgrade_mod_savepoint(true, 2011080100, 'scorm');
     }
+
+    if ($oldversion < 2011081200) { //allow signed floats for SCORM 2004 support
+        $table = new xmldb_table('scorm_seq_objective');
+        $field = new xmldb_field('minnormalizedmeasure', XMLDB_TYPE_FLOAT, '11', false, XMLDB_NOTNULL, false, "0.0000", 'primaryobj','satisfiedbymeasure');
+        $dbman->change_field_unsigned($table, $field);
+        upgrade_mod_savepoint(true, 2011081200, 'scorm');
+    }
     return true;
 }
 
