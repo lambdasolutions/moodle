@@ -747,7 +747,13 @@ function addEntryComplete(entry) {
                 },
                 selectedEntry: function (ob) {
                     var $this = window.kalturaWiz;
-                    $this.entryid = ob.entryId;
+                    if (ob.entryId) {
+                        $this.entryid = ob.entryId;
+                    }
+                    else {
+                        /* assume ob.id exists if ob.entryId does not */
+                        $this.entryid = ob.id;
+                    }
                     $this.mediatype = ob.mediatype;
                     $this.upload  = ob.upload;
 
