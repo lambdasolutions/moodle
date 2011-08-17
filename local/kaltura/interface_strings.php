@@ -222,7 +222,7 @@ function selectInterface($select, $enable_shared) {
     $strs = new stdClass;
 
     $strs->entry = get_string('entry', 'local_kaltura');
-    $strs->size  = get_string('size', 'local_kaltura');
+    $strs->duration = get_string('duration', 'local_kaltura');
 
     $strs->upload = get_string('upload', 'local_kaltura');
     $strs->uploadfromfile = get_string('uploadfromfile', 'local_kaltura');
