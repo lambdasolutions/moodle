@@ -62,7 +62,7 @@ function addEntryComplete(entry) {
         navigator = window.navigator,
         location  = window.location;
 
-    YUI().use('node', 'io', 'event', 'json', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
+    YUI().use('node', 'io', 'event', 'json', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', 'dd-plugin', function (Y) {
         var contribWiz = (function () {
             /* Define a few things... */
 
@@ -170,6 +170,9 @@ function addEntryComplete(entry) {
                             centered: true
                         });
                         $this.renderables.overlay.render();
+                        $this.renderables.overlay.plug(Y.Plugin.Drag);
+                        $this.renderables.overlay.dd.addHandle('.yui3-tabview-list');
+
 
                         Y.one(document.body).removeClass('yui3-skin-sam');
                         Y.one('#contribClose').on('click', function (e) {
