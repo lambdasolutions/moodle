@@ -558,7 +558,7 @@ function addEntryComplete(entry) {
                     Y.one('#editupdate').set('disabled', false);
                 },
                 _retryGetEditData: function (ob) {
-                    var passthrough = ob.passthrough;,
+                    var passthrough = ob.passthrough,
                         $this       = window.kalturaWiz;
 
                     if ($this._retryGetEditData.retryCount
