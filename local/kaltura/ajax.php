@@ -145,18 +145,8 @@ function handleAction($action, $params=array()) {
 
             $results = $client->media->listAction($filter);
             $count   = $client->media->count($filter);
-            $pagecount = ceil($count/$pager->pageSize);
-
-            if ($pager->pageIndex > $pagecount) {
-                return array();
-                break;
-            }
 
             return array(
-                'page' => array(
-                    'count' => $pagecount,
-                    'current' => (int) $pager->pageIndex,
-                ),
                 'count' => $count,
                 'objects' => $results->objects,
             );
@@ -167,18 +157,8 @@ function handleAction($action, $params=array()) {
 
             $results = $client->media->listAction($filter);
             $count   = $client->media->count($filter);
-            $pagecount = ceil($count/$pager->pageSize);
-
-            if ($pager->pageIndex > $pagecount) {
-                return array();
-                break;
-            }
 
             return array(
-                'page' => array(
-                    'count' => $pagecount,
-                    'current' => (int) $pager->pageIndex,
-                ),
                 'count' => $count,
                 'objects' => $results->objects,
             );
