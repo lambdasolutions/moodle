@@ -296,25 +296,11 @@ function addEntryComplete(entry) {
                     });
 
                     var pages = Array();
-                    if ($this.interfaceNodes.selectdata['show'].audiolistprivate) {
-                        pages.push({
-                            target: '#myaudio',
-                            type  : 'audio',
-                            access: 'private'
-                        });
-                    }
                     if ($this.interfaceNodes.selectdata['show'].videolistprivate) {
                         pages.push({
                             target: '#myvideo',
                             type  : 'video',
                             access: 'private'
-                        });
-                    }
-                    if ($this.interfaceNodes.selectdata['show'].audiolistpublic) {
-                        pages.push({
-                            target: '#sharedaudio',
-                            type  : 'audio',
-                            access: 'public'
                         });
                     }
                     if ($this.interfaceNodes.selectdata['show'].videolistpublic) {
@@ -420,7 +406,8 @@ function addEntryComplete(entry) {
                                     entryid: $this.entryid,
                                     upload : $this.upload
                                 },
-                                successCallback: $this._populateEditCallback
+                                successCallback: $this._populateEditCallback,
+                                failureCallback: $this._retryGetEditData
                             }
                         ]);
                     }
@@ -569,6 +556,29 @@ function addEntryComplete(entry) {
                     }
 
                     Y.one('#editupdate').set('disabled', false);
+                },
+                _retryGetEditData: function (ob) {
+                    var passthrough = ob.passthrough;,
+                        $this       = window.kalturaWiz;
+
+                    if ($this._retryGetEditData.retryCount
+                            && $this._retryGetEditData.retryCount > 10) {
+                        //Display Error
+                        return false;
+                    }
+                    else if ($this._retryGetEditData.retryCount) {
+                        $this._retryGetEditData.retryCount++;
+                    }
+                    else {
+                        $this._retryGetEditData.retryCount = 1;
+                    }
+
+                    $this.multiJAX([{
+                        passthrough: passthrough,
+                        params: passthrough,
+                        successCallback: $this._populateEditCallback,
+                        failureCallback: $this.retryGetEditData
+                    }]);
                 },
                 videoMediaCallback: function (ob) {
                     var $this      = window.kalturaWiz,
@@ -750,12 +760,22 @@ function addEntryComplete(entry) {
                                     }
                                 },
                                 failure: function (i, o, a) {
-                                    response = Y.JSON.parse(o.responseText);
-                                    for (var j = 0; j < response.length; j++) {
-                                        callbacks[j].failure({
-                                            response: response[j],
-                                            passthrough: passthroughs[j]
-                                        });
+                                    try {
+                                        response = Y.JSON.parse(o.responseText);
+                                        for (var j = 0; j < response.length; j++) {
+                                            callbacks[j].failure({
+                                                response: response[j],
+                                                passthrough: passthroughs[j]
+                                            });
+                                        }
+                                    }
+                                    catch (ex) {
+                                        for (var j = 0; j < response.length; j++) {
+                                            callbacks[j].failure({
+                                                passthrough: passthroughs[j]
+                                            });
+                                        }
+
                                     }
                                 }
                             }
