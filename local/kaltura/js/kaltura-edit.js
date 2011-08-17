@@ -315,11 +315,11 @@ function addEntryComplete(entry) {
                         });
                     }
                     if ($this.interfaceNodes.selectdata['show'].videolistpublic) {
-                            pages.push({
-                                target: '#sharedvideo',
-                                type  : 'video',
-                                access: 'public'
-                            });
+                        pages.push({
+                            target: '#sharedvideo',
+                            type  : 'video',
+                            access: 'public'
+                        });
                     }
                     for (var i = 0; i < pages.length; i++) {
                         var ob = pages[i];
@@ -332,12 +332,20 @@ function addEntryComplete(entry) {
                                 pagecount = 1;
                         }
 
+                        if (ob.type == 'video') {
+                            var callback = $this.videoMediaCallback;
+                        }
+                        if (ob.type == 'audio') {
+                            var callback = function(){};
+                        }
+
                         $this.pageButtonHandlers({
-                            action   : 'list' + ob.access,
+                            action   : ob.type + 'list' + ob.access,
                             target   : ob.target,
                             type     : ob.type,
                             page     : page,
-                            pagecount: pagecount
+                            pagecount: pagecount,
+                            callback : callback
                         });
                     }
 
@@ -559,7 +567,7 @@ function addEntryComplete(entry) {
 
                     Y.one('#editupdate').set('disabled', false);
                 },
-                _mediaListCallback: function (ob) {
+                videoMediaCallback: function (ob) {
                     var $this      = window.kalturaWiz,
                         strs       = $this.interfaceNodes.strings,
                         page       = ob.response.page,
@@ -604,8 +612,31 @@ function addEntryComplete(entry) {
                         target   : ob.passthrough.target,
                         type     : ob.passthrough.type,
                         page     : ob.response.page.current,
-                        pagecount: ob.response.page.count
+                        pagecount: ob.response.page.count,
+                        callback : videoMediaCallback
                     });
+                },
+                audioMediaCallback: function (ob) {
+                    var $this      = window.kalturaWiz,
+                        strs       = $this.interfaceNodes.strings;
+
+                    if (ob.response) {
+                        Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').setContent(
+                              '<table>'
+                            + '<tr><th>' + strs.audioname + '</th></tr>'
+                        );
+                    }
+
+                    for (var i = 0; i < ob.response.count; i++) {
+                        var n = ob.response.objects[i];
+                        if (n) {
+                            Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').append(
+                                '<tr><td>' + n.name + '</td><td>' + n.size + '</td></tr>'
+                            );
+                        }
+                    }
+
+                    Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').append('</table>');
                 },
                 pageButtonHandlers: function (ob) {
                     var $this   = this,
@@ -634,7 +665,7 @@ function addEntryComplete(entry) {
                                             mediatype: ob.type,
                                             page: ob.page-1
                                         },
-                                        successCallback: window.kalturaWiz._mediaListCallback
+                                        successCallback: ob.callback
                                     }]);
 
                                     return false;
