@@ -1,3 +1,9 @@
+moodle-site-feature-kaltura (2.1.1-20110803-01) unstable; urgency=low
+
+  * local/kaltura: adding jquery "chosen"-like functionality to categories
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Mon, 22 Aug 2011 18:16:27 +1200
+
 moodle-site-feature-kaltura (2.1.1-20110803-00) unstable; urgency=low
 
   * Fixing debian version
