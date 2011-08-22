@@ -268,12 +268,13 @@ class assignment_kaltura extends assignment_base {
 
 class mod_assignment_kaltura_edit_form extends moodleform {
     function definition() {
+        $id = optional_param('id', 0, PARAM_INT);
         $mform = $this->_form;
 
         list($data, $editoroptions) = $this->_customdata;
 
 
-        $mform->addElement('html', kalturaGlobals_js(array('cmid' => 0)));
+        $mform->addElement('html', kalturaGlobals_js(array('cmid' => $id)));
         // visible elements
         $mform->addElement('html','<div class="kalturaPlayerEdit"></div>');
         $mform->addElement('submit', 'replacevideo', get_string('replacevideo', 'kalturavideo'));

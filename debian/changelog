@@ -1,0 +1,161 @@
+moodle-site-feature-kaltura (2.1.1-20110803-01) unstable; urgency=low
+
+  * local/kaltura: adding jquery "chosen"-like functionality to categories
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Mon, 22 Aug 2011 18:16:27 +1200
+
+moodle-site-feature-kaltura (2.1.1-20110803-00) unstable; urgency=low
+
+  * Fixing debian version
+  * Fixing category attribution
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 09 Aug 2011 16:16:08 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-24) unstable; urgency=low
+
+  * local/kaltura: latest code with student categories
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 09 Aug 2011 15:53:33 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-23) unstable; urgency=low
+
+  * local/kaltura: assignment stuff working
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 04 Aug 2011 12:12:54 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-22) unstable; urgency=low
+
+  * local/kaltura: fixing CSS cache poisoning
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 02 Aug 2011 02:02:39 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-21) unstable; urgency=low
+
+  * local/kaltura: Deployment for testing
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Mon, 01 Aug 2011 22:12:08 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-20) unstable; urgency=low
+
+  * fixing small error
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 26 Jul 2011 01:11:44 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-19) unstable; urgency=low
+
+  * local/kaltura: version 1.1
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 26 Jul 2011 01:01:30 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-18) unstable; urgency=low
+
+  * local/kaltura: WIP testing
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 21 Jul 2011 14:40:19 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-17) unstable; urgency=low
+
+  * adding WIP HTML interface to demonstration
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 16 Jun 2011 12:48:15 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-16) unstable; urgency=low
+
+  * getting krecord audio working (removing rmtp part)
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Wed, 15 Jun 2011 15:40:37 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-15) unstable; urgency=low
+
+  * Matching to stable, adding temporary testing pages for krecord
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Wed, 15 Jun 2011 14:58:59 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-14) unstable; urgency=low
+
+  * mod/assignment/type/kaltura: fixing assignment type for mix removal
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 10 May 2011 12:36:10 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-13) unstable; urgency=low
+
+  * Removed mix type from kalura video
+  * Adding WIP version of kaltura presentation
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 10 May 2011 12:09:44 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-12) unstable; urgency=low
+
+  * mod/kalturavideo: bugfix for heading/intro checkboxes
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 28 Apr 2011 13:44:19 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-11) unstable; urgency=low
+
+  * mod/kalturavideo: complete
+  * mod/assignment/type/kaltura: complete
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 28 Apr 2011 11:04:23 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-10) unstable; urgency=low
+
+  * mod/kalturavideo: moved everything sharable into local/kaltura,
+    backup and restore now functional
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 14 Apr 2011 11:44:06 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-9) unstable; urgency=low
+
+  * mod/kalturavideo: editing now in rough working condition
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Wed, 13 Apr 2011 14:55:40 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-8) unstable; urgency=low
+
+  * mod/kalturavideo: added entry type tracking, ajax data collection,
+    starting on rough cut support
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 12 Apr 2011 16:03:27 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-7) unstable; urgency=low
+
+  * mod/kalturavideo: fixing IE7 display bug
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 07 Apr 2011 09:43:44 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-6) unstable; urgency=low
+
+  * mod/kalturavideo: refactored javascript, fixed firefox display
+    issues
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 07 Apr 2011 08:16:01 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-5) unstable; urgency=low
+
+  * added contribution wizard to module
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Wed, 06 Apr 2011 09:45:22 +1200
+
+moodle-site-feature-kaltura (2.0.2-20110221-4) unstable; urgency=low
+
+  * Adding kalturavideo plugin
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 31 Mar 2011 11:24:24 +1300
+
+moodle-site-feature-kaltura (2.0.2-20110221-3) unstable; urgency=low
+
+  * Adding local kaltura module
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Tue, 22 Mar 2011 11:41:49 +1300
+
+moodle-site-feature-kaltura (2.0.2-20110221-2) unstable; urgency=low
+
+  * Changing dependencies so package can be installed on lenny servers
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 17 Mar 2011 10:08:16 +1300
+
+moodle-site-feature-kaltura (2.0.2-20110221-1) unstable; urgency=low
+
+  * Debianised by Brett Wilkins
+
+ -- Brett Wilkins <brett@catalyst.net.nz>  Thu, 17 Mar 2011 09:58:48 +1300

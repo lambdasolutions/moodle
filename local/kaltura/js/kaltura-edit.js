@@ -62,7 +62,7 @@ function addEntryComplete(entry) {
         navigator = window.navigator,
         location  = window.location;
 
-    YUI().use('node', 'io', 'event', 'json', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', function (Y) {
+    YUI().use('node', 'io', 'event', 'json', 'overlay', 'tabview', 'swf', 'yui2-treeview', 'yui2-progressbar', 'dd-plugin', function (Y) {
         var contribWiz = (function () {
             /* Define a few things... */
 
@@ -80,8 +80,8 @@ function addEntryComplete(entry) {
                     count = arguments[1];
                 }
                 var data = 'actions[0]=getdomnodes';
-                if (window.kaltura.enable_shared) {
-                    data = data + '&params[0][enable_shared]=1';
+                if (window.kaltura.cmid) {
+                    data = data + '&params[0][id]=' + window.kaltura.cmid;
                 }
                 Y.io(_ajaxurl,
                     {
@@ -111,11 +111,13 @@ function addEntryComplete(entry) {
                     if (!(this.hasClass('kalhidden'))) {
                         this.addClass('kalhidden');
                     }
+                    return this;
                 },
                 show: function() {
                     if (this.hasClass('kalhidden')) {
                         this.removeClass('kalhidden');
                     }
+                    return this;
                 },
             });
 
@@ -170,6 +172,9 @@ function addEntryComplete(entry) {
                             centered: true
                         });
                         $this.renderables.overlay.render();
+                        $this.renderables.overlay.plug(Y.Plugin.Drag);
+                        $this.renderables.overlay.dd.addHandle('.yui3-tabview-list');
+
 
                         Y.one(document.body).removeClass('yui3-skin-sam');
                         Y.one('#contribClose').on('click', function (e) {
@@ -182,7 +187,7 @@ function addEntryComplete(entry) {
 
 
                     if (scaffold == '' || scaffold == undefined) {
-                        setTimeout($this._buildRootInterface, 1000);
+                        $this.timeout = setTimeout($this._buildRootInterface, 1000);
                     } else {
                         $this.interfaceNodes = scaffold;
 
@@ -292,31 +297,20 @@ function addEntryComplete(entry) {
                         }
                     });
 
-                    var pages = Array(
-                        {
-                            target: '#myaudio',
-                            type  : 'audio',
-                            access: 'private'
-                        },
-                        {
+                    var pages = Array();
+                    if ($this.interfaceNodes.selectdata['show'].videolistprivate) {
+                        pages.push({
                             target: '#myvideo',
                             type  : 'video',
                             access: 'private'
-                        }
-                    );
-                    if (window.kaltura.enable_shared) {
-                        pages.push(
-                            {
-                                target: '#sharedaudio',
-                                type  : 'audio',
-                                access: 'public'
-                            },
-                            {
-                                target: '#sharedvideo',
-                                type  : 'video',
-                                access: 'public'
-                            }
-                        );
+                        });
+                    }
+                    if ($this.interfaceNodes.selectdata['show'].videolistpublic) {
+                        pages.push({
+                            target: '#sharedvideo',
+                            type  : 'video',
+                            access: 'public'
+                        });
                     }
                     for (var i = 0; i < pages.length; i++) {
                         var ob = pages[i];
@@ -329,12 +323,20 @@ function addEntryComplete(entry) {
                                 pagecount = 1;
                         }
 
+                        if (ob.type == 'video') {
+                            var callback = $this.videoMediaCallback;
+                        }
+                        if (ob.type == 'audio') {
+                            var callback = function(){};
+                        }
+
                         $this.pageButtonHandlers({
-                            action   : 'list' + ob.access,
+                            action   : ob.type + 'list' + ob.access,
                             target   : ob.target,
                             type     : ob.type,
                             page     : page,
-                            pagecount: pagecount
+                            pagecount: pagecount,
+                            callback : callback
                         });
                     }
 
@@ -406,41 +408,56 @@ function addEntryComplete(entry) {
                                     entryid: $this.entryid,
                                     upload : $this.upload
                                 },
-                                successCallback: $this._populateEditCallback
+                                successCallback: $this._populateEditCallback,
+                                failureCallback: $this._retryGetEditData
                             }
                         ]);
                     }
 
-                    /*
-                     * Apparently YUI2 mangles the original data almost as bad as the DOM nodes,
-                     * so make a copy of the data. Without doing this, loading the edit interface,
-                     * closing then loading again results in depth information not being kept.
-                     */
-                    var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
-                    /* Create treeview with YUI2 */
-                    $this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
-                    $this.tree.subscribe('clickEvent', function (e) {
-                        var textbox         = Y.one('#editcategoriestext'),
-                            idlist          = Y.one('#editcategoriesids'),
-                            categoriestext  = textbox.get('value'),
-                            categoriesids   = idlist.get('value'),
-                            sep             = '';
+                    if (Y.one('#editcategoriestreeview')) {
+                        /*
+                         * Apparently YUI2 mangles the original data almost as bad as the DOM nodes,
+                         * so make a copy of the data. Without doing this, loading the edit interface,
+                         * closing then loading again results in depth information not being kept.
+                         */
+                        var treedata = Y.clone(this.interfaceNodes.editdata.categorylist);
+                        /* Create treeview with YUI2 */
+                        $this.tree = new Y.YUI2.widget.TreeView('editcategoriestreeview', treedata);
+                        $this.tree.subscribe('clickEvent', function (e) {
+                            var textbox         = Y.one('#editcategoriestext'),
+                                idlist          = Y.one('#editcategoriesids'),
+                                categoriestext  = textbox.get('value'),
+                                categoriesids   = idlist.get('value'),
+                                textsep         = ',',
+                                idssep          = ',';
 
-                        if (categoriestext != '') {
-                            sep = ', ';
-                        }
-                        if (categoriesids != '') {
-                            sep = ',';
-                            if (categoriesids.indexOf(e.node.data.catId) > -1) {
+                            if (categoriesids && categoriesids.indexOf(e.node.data.catId) > -1) {
                                 return;
                             }
-                        }
-                        categoriestext += sep + e.node.data.catFullName;
-                        categoriesids  += sep + e.node.data.catId;
-                        textbox.set('value', categoriestext);
-                        idlist.set('value', categoriesids);
-                    });
-                    $this.tree.render();
+
+                            var names = categoriestext.split(',');
+                            var ids = categoriesids.split(',');
+                            if (names[0] == '') {
+                                names.shift();
+                            }
+                            if (ids[0] == '') {
+                                ids.shift();
+                            }
+                            names.push(e.node.data.catFullName);
+                            ids.push(e.node.data.catId);
+                            textbox.set('value', names.toString());
+                            idlist.set('value', ids.toString());
+
+                            if ($this.prettify_categories) {
+                                $this.prettifyCategoriesAdd(e.node.data.catFullName, e.node.data.catId);
+                            }
+                        });
+                        $this.tree.render();
+                    }
+
+                    if (!Y.UA.ie || Y.UA.ie > 7.0) {
+                        $this.prettifyCategories();
+                    }
 
                     Y.one('#editupdate').on('click', function (e) {
                         var id, action, mediatype, callback;
@@ -460,8 +477,14 @@ function addEntryComplete(entry) {
 
                         var title       = Y.one('#edittitle').get('value'),
                             description = Y.one('#editdescription').get('value'),
-                            tags        = Y.one('#edittags').get('value'),
-                            categories  = Y.one('#editcategoriesids').get('value');
+                            tags        = Y.one('#edittags').get('value');
+
+                        if (Y.one('#editcategoriesids')) {
+                            var categories  = Y.one('#editcategoriesids').get('value');
+                        }
+                        else {
+                            var categories  = '';
+                        }
 
                         $this.multiJAX([{
                             action: action,
@@ -483,8 +506,69 @@ function addEntryComplete(entry) {
                         $this.domnode.hide();
                     });
                 },
+                prettifyCategories: function () {
+                    var $this = window.kalturaWiz;
+                    if (Y.one('#editcategoriestext')) {
+                        var container;
+                        container = Y.Node.create('<div />').setAttrs({
+                            id: 'editcategoriestext_pretty',
+                        });
+                        container.set('innerHTML', '<ul class="pretty-choices"></ul>');
+                        Y.one('#editcategoriestext').set('type', 'hidden').set('disabled', false).insert(container, 'after');
+                        Y.one('#editcategoriestext_pretty').addClass('pretty_container');
+                        $this.prettify_categories = true;
+                    }
+                },
+                populatePrettyCategories: function () {
+                    var $this = window.kalturaWiz;
+                    var ids = Y.one('#editcategoriesids').get('value').split(',');
+                    for (var i = 0; i < ids.length; i++) {
+                        $this.prettifyCategoriesAdd($this.interfaceNodes.editdata.categorylist_flat[ids[i]].fullName, ids[i]);
+                    }
+                },
+                prettifyCategoriesAdd: function (name, id) {
+                    var $this = window.kalturaWiz;
+                    var html, container;
+                    container = Y.one('#editcategoriestext_pretty .pretty-choices');
+                    container.append('<li class="category-choice" id="category-choice-' + id + '"><span>' + name + '</span><a href="javascript:void(0)" class="category-choice-close"></a></li>');
+                    Y.one('#category-choice-' + id + ' a.category-choice-close').on('click', function (evt) {
+                        evt.preventDefault();
+                        $this.removeCategory(name, id);
+                        Y.one('#category-choice-'+id).remove(true);
+                    });
+                },
+                removeCategory: function (name, id) {
+                    var $this = window.kalturaWiz;
+                    var categorytext = Y.one('#editcategoriestext');
+                    var categoryids  = Y.one('#editcategoriesids');
+
+                    var cattext = categorytext.get('value');
+                    var catids  = categoryids.get('value');
+
+                    var textsep = ',';
+                    var idsep   = ',';
+
+                    var names = cattext.split(textsep);
+                    var ids = catids.split(idsep);
+
+                    for (var i = 0; i < ids.length; i++) {
+                        if (ids[i] == id) {
+                            ids.splice(i,1);
+                        }
+                    }
+
+                    for (var i = 0; i < names.length; i++) {
+                        if (names[i] == name) {
+                            names.splice(i,1);
+                        }
+                    }
+
+                    categorytext.set('value', names.join(textsep));
+                    categoryids.set('value', ids.join(idsep));
+                },
                 _destroyInterface: function () {
                     $this = window.kalturaWiz;
+                    clearTimeout($this.timeout);
                     $this.rootRendered = false;
                     $this.domnode.setStyles({display: 'none'});
                     $this.domnode.remove(true);
@@ -517,18 +601,30 @@ function addEntryComplete(entry) {
                     this._swfLoadCallback(ob);
                 },
                 _populateEditCallback: function (ob) {
-                    Y.one('#editentryid').set('value', ob.response.entry.id);
+                    try {
+                        var id = ob.response.entry.id;
+                    }
+                    catch (ex) {
+                        var id = ob.response.entry.entryId;
+                    }
+
+                    Y.one('#editentryid').set('value', id);
                     var title = ob.response.entry.name.replace('New Entry', '');
                     Y.one('#edittitle').set('value', title);
                     Y.one('#editdescription').set('value', ob.response.entry.description);
                     if (Y.one('#contribkalturathumb').get('src') == M.cfg.wwwroot + '/local/kaltura/images/ajax-loader.gif') {
                         Y.one('#contribkalturathumb').set('src', ob.response.entry.thumbnailUrl);
                     }
-                    if (ob.response.entry.categoriesIds != undefined) {
-                        Y.one('#editcategoriesids').set('value', ob.response.entry.categoriesIds);
+                    else {
+                        Y.one('#contribkalturathumb').remove();
                     }
-                    if (ob.response.entry.categories != undefined) {
-                        Y.one('#editcategoriestext').set('value', ob.response.entry.categories);
+                    if (Y.one('#editcategoriesids')) {
+                        if (ob.response.entry.categoriesIds != undefined) {
+                            Y.one('#editcategoriesids').set('value', ob.response.entry.categoriesIds);
+                        }
+                        if (ob.response.entry.categories != undefined) {
+                            Y.one('#editcategoriestext').set('value', ob.response.entry.categories);
+                        }
                     }
                     if (ob.response.entry.tags != '') {
                         Y.one('#edittags').set('value', ob.response.entry.tags);
@@ -539,9 +635,35 @@ function addEntryComplete(entry) {
                     if (ob.response.entry.description) {
                         Y.one('#editdescription').set('disabled', 1);
                     }
+                    $this.populatePrettyCategories();
+
                     Y.one('#editupdate').set('disabled', false);
                 },
-                _mediaListCallback: function (ob) {
+                _retryGetEditData: function (ob) {
+                    var passthrough = ob.passthrough,
+                        $this       = window.kalturaWiz;
+
+                    if ($this._retryGetEditData.retryCount
+                            && $this._retryGetEditData.retryCount > 10) {
+                        //Display Error
+                        return false;
+                    }
+                    else if ($this._retryGetEditData.retryCount) {
+                        $this._retryGetEditData.retryCount++;
+                    }
+                    else {
+                        $this._retryGetEditData.retryCount = 1;
+                    }
+
+                    $this.multiJAX([{
+                        action: 'geteditdata',
+                        passthrough: passthrough,
+                        params: passthrough,
+                        successCallback: $this._populateEditCallback,
+                        failureCallback: $this.retryGetEditData
+                    }]);
+                },
+                videoMediaCallback: function (ob) {
                     var $this      = window.kalturaWiz,
                         strs       = $this.interfaceNodes.strings,
                         page       = ob.response.page,
@@ -586,11 +708,33 @@ function addEntryComplete(entry) {
                         target   : ob.passthrough.target,
                         type     : ob.passthrough.type,
                         page     : ob.response.page.current,
-                        pagecount: ob.response.page.count
+                        pagecount: ob.response.page.count,
+                        callback : videoMediaCallback
                     });
                 },
+                audioMediaCallback: function (ob) {
+                    var $this      = window.kalturaWiz,
+                        strs       = $this.interfaceNodes.strings;
+
+                    if (ob.response) {
+                        Y.one(ob.passthrough.target+' .'+ob.passthrough.type+'container').setContent(
+                              '<table>'
+                            + '<tr><th>' + strs.audioname + '</th></tr>'
+                        );
+                    }
+
+                    for (var i = 0; i < ob.response.count; i++) {
+                        var n = ob.response.objects[i];
+                        if (n) {
+                            Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').append(
+                                '<tr><td>' + n.name + '</td><td>' + n.size + '</td></tr>'
+                            );
+                        }
+                    }
+
+                    Y.one(ob.passthrough.target + ' .' + ob.passthrough.type + 'container').append('</table>');
+                },
                 pageButtonHandlers: function (ob) {
-                    console.log(ob);
                     var $this   = this,
                     back        = Y.one(ob.target+' .pageb'),
                     forward     = Y.one(ob.target+' .pagef');
@@ -617,7 +761,7 @@ function addEntryComplete(entry) {
                                             mediatype: ob.type,
                                             page: ob.page-1
                                         },
-                                        successCallback: window.kalturaWiz._mediaListCallback
+                                        successCallback: ob.callback
                                     }]);
 
                                     return false;
@@ -699,12 +843,22 @@ function addEntryComplete(entry) {
                                     }
                                 },
                                 failure: function (i, o, a) {
-                                    response = Y.JSON.parse(o.responseText);
-                                    for (var j = 0; j < response.length; j++) {
-                                        callbacks[j].failure({
-                                            response: response[j],
-                                            passthrough: passthroughs[j]
-                                        });
+                                    try {
+                                        response = Y.JSON.parse(o.responseText);
+                                        for (var j = 0; j < callbacks.length; j++) {
+                                            callbacks[j].failure({
+                                                response: response[j],
+                                                passthrough: passthroughs[j]
+                                            });
+                                        }
+                                    }
+                                    catch (ex) {
+                                        for (var j = 0; j < callbacks.length; j++) {
+                                            callbacks[j].failure({
+                                                passthrough: passthroughs[j]
+                                            });
+                                        }
+
                                     }
                                 }
                             }
@@ -730,7 +884,13 @@ function addEntryComplete(entry) {
                 },
                 selectedEntry: function (ob) {
                     var $this = window.kalturaWiz;
-                    $this.entryid = ob.entryId;
+                    if (ob.entryId) {
+                        $this.entryid = ob.entryId;
+                    }
+                    else {
+                        /* assume ob.id exists if ob.entryId does not */
+                        $this.entryid = ob.id;
+                    }
                     $this.mediatype = ob.mediatype;
                     $this.upload  = ob.upload;
 

@@ -45,7 +45,7 @@ foreach ($actions as $index => $action) {
 }
 
 function handleAction($action, $params=array()) {
-    global $USER, $CFG, $DB;
+    global $USER, $CFG, $DB, $_SESSION;
     switch ($action) {
         case 'playerurl':
             $partnerId  = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'partner_id'));
@@ -78,7 +78,7 @@ function handleAction($action, $params=array()) {
             $base   = $CFG->wwwroot.'/local/kaltura/objects/';
             $host   = str_replace(array('http://', 'https://'), '', $config->serviceUrl);
 
-            return array('url' => $base.'audio.swf', 'base' => $base, 'params' => array('ks' => $client->getKs(), 'host' => $host, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'entryTags' => 'audio', 'thumbOffset' => 1, 'useCamera' => 'false'));
+            return array('url' => $base.'audio.swf', 'base' => $base, 'params' => array('ks' => $client->getKs(), 'host' => $host, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'thumbOffset' => 1, 'useCamera' => 'false'));
             break;
 
         case 'videourl':
@@ -87,11 +87,11 @@ function handleAction($action, $params=array()) {
             $base   = $CFG->wwwroot.'/local/kaltura/objects/';
             $host   = str_replace(array('http://', 'https://'), '', $config->serviceUrl);
 
-            return array('url' => $base.'video.swf', 'base' => $base, 'params' => array('ks' => $client->getKs(), 'host' => $host, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'entryTags' => 'audio', 'thumbOffset' => 1));
+            return array('url' => $base.'video.swf', 'base' => $base, 'params' => array('ks' => $client->getKs(), 'host' => $host, 'uid' => $USER->id, 'pid' => $config->partnerId, 'subpid' => $config->partnerId*100, 'kshowId' => -1, 'autopreview' => true, 'themeUrl' => $CFG->wwwroot.'/local/kaltura/objects/skin.swf', 'entryName' => 'New Entry', 'thumbOffset' => 1));
             break;
 
-        case 'listpublic':
-            list($client, $filter, $pager) = buildListFilter($params);
+        case 'videolistpublic':
+            list($client, $filter, $pager) = buildVideoListFilter($params);
 
             $results = $client->media->listAction($filter, $pager);
             $count   = $client->media->count($filter);
@@ -112,8 +112,8 @@ function handleAction($action, $params=array()) {
             );
             break;
 
-        case 'listprivate':
-            list($client, $filter, $pager) = buildListFilter($params);
+        case 'videolistprivate':
+            list($client, $filter, $pager) = buildVideoListFilter($params);
             $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
 
             $filter->userIdEqual = $USER->{$identifier};
@@ -137,26 +137,63 @@ function handleAction($action, $params=array()) {
             );
             break;
 
+        case 'audiolistprivate':
+            list($client, $filter) = buildAudioListFilter($params);
+            $identifier = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'identifier'));
+
+            $filter->userIdEqual = $USER->{$identifier};
+
+            $results = $client->media->listAction($filter);
+            $count   = $client->media->count($filter);
+
+            return array(
+                'count' => $count,
+                'objects' => $results->objects,
+            );
+            break;
+
+        case 'audiolistpublic':
+            list($client, $filter) = buildAudioListFilter($params);
+
+            $results = $client->media->listAction($filter);
+            $count   = $client->media->count($filter);
+
+            return array(
+                'count' => $count,
+                'objects' => $results->objects,
+            );
+            break;
+
         case 'getdomnodes':
             $select = new stdClass;
             $edit   = new stdClass;
 
-            if (!empty($params['enable_shared'])) {
-                $enable_shared = true;
+            $enable_shared=false;
+            if (is_numeric($params['id'])) {
+                $id = (int) $params['id'];
+                if (!empty($id)) {
+                    $context = get_context_instance(CONTEXT_MODULE, $id);
+                    if (has_capability('local/kaltura:viewshared', $context)) {
+                        $enable_shared = true;
+                    }
+                }
+                else {//This will happen when you're creating a new resource (i.e. probably most of the time)
+                    //Assume this is from hitting the new kaltura resource as admin/teacher
+                    $enable_shared = true;
+                }
             }
-            else {
-                $enable_shared = false;
-            }
+
+            $_SESSION['kaltura_use_shared'] = $enable_shared;
 
             $select->videouploadurl     = handleAction('videouploadurl');
             $select->audiouploadurl     = handleAction('audiouploadurl');
             $select->videourl           = handleAction('videourl');
             $select->audiourl           = handleAction('audiourl');
-            $select->videolistprivate   = handleAction('listprivate', array('mediatype' => 'video'));
-            $select->audiolistprivate   = handleAction('listprivate', array('mediatype' => 'audio'));
+            $select->videolistprivate   = handleAction('videolistprivate');
+            $select->audiolistprivate   = handleAction('audiolistprivate');
             if ($enable_shared) {
-                $select->videolistpublic    = handleAction('listpublic', array('mediatype' => 'video'));
-                $select->audiolistpublic    = handleAction('listpublic', array('mediatype' => 'audio'));
+                $select->videolistpublic    = handleAction('videolistpublic');
+                $select->audiolistpublic    = handleAction('audiolistpublic');
             }
 
             $edit->categorylist         = handleAction('getcategorylist');
@@ -215,6 +252,18 @@ function handleAction($action, $params=array()) {
                 $entry->categoriesIds = $entrydata->categories;
             }
 
+            if (!$_SESSION['kaltura_use_shared']) { //This means they're a student...
+                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'student_upload_category'))) {
+                    $res = handleAction('getcategorydetails', array('category' => $category_name));
+                    if (!empty($entry->categoriesIds)) {
+                        $entry->categoriesIds .= ',' . $res['category']->id;
+                    }
+                    else {
+                        $entry->categoriesIds = $res['category']->id;
+                    }
+                }
+            }
+
             if ($entrydata->mediatype == 'video') {
                 $entry->mediaType = KalturaMediaType::VIDEO;
             }
@@ -242,6 +291,18 @@ function handleAction($action, $params=array()) {
                 $entry->categoriesIds = $entrydata->categories;
             }
 
+            if (!$_SESSION['kaltura_use_shared']) { //This means they're a student...
+                if($category_name = $DB->get_field('config_plugins','value',array('plugin'=>'local_kaltura', 'name'=>'student_upload_category'))) {
+                    $res = handleAction('getcategorydetails', array('category' => $category_name));
+                    if (!empty($entry->categoriesIds)) {
+                        $entry->categoriesIds .= ',' . $res['category']->id;
+                    }
+                    else {
+                        $entry->categoriesIds = $res['category']->id;
+                    }
+                }
+            }
+
             if (empty($entry->description)) {
                 return array(
                     'entry' => $client->media->update($entryid, $entry),
@@ -255,6 +316,45 @@ function handleAction($action, $params=array()) {
 
             break;
 
+        case 'getcategorydetails':
+            $client = kalturaClientSession(true);
+
+            $categoryname = html_entity_decode($params['category']);
+
+            $filter = new KalturaCategoryFilter();
+            $filter->fullNameEqual = $categoryname;
+
+            $result = $client->category->listAction($filter);
+
+            //Assume only one category was returned - that's all we want!
+            if ($result->totalCount > 0) {
+                $category = $result->objects[0];
+                return array(
+                    'category' => $category,
+                );
+            }
+            else {
+                $category = new KalturaCategory();
+
+                if (strpos($categoryname, '>') > 0) {
+                    $parts = explode('>', $categoryname);
+                    $name = array_pop($parts);
+                    $parentname = implode('>', $parts);
+
+                    $parent = handleAction('getcategorydetails', array('category' => $parentname));
+
+                    $category->parentId = $parent['category']->id;
+                    $category->name = $name;
+                }
+                else {
+                    $category->name = $categoryname;
+                }
+
+                return array(
+                    'category' => $client->category->add($category)
+                );
+            }
+            break;
 
         default:
             break;
@@ -262,7 +362,7 @@ function handleAction($action, $params=array()) {
     return array();
 }
 
-function buildListFilter($params) {
+function buildVideoListFilter($params) {
     $client = kalturaClientSession(true);
     $config = $client->getConfig();
 
@@ -276,14 +376,21 @@ function buildListFilter($params) {
     $filter = new KalturaMediaEntryFilter();
     $filter->patnerIdEqual = $config->partnerId;
     $filter->statusEqual   = KalturaEntryStatus::READY;
-    if (isset($params['mediatype']) && $params['mediatype'] == 'video') {
-        $filter->mediaTypeEqual = KalturaMediaType::VIDEO;
-    }
-    else if (isset($params['mediatype']) && $params['mediatype'] == 'audio') {
-        $filter->mediaTypeEqual = KalturaMediaType::AUDIO;
-    }
+    $filter->mediaTypeEqual = KalturaMediaType::VIDEO;
 
     return array($client, $filter, $pager);
+}
+
+function buildAudioListFilter($params) {
+    $client = kalturaClientSession(true);
+    $config = $client->getConfig();
+
+    $filter = new KalturaMediaEntryFilter();
+    $filter->patnerIdEqual = $config->partnerId;
+    $filter->statusEqual   = KalturaEntryStatus::READY;
+    $filter->mediaTypeEqual = KalturaMediaType::AUDIO;
+
+    return array($client, $filter);
 }
 
 header('Content-Type: application/json');
