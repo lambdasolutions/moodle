@@ -173,7 +173,6 @@ class block_kaltura_podcast extends block_base {
                 $numfeed = (!empty($thisconfig->feednum) ? $thisconfig->feednum : 10);
 
                 //check if we need to sort this array. - kaltura doesn't perform natural sorting on numbers - eg 1, 10, 2, 20
-                print_object($thisconfig);
                 if (!empty($thisconfig->feedsort) && $thisconfig->feedsort == 'name') {
                     $res = array();
                     foreach ($results as $result) {
@@ -184,10 +183,35 @@ class block_kaltura_podcast extends block_base {
                 }
                 $count = 0;
                 $this->content->text = '';
+                $row = 0;
                 foreach ($results as $result) {
                     if ($count <= $numfeed) {
-                        $this->content->text .= '<div class="podcastitem"><a href="'.$result->downloadUrl.'"/>'.format_string($result->name).'</a></div>';
+                        if ($result->mediaType == KalturaMediaType::IMAGE) {
+                            $this->content->text .= '<div class="podcastitem image r'.$row.'">'.
+                                                    '<a href="'.$result->downloadUrl.'">'.format_string($result->name).'</div>';
+                        } else {
+                            $mediatype = '';
+                            if ($result->mediaType == KalturaMediaType::AUDIO) {
+                                $mediatype = 'audio';
+                            } else if ($result->mediaType == KalturaMediaType::VIDEO) {
+                                $mediatype = 'video';
+                            } else if ($result->mediaType == KalturaMediaType::LIVE_STREAM_FLASH) {
+                                $mediatype = 'flash';
+                            } else if ($result->mediaType == KalturaMediaType::LIVE_STREAM_QUICKTIME) {
+                                $mediatype = 'quicktime';
+                            } else if ($result->mediaType == KalturaMediaType::LIVE_STREAM_REAL_MEDIA) {
+                                $mediatype = 'realmedia';
+                            } else if ($result->mediaType == KalturaMediaType::LIVE_STREAM_WINDOWS_MEDIA) {
+                                $mediatype = 'windowsmedia';
+                            }
+                            $feedtitle = format_string($result->name).'<span class="kalturaduration">('.format_time($result->duration).')</span>';
+                            $url = new moodle_url('/blocks/kaltura_podcast/player.php',array('id'=>$courseid, 'entryid'=>$result->id));
+                            $action = new popup_action('click', $url, 'popup', array('height' => 450, 'width' => 450));
+                            $popup = $OUTPUT->action_link($url,$feedtitle , $action);
+                            $this->content->text .= '<div class="podcastitem r'.$row.' '.$mediatype.'">'.$popup.'</div>';
+                        }
                         $count++;
+                        $row = empty($row) ? 1 : 0;
                     }
                 }
             } else {
@@ -202,10 +226,12 @@ class block_kaltura_podcast extends block_base {
             fclose($handle);
         }
         //now display links to feeds.
-        $this->content->footer = '<a href="'.$config->serviceUrl.'/api_v3/getFeed.php?partnerId='.$config->partnerId.'&feedId='.$thisconfig->feedid.'" target=_blank">'.
+        $this->content->footer = '<a href="itms://www.kaltura.com/api_v3/getFeed.php?partnerId='.$config->partnerId.'&feedId='.$thisconfig->feedid.'" target=_blank">'.
                                  $OUTPUT->pix_icon('itunesicon',get_string('itunesfeed', 'block_kaltura_podcast'),'block_kaltura_podcast').'</a>';
         $this->content->footer .= '<a href="'.$config->serviceUrl.'/index.php/partnerservices2/executeplaylist?partner_id='.$config->partnerId.'&format=8&playlist_id='.$thisconfig->playlistid.'" target="_blank">'.
                                   $OUTPUT->pix_icon('i/rss',get_string('mrssfeed', 'block_kaltura_podcast')).'</a>';
+        $this->content->text = get_string('blockheader', 'block_kaltura_podcast').$this->content->text;
+        $this->content->footer .= get_string('blockfooter', 'block_kaltura_podcast');
     }
     function cron() {
         global $DB;

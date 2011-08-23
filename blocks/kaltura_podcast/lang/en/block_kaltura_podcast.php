@@ -53,3 +53,5 @@ $string['maxfeed_desc'] = 'Max number of items to return in a feed - this should
 $string['latest'] = 'Latest';
 $string['feedsort'] = 'Sort';
 $string['displaynum'] = 'Number to display in block';
+$string['blockheader'] = '';
+$string['blockfooter'] = '';
