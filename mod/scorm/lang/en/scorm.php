@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,7 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Strings for component 'scorm', language 'en', branch 'MOODLE_20_STABLE'
+ * Strings for component 'scorm', language 'en'
  *
  * @package   scorm
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
@@ -28,6 +27,7 @@ $string['navigation'] = 'Navigation';
 $string['activation'] = 'Activation';
 $string['activityloading'] = 'You will be automatically redirected to the activity in';
 $string['activitypleasewait'] = 'Activity loading, please wait ...';
+$string['adminsettings'] = 'Admin settings';
 $string['advanced'] = 'Parameters';
 $string['allowapidebug'] = 'Activate API debug and tracing (set the capture mask with apidebugmask)';
 $string['allowtypeexternal'] = 'Enable external package type';
@@ -61,6 +61,9 @@ $string['coursepacket'] = 'Course package';
 $string['coursestruct'] = 'Course structure';
 $string['currentwindow'] = 'Current window';
 $string['datadir'] = 'Filesystem error: Can\'t create course data directory';
+$string['defaultdisplaysettings'] = 'Default display settings';
+$string['defaultgradesettings'] = 'Default grade settings';
+$string['defaultothersettings'] = 'Other default settings';
 $string['deleteattemptcheck'] = 'Are you absolutely sure you want to completely delete these attempts?';
 $string['deleteallattempts'] = 'Delete all SCORM attempts';
 $string['details'] = 'Track details';
@@ -74,9 +77,11 @@ $string['displaycoursestructure'] = 'Display course structure on entry page';
 $string['displaycoursestructure_help'] = 'If enabled, the table of contents is displayed on the SCORM outline page.';
 $string['displaycoursestructuredesc'] = 'This preference sets the default value for the display course structure on entry page setting';
 $string['displaydesc'] = 'This preference sets the default of whether to display the package or not for an activity';
+$string['displaysettings'] = 'Display Settings';
 $string['domxml'] = 'DOMXML external library';
 $string['duedate'] = 'Due date';
 $string['element'] = 'Element';
+$string['elementdefinition'] = 'Element Definition';
 $string['enter'] = 'Enter';
 $string['entercourse'] = 'Enter course';
 $string['errorlogs'] = 'Errors log';
@@ -120,6 +125,7 @@ There are 4 grading methods:
 * Sum grade - The sum of all the scores';
 $string['grademethoddesc'] = 'This preference sets the default grade method for an activity';
 $string['gradereported'] = 'Grade reported';
+$string['gradesettings'] = 'Grade settings';
 $string['gradescoes'] = 'Learning objects';
 $string['gradesum'] = 'Sum grade';
 $string['height'] = 'Height';
@@ -140,7 +146,22 @@ $string['identifier'] = 'Question identifier';
 $string['incomplete'] = 'Incomplete';
 $string['info'] = 'Info';
 $string['interactions'] = 'Interactions';
+$string['interactionsid'] = 'Id of the element';
+$string['interactionscorrectcount'] = 'Number of correct results for the question';
+$string['interactionspattern'] = 'Pattern of correct response';
+$string['interactionslatency'] = 'Time elapsed between the time the interaction <br />was made available to the learner for response <br />and the time of the first response';
+$string['interactionsresponse'] = 'Student\'s Response';
+$string['interactionsresult'] = 'Result based on student\'s response and <br />correct result';
+$string['interactionsscoremin'] = 'Minimum value in the range for the raw score';
+$string['interactionsscoremax'] = 'Maximum value in the range for the raw score';
+$string['interactionsscoreraw'] = 'Number that reflects the performance of the learner<br /> relative to the range bounded by the values of min and max';
+$string['interactionssuspenddata'] = 'Provides space to store and retrieve data <br />between learner sessions';
+$string['interactionstime'] = 'Time at which the attempt was intiated';
+$string['interactionstype'] = 'Type of question';
+$string['interactionsweight'] = 'Weight assigned to the element';
+$string['interactionslearnerresponse'] = 'Learner\'s Response';
 $string['invalidactivity'] = 'Scorm activity is incorrect';
+$string['invalidmanifestresource'] = 'WARNING: The following resources were referenced in your manifest but couldn\'t be found:';
 $string['last'] = 'Last accessed on';
 $string['lastaccess'] = 'Last access';
 $string['lastattempt'] = 'Last attempt';
@@ -184,6 +205,8 @@ $string['optallstudents'] = 'all users';
 $string['optattemptsonly'] = 'users with attempts only';
 $string['optnoattemptsonly'] = 'users with no attempts only';
 $string['options'] = 'Options (Prevented by some browsers)';
+$string['optionsadv'] = 'Options (Advanced)';
+$string['optionsadv_desc'] = 'If checked the window options will be set as advanced options in the form';
 $string['organization'] = 'Organization';
 $string['organizations'] = 'Organizations';
 $string['othersettings'] = 'Additional settings';
@@ -211,6 +234,7 @@ $string['prev'] = 'Previous';
 $string['raw'] = 'Raw score';
 $string['regular'] = 'Regular manifest';
 $string['report'] = 'Report';
+$string['reports'] = 'Reports';
 $string['reportcountallattempts'] = '{$a->nbattempts} attempts for {$a->nbusers} users, out of {$a->nbresults} results';
 $string['reportcountattempts'] = '{$a->nbresults} results ({$a->nbusers} users)';
 $string['resizable'] = 'Allow the window to be resized';
@@ -253,6 +277,8 @@ $string['started'] = 'Started on';
 $string['status'] = 'Status';
 $string['statusbar'] = 'Show the status bar';
 $string['student_response'] = 'Response';
+$string['subplugintype_scormreport'] = 'Report';
+$string['subplugintype_scormreport_plural'] = 'Reports';
 $string['suspended'] = 'Suspended';
 $string['syntax'] = 'Syntax error';
 $string['tag_error'] = 'Unknown tag ({$a->tag}) with this content: {$a->value}';
@@ -290,4 +316,3 @@ Handling of Multiple Attempts
 $string['whatgradedesc'] = 'This preference sets the default attempts grading';
 $string['width'] = 'Width';
 $string['window'] = 'Window';
-$string['zlibwarning'] = 'Warning: PHP Zlib compression has been enabled on this site, some users may experience issues loading SCORM objects in certain web browsers.';

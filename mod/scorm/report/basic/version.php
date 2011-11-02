@@ -14,20 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+
 /**
- * Definition of log events
+ * Defines the version of scorm_basic
  *
- * @package    mod
- * @subpackage scorm
- * @copyright  2010 Petr Skoda (http://skodak.org)
+ * @package    scormreport
+ * @subpackage basic
+ * @author     Ankit Kumar Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$logs = array(
-    array('module'=>'scorm', 'action'=>'view', 'mtable'=>'scorm', 'field'=>'name'),
-    array('module'=>'scorm', 'action'=>'review', 'mtable'=>'scorm', 'field'=>'name'),
-    array('module'=>'scorm', 'action'=>'update', 'mtable'=>'scorm', 'field'=>'name'),
-    array('module'=>'scorm', 'action'=>'add', 'mtable'=>'scorm', 'field'=>'name'),
-);
+$plugin->version  = 2011071100;
+$plugin->requires = 2011070800;

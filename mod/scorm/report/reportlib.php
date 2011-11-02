@@ -15,19 +15,35 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Definition of log events
- *
+ * Returns an array of reports to which are currently readable.
  * @package    mod
  * @subpackage scorm
- * @copyright  2010 Petr Skoda (http://skodak.org)
+ * @author     Ankit Kumar Agarwal
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$logs = array(
-    array('module'=>'scorm', 'action'=>'view', 'mtable'=>'scorm', 'field'=>'name'),
-    array('module'=>'scorm', 'action'=>'review', 'mtable'=>'scorm', 'field'=>'name'),
-    array('module'=>'scorm', 'action'=>'update', 'mtable'=>'scorm', 'field'=>'name'),
-    array('module'=>'scorm', 'action'=>'add', 'mtable'=>'scorm', 'field'=>'name'),
-);
+function scorm_report_list($context) {
+    global $CFG;
+    static $reportlist;
+    if (!empty($reportlist)) {
+        return $reportlist;
+    }
+    $installed = get_plugin_list('scormreport');
+    foreach ($installed as $reportname => $notused) {
+        $pluginfile = $CFG->dirroot.'/mod/scorm/report/'.$reportname.'/report.php';
+        if (is_readable($pluginfile)) {
+            include_once($pluginfile);
+            $reportclassname = "scorm_{$reportname}_report";
+            if (class_exists($reportclassname)) {
+                $report = new $reportclassname();
+
+                if ($report->canview($context)) {
+                    $reportlist[] = $reportname;
+                }
+            }
+        }
+    }
+    return $reportlist;
+}
