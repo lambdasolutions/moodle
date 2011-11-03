@@ -47,3 +47,33 @@ function scorm_report_list($context) {
     }
     return $reportlist;
 }
+/**
+ * Returns The maximum numbers of Questions associated with an Scorm Pack
+ *
+ * @param int Scorm ID
+ * @return int an integer representing the question count
+ */
+function get_scorm_question_count($scormid)
+{
+    global $DB;
+    $count = 0; $flag = 1;
+    $params = array();
+    $select = "scormid = ? AND ";
+    $select .= $DB->sql_like("element", "?", false);
+    $params[] = $scormid;
+    $params[] = "cmi.interactions_%.id";
+    $rs = $DB->get_recordset_select("scorm_scoes_track", $select, $params, 'element');
+    while ($flag) {
+        $flag = 0;
+        foreach ($rs as $record) {
+            $element = "cmi.interactions_" . $count . ".id";
+            if ($record->element == $element) {
+                $count++;
+                $flag = 1;
+            }
+        }
+    }
+    $rs->close(); // closing recordset
+    return $count;
+}
+
