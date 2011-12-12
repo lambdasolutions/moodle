@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,26 +15,32 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * IMS CP module upgrade code
+ * This file keeps track of upgrades to the guest enrolment plugin
  *
- * @package    mod
- * @subpackage imscp
- * @copyright  2009 Petr Skoda  {@link http://skodak.org}
+ * @package    enrol
+ * @subpackage guest
+ * @copyright  2011 Petr Skoda {@link http://skodak.org
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-function xmldb_imscp_upgrade($oldversion) {
-    global $CFG, $DB;
+function xmldb_enrol_guest_upgrade($oldversion) {
+    global $CFG, $DB, $OUTPUT;
 
     $dbman = $DB->get_manager();
-
-    // Moodle v2.1.0 release upgrade line
-    // Put any upgrade step following this
 
     // Moodle v2.2.0 release upgrade line
     // Put any upgrade step following this
 
+    if ($oldversion < 2011112901) {
+        // convert all null passwords to empty strings
+        $DB->set_field('enrol', 'password', '', array('enrol'=>'guest', 'password'=>null));
+
+        upgrade_plugin_savepoint(true, 2011112901, 'enrol', 'guest');
+    }
+
     return true;
 }
+
+
