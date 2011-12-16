@@ -844,6 +844,16 @@ function print_overview($courses, array $remote_courses=array()) {
         }
     }
     foreach ($courses as $course) {
+        $completionstring = '';
+        //check completion enabled
+        $completioninfo = new completion_info($course);
+        if (completion_info::is_enabled_for_site() && $completioninfo->is_enabled()) {
+            if ($completioninfo->is_course_complete($USER->id)) {
+                $completionstring = '<span class="completionstatus"> ('.get_string('coursecomplete', 'completion').')</span>';
+            } else {
+                $completionstring = '<span class="completionstatus"> ('.get_string('inprogress', 'completion').')</span>';
+            }
+        }
         $fullname = format_string($course->fullname, true, array('context' => get_context_instance(CONTEXT_COURSE, $course->id)));
         echo $OUTPUT->box_start('coursebox');
         $attributes = array('title' => s($fullname));
@@ -851,7 +861,7 @@ function print_overview($courses, array $remote_courses=array()) {
             $attributes['class'] = 'dimmed';
         }
         echo $OUTPUT->heading(html_writer::link(
-            new moodle_url('/course/view.php', array('id' => $course->id)), $fullname, $attributes), 3);
+            new moodle_url('/course/view.php', array('id' => $course->id)), $fullname, $attributes). $completionstring, 3);
         if (array_key_exists($course->id,$htmlarray)) {
             foreach ($htmlarray[$course->id] as $modname => $html) {
                 echo $html;
