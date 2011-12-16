@@ -88,6 +88,18 @@ class block_course_overview_renderer extends plugin_renderer_base {
             if ($ismovingcourse && ($course->id == $movingcourseid)) {
                 continue;
             }
+            // CUSTOM FORTISBC code.
+            global $USER;
+            $completionstring = '';
+            //check completion enabled
+            $completioninfo = new completion_info($course);
+            if (completion_info::is_enabled_for_site() && $completioninfo->is_enabled()) {
+                if ($completioninfo->is_course_complete($USER->id)) {
+                    $completionstring = '<span class="completionstatus"> ('.get_string('coursecomplete', 'completion').')</span>';
+                } else {
+                    $completionstring = '<span class="completionstatus"> ('.get_string('inprogress', 'completion').')</span>';
+                }
+            }
             $html .= $this->output->box_start('coursebox', "course-{$course->id}");
             $html .= html_writer::start_tag('div', array('class' => 'course_title'));
             // If user is editing, then add move icons.
@@ -111,7 +123,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
                 $courseurl = new moodle_url('/course/view.php', array('id' => $course->id));
                 $coursefullname = format_string(get_course_display_name_for_list($course), true, $course->id);
                 $link = html_writer::link($courseurl, $coursefullname, $attributes);
-                $html .= $this->output->heading($link, 2, 'title');
+                $html .= $this->output->heading($link . $completionstring, 2, 'title');
             } else {
                 $html .= $this->output->heading(html_writer::link(
                     new moodle_url('/auth/mnet/jump.php', array('hostid' => $course->hostid, 'wantsurl' => '/course/view.php?id='.$course->remoteid)),
