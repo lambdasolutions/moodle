@@ -20,6 +20,8 @@ require_once($CFG->dirroot.'/grade/export/lib.php');
 class grade_export_xls extends grade_export {
 
     public $plugin = 'xls';
+    protected $showgroups = false;
+    protected $showcohorts = false;
 
     /**
      * To be implemented by child classes
@@ -32,6 +34,28 @@ class grade_export_xls extends grade_export {
 
         $strgrades = get_string('grades');
 
+        $gui = new graded_users_iterator($this->course, $this->columns, $this->groupid, 'lastname', 'ASC','firstname', 'ASC', $this->showcohorts, $this->showgroups);
+        $gui->init();
+        $groups = array();
+        if (!empty($gui->group_rs)) { //if showgroups is set, iterate over all group info to make it useful
+            foreach ($gui->group_rs as $gr) {
+                if (empty($groups[$gr->id])) {
+                    $groups[$gr->id] = $gr->name;
+                } else {
+                    $groups[$gr->id] .= ', '.$gr->name;
+                }
+            }
+        }
+        $cohorts = array();
+        if (!empty($gui->cohorts_rs)) { //if showgroups is set, iterate over all group info to make it useful
+            foreach ($gui->cohorts_rs as $cr) {
+                if (empty($cohorts[$cr->id])) {
+                    $cohorts[$cr->id] = $cr->name;
+                } else {
+                    $cohorts[$cr->id] .= ', '.$cr->name;
+                }
+            }
+        }
     /// Calculate file name
         $shortname = format_string($this->course->shortname, true, array('context' => get_context_instance(CONTEXT_COURSE, $this->course->id)));
         $downloadfilename = clean_filename("$shortname $strgrades.xls");
@@ -50,6 +74,12 @@ class grade_export_xls extends grade_export {
         $myxls->write_string(0,4,get_string("department"));
         $myxls->write_string(0,5,get_string("email"));
         $pos=6;
+        if (!empty($gui->group_rs)) {
+            $myxls->write_string(0, $pos++,get_string("group"));
+        }
+        if (!empty($gui->cohorts_rs)) {
+            $myxls->write_string(0, $pos++,get_string('cohorts', 'cohort'));
+        }
         foreach ($this->columns as $grade_item) {
             $myxls->write_string(0, $pos++, $this->format_column_name($grade_item));
 
@@ -62,8 +92,7 @@ class grade_export_xls extends grade_export {
     /// Print all the lines of data.
         $i = 0;
         $geub = new grade_export_update_buffer();
-        $gui = new graded_users_iterator($this->course, $this->columns, $this->groupid);
-        $gui->init();
+
         while ($userdata = $gui->next_user()) {
             $i++;
             $user = $userdata->user;
@@ -75,6 +104,18 @@ class grade_export_xls extends grade_export {
             $myxls->write_string($i,4,$user->department);
             $myxls->write_string($i,5,$user->email);
             $j=6;
+            if (!empty($gui->group_rs)) {
+                if (!empty($groups[$user->id])) {
+                    $myxls->write_string($i,$j,$groups[$user->id]);
+                }
+                $j++;
+            }
+            if (!empty($gui->cohorts_rs)) {
+                if (!empty($cohorts[$user->id])) {
+                    $myxls->write_string($i,$j,$cohorts[$user->id]);
+                }
+                $j++;
+            }
             foreach ($userdata->grades as $itemid => $grade) {
                 if ($export_tracking) {
                     $status = $geub->track($grade);
@@ -102,6 +143,37 @@ class grade_export_xls extends grade_export {
 
         exit;
     }
+    public function grade_export_xls($course, $groupid=0, $itemlist='', $export_feedback=false, $updatedgradesonly = false, $displaytype = GRADE_DISPLAY_TYPE_REAL, $decimalpoints = 2, $showgroups = false, $showcohorts = false) {
+        $this->showgroups = $showgroups;
+        $this->showcohorts = $showcohorts;
+        parent::grade_export($course, $groupid, $itemlist, $export_feedback, $updatedgradesonly, $displaytype, $decimalpoints);
+    }
+
+    /**
+     * Returns array of parameters used by dump.php and export.php.
+     * @return array
+     */
+    public function get_export_params() {
+            $itemids = array_keys($this->columns);
+            $itemidsparam = implode(',', $itemids);
+        if (empty($itemidsparam)) {
+                    $itemidsparam = '-1';
+        }
+
+        $params = array('id'                =>$this->course->id,
+                'groupid'           =>$this->groupid,
+                'itemids'           =>$itemidsparam,
+                'export_letters'    =>$this->export_letters,
+                'export_feedback'   =>$this->export_feedback,
+                'updatedgradesonly' =>$this->updatedgradesonly,
+                'displaytype'       =>$this->displaytype,
+                'decimalpoints'     =>$this->decimalpoints,
+                'showgroups'        =>$this->showgroups,
+                'showcohorts'       =>$this->showcohorts);
+
+        return $params;
+    }
+
 }
 
 

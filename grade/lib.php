@@ -38,11 +38,15 @@ class graded_users_iterator {
     public $groupid;
     public $users_rs;
     public $grades_rs;
+    public $groups_rs;
+    public $cohorts_rs;
     public $gradestack;
     public $sortfield1;
     public $sortorder1;
     public $sortfield2;
     public $sortorder2;
+    public $showcohorts;
+    public $showgroups;
 
     /**
      * Constructor
@@ -57,7 +61,8 @@ class graded_users_iterator {
      */
     public function graded_users_iterator($course, $grade_items=null, $groupid=0,
                                           $sortfield1='lastname', $sortorder1='ASC',
-                                          $sortfield2='firstname', $sortorder2='ASC') {
+                                          $sortfield2='firstname', $sortorder2='ASC',
+                                          $showcohorts=false, $showgroups=false) {
         $this->course      = $course;
         $this->grade_items = $grade_items;
         $this->groupid     = $groupid;
@@ -65,6 +70,8 @@ class graded_users_iterator {
         $this->sortorder1  = $sortorder1;
         $this->sortfield2  = $sortfield2;
         $this->sortorder2  = $sortorder2;
+        $this->showcohorts = $showcohorts;
+        $this->showgroups  = $showgroups;
 
         $this->gradestack  = array();
     }
@@ -81,7 +88,7 @@ class graded_users_iterator {
         grade_regrade_final_grades($this->course->id);
         $course_item = grade_item::fetch_course_item($this->course->id);
         if ($course_item->needsupdate) {
-            // can not calculate all final grades - sorry
+            // can not calculate all finapll grades - sorry
             return false;
         }
 
@@ -141,6 +148,40 @@ class graded_users_iterator {
                              $groupwheresql
                     ORDER BY $order";
         $this->users_rs = $DB->get_recordset_sql($users_sql, $params);
+
+        if (!empty($this->showgroups)) {
+            $groups_sql = "SELECT u.id, g.name
+                        FROM {user} u
+                        JOIN ($enrolledsql) je ON je.id = u.id
+                             $groupsql
+                        JOIN (
+                                  SELECT DISTINCT ra.userid
+                                    FROM {role_assignments} ra
+                                   WHERE ra.roleid $gradebookroles_sql
+                                     AND ra.contextid $relatedcontexts
+                             ) rainner ON rainner.userid = u.id
+                         JOIN {groups_members} gm ON gm.userid = u.id
+                         JOIN {groups} g ON g.id = gm.groupid AND g.courseid = :courseid
+                         WHERE u.deleted = 0
+                             $groupwheresql
+                    ORDER BY u.id";
+            $params['courseid'] = $this->course->id;
+            $this->group_rs = $DB->get_recordset_sql($groups_sql, $params);
+        }
+
+        if (!empty($this->showcohorts)) {
+            $cohorts_sql = "SELECT u.id, c.name
+              FROM {cohort} c
+              JOIN {cohort_members} cm ON cm.cohortid = c.id
+              JOIN ($enrolledsql) u ON u.id = cm.userid
+              $groupsql
+             WHERE c.contextid $relatedcontexts
+             $groupwheresql
+          ORDER BY u.id";
+            $params['ctx'] = $coursecontext->id;
+
+            $this->cohorts_rs = $DB->get_recordset_sql($cohorts_sql, $params);
+        }
 
         if (!empty($this->grade_items)) {
             $itemids = array_keys($this->grade_items);
