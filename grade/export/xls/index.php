@@ -39,7 +39,7 @@ if (!empty($CFG->gradepublishing)) {
     $CFG->gradepublishing = has_capability('gradeexport/xls:publish', $context);
 }
 
-$mform = new grade_export_form(null, array('publishing' => true));
+$mform = new grade_export_form(null, array('publishing' => true, 'showgroups' => true, 'showcohorts'=> true));
 
 $groupmode    = groups_get_course_groupmode($course);   // Groups are being used
 $currentgroup = groups_get_course_group($course, true);
@@ -51,7 +51,7 @@ if ($groupmode == SEPARATEGROUPS and !$currentgroup and !has_capability('moodle/
 
 // process post information
 if ($data = $mform->get_data()) {
-    $export = new grade_export_xls($course, $currentgroup, '', false, false, $data->display, $data->decimals);
+    $export = new grade_export_xls($course, $currentgroup, '', false, false, $data->display, $data->decimals, $data->showgroups, $data->showcohorts);
 
     // print the grades on screen for feedbacks
     $export->process_form($data);
