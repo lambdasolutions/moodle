@@ -254,6 +254,7 @@ class graded_users_iterator {
 
         $grades = array();
         $feedbacks = array();
+        $gradetimes = array();
 
         if (!empty($this->grade_items)) {
             foreach ($this->grade_items as $grade_item) {
@@ -263,11 +264,16 @@ class graded_users_iterator {
                     unset($grade_records[$grade_item->id]->feedback);
                     unset($grade_records[$grade_item->id]->feedbackformat);
                     $grades[$grade_item->id] = new grade_grade($grade_records[$grade_item->id], false);
+                    $gradetimes[$grade_item->id] = '';
+                    if (!empty($grade_records[$grade_item->id]->timemodified)) {
+                        $gradetimes[$grade_item->id] = userdate($grade_records[$grade_item->id]->timemodified);
+                    }
                 } else {
                     $feedbacks[$grade_item->id]->feedback       = '';
                     $feedbacks[$grade_item->id]->feedbackformat = FORMAT_MOODLE;
                     $grades[$grade_item->id] =
                         new grade_grade(array('userid'=>$user->id, 'itemid'=>$grade_item->id), false);
+                    $gradetimes[$grade_item->id] = '';
                 }
             }
         }
@@ -275,6 +281,7 @@ class graded_users_iterator {
         $result = new stdClass();
         $result->user      = $user;
         $result->grades    = $grades;
+        $result->gradetimes = $gradetimes;
         $result->feedbacks = $feedbacks;
         return $result;
     }

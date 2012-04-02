@@ -82,6 +82,7 @@ class grade_export_xls extends grade_export {
         }
         foreach ($this->columns as $grade_item) {
             $myxls->write_string(0, $pos++, $this->format_column_name($grade_item));
+            $myxls->write_string(0, $pos++, get_string('time'));
 
             /// add a column_feedback column
             if ($this->export_feedback) {
@@ -128,6 +129,8 @@ class grade_export_xls extends grade_export {
                 else {
                     $myxls->write_string($i,$j++,$gradestr);
                 }
+                //write timestamp for grade
+                $myxls->write_string($i,$j++,$userdata->gradetimes[$itemid]);
 
                 // writing feedback if requested
                 if ($this->export_feedback) {
