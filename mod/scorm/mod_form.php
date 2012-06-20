@@ -70,8 +70,7 @@ class mod_scorm_mod_form extends moodleform_mod {
         if (count($scormtypes) > 1) {
             $mform->addElement('select', 'scormtype', get_string('scormtype', 'scorm'), $scormtypes);
             $mform->addHelpButton('scormtype', 'scormtype', 'scorm');
-            $mform->addElement('text', 'packageurl', get_string('packageurl', 'scorm'), array('size'=>60));
-            $mform->setType('packageurl', PARAM_RAW);
+            $mform->addElement('url', 'packageurl', get_string('packageurl', 'scorm'), array('size'=>'60'), array('usefilepicker'=>true));
             $mform->addHelpButton('packageurl', 'packageurl', 'scorm');
             $mform->disabledIf('packageurl', 'scormtype', 'eq', SCORM_TYPE_LOCAL);
         } else {
