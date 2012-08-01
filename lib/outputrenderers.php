@@ -661,7 +661,6 @@ class core_renderer extends renderer_base {
                 break;
             case moodle_page::STATE_IN_BODY :
                 // We really shouldn't be here but we can deal with this
-                debugging("You should really redirect before you start page output");
                 if (!$debugdisableredirect) {
                     $this->page->requires->js_function_call('document.location.replace', array($url), false, $delay);
                 }
