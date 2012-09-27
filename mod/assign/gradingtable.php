@@ -63,6 +63,7 @@ class assign_grading_table extends table_sql implements renderable {
     /** @var array $scale - A list of the keys and descriptions for the custom scale */
     private $scale = null;
 
+
     /**
      * overridden constructor keeps a reference to the assignment class that is displaying this table
      *
@@ -131,6 +132,7 @@ class assign_grading_table extends table_sql implements renderable {
         $fields .= 'g.timecreated as firstmarked, ';
         $fields .= 'g.mailed as mailed, ';
         $fields .= 'g.locked as locked, ';
+        $fields .= 'g.workflowstate as workflowstate, ';
         $fields .= 'g.extensionduedate as extensionduedate';
         $from = '{user} u LEFT JOIN {assign_submission} s ON u.id = s.userid AND s.assignment = :assignmentid1' .
                         ' LEFT JOIN {assign_grades} g ON u.id = g.userid AND g.assignment = :assignmentid2';
@@ -227,6 +229,15 @@ class assign_grading_table extends table_sql implements renderable {
                 $columns[] = 'scale';
                 $headers[] = get_string('scale', 'assign');
             }
+
+            if ($this->assignment->get_instance()->markingworkflow) {
+                // Add a column for the marking workflow state.
+                $columns[] = 'workflowstate';
+                $headers[] = get_string('markingworkflowstate', 'assign');
+            }
+            // Add a column for the list of valid marking workflow states.
+            $columns[] = 'gradecanbechanged';
+            $headers[] = get_string('gradecanbechanged', 'assign');
         }
         if (!$this->is_downloading()) {
             // We have to call this column userid so we can use userid as a default sortable column.
@@ -387,6 +398,21 @@ class assign_grading_table extends table_sql implements renderable {
      */
     public function get_rows_per_page() {
         return $this->perpage;
+    }
+
+    /**
+     * For download only - list current marking workflow state
+     *
+     * @param stdClass $row - The row of data
+     * @return string The current marking workflow state
+     */
+    public function col_workflowstate($row) {
+        $state = $row->workflowstate;
+        if (empty($state)) {
+            $state = ASSIGN_MARKING_WORKFLOW_STATE_NOTMARKED;
+        }
+
+        return get_string('markingworkflowstate' . $state, 'assign');
     }
 
     /**
@@ -600,6 +626,21 @@ class assign_grading_table extends table_sql implements renderable {
      * @param stdClass $row
      * @return string
      */
+    public function col_gradecanbechanged(stdClass $row) {
+        $gradingdisabled = $this->assignment->grading_disabled($row->id);
+        if ($gradingdisabled) {
+            return get_string('no');
+        } else {
+            return get_string('yes');
+        }
+    }
+
+    /**
+     * Format a column of data for display
+     *
+     * @param stdClass $row
+     * @return string
+     */
     public function col_grademax(stdClass $row) {
         return format_float($this->assignment->get_instance()->grade, 2);
     }
@@ -614,7 +655,7 @@ class assign_grading_table extends table_sql implements renderable {
         $o = '';
 
         $link = '';
-        $separator = '';
+        $separator = $this->output->spacer(array(), true);
         $grade = '';
         $gradingdisabled = $this->assignment->grading_disabled($row->id);
 
@@ -632,14 +673,30 @@ class assign_grading_table extends table_sql implements renderable {
                                'action'=>'grade');
             $url = new moodle_url('/mod/assign/view.php', $urlparams);
             $link = $this->output->action_link($url, $icon);
-            $separator = $this->output->spacer(array(), true);
+            $grade .= $link . $separator;
         }
-        $grade = $this->display_grade($row->grade,
-                                      $this->quickgrading && !$gradingdisabled,
-                                      $row->userid,
-                                      $row->timemarked);
 
-        return $link . $separator . $grade;
+        $grade .= $this->display_grade($row->grade,
+                                       $this->quickgrading && !$gradingdisabled,
+                                       $row->userid,
+                                       $row->timemarked);
+
+        if (!$this->is_downloading() && $this->assignment->get_instance()->markingworkflow) {
+            // The function in the assignment keeps a static cache of this list of states.
+            $workflowstates = $this->assignment->get_marking_workflow_states_for_current_user();
+            $workflowstate = $row->workflowstate;
+            if (empty($workflowstate)) {
+                $workflowstate = ASSIGN_MARKING_WORKFLOW_STATE_NOTMARKED;
+            }
+            if ($this->quickgrading && !$gradingdisabled) {
+                $name = 'quickgrade_' . $row->id . '_workflowstate';
+                $grade .= $separator . html_writer::select($workflowstates, $name, $workflowstate, false);
+            } else {
+                $grade .= $separator . get_string('markingworkflowstate' . $workflowstate, 'assign');
+            }
+        }
+
+        return $grade;
     }
 
     /**

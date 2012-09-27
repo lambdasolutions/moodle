@@ -158,6 +158,10 @@ class mod_assign_mod_form extends moodleform_mod {
         $mform->setDefault('sendlatenotifications', 1);
         $mform->disabledIf('sendlatenotifications', 'sendnotifications', 'eq', 1);
 
+        $mform->addElement('selectyesno', 'markingworkflow', get_string('markingworkflow', 'assign'));
+        $mform->addHelpButton('markingworkflow', 'markingworkflow', 'assign');
+        $mform->setDefault('markingworkflow', 0);
+
         // Plagiarism enabling form.
         if (!empty($CFG->enableplagiarism)) {
             require_once($CFG->libdir . '/plagiarismlib.php');
