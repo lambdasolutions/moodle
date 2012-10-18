@@ -647,7 +647,21 @@ class auth_plugin_ldap extends auth_plugin_base {
         $contexts = explode(';', $this->config->contexts);
 
         if (!empty($this->config->create_context)) {
-              array_push($contexts, $this->config->create_context);
+            array_push($contexts, $this->config->create_context);
+        }
+
+        // Verify if PHP supports LDAP paged results.
+        if ($this->config->ldap_version == '3' &&
+            function_exists('ldap_control_paged_result') &&
+            function_exists('ldap_control_paged_result_response')) {
+
+            $ldap_pagedresults = true;
+            $ldap_pagesize = 100;
+            $ldap_cookie = '';
+            print "Using LDAP paged results with page size of $ldap_pagesize\n";
+        } else {
+            $ldap_pagedresults = false;
+            print "LDAP paged results not supported in PHP\n";
         }
 
         $fresult = array();
@@ -656,30 +670,45 @@ class auth_plugin_ldap extends auth_plugin_base {
             if (empty($context)) {
                 continue;
             }
-            if ($this->config->search_sub) {
-                //use ldap_search to find first user from subtree
-                $ldap_result = ldap_search($ldapconnection, $context,
-                                           $filter,
-                                           array($this->config->user_attribute));
-            } else {
-                //search only in this context
-                $ldap_result = ldap_list($ldapconnection, $context,
-                                         $filter,
-                                         array($this->config->user_attribute));
-            }
 
-            if(!$ldap_result) {
-                continue;
-            }
+            do {
+                if ($ldap_pagedresults) {
+                    ldap_control_paged_result($ldapconnection, $ldap_pagesize, true, $ldap_cookie);
+                }
+                if ($this->config->search_sub) {
+                    // Use ldap_search to find first user from subtree.
+                    $ldap_result = ldap_search($ldapconnection, $context,
+                                               $filter,
+                                               array($this->config->user_attribute));
+                } else {
+                    // Search only in this context.
+                    $ldap_result = ldap_list($ldapconnection, $context,
+                                             $filter,
+                                             array($this->config->user_attribute));
+                }
 
-            if ($entry = @ldap_first_entry($ldapconnection, $ldap_result)) {
-                do {
-                    $value = ldap_get_values_len($ldapconnection, $entry, $this->config->user_attribute);
-                    $value = textlib::convert($value[0], $this->config->ldapencoding, 'utf-8');
-                    $this->ldap_bulk_insert($value);
-                } while ($entry = ldap_next_entry($ldapconnection, $entry));
-            }
-            unset($ldap_result); // free mem
+                if(!$ldap_result) {
+                    continue;
+                }
+
+                if ($ldap_pagedresults) {
+                    ldap_control_paged_result_response($ldapconnection, $ldap_result, $ldap_cookie);
+                }
+                if ($entry = @ldap_first_entry($ldapconnection, $ldap_result)) {
+                    do {
+                        $value = ldap_get_values_len($ldapconnection, $entry, $this->config->user_attribute);
+                        $value = textlib::convert($value[0], $this->config->ldapencoding, 'utf-8');
+                        $this->ldap_bulk_insert($value);
+                    } while ($entry = ldap_next_entry($ldapconnection, $entry));
+                }
+                unset($ldap_result); // Free mem.
+            } while ($ldap_pagedresults && !empty($ldap_cookie));
+        }
+
+        // If LDAP paged results was used, the current connection
+        // must be closed and a new one created.
+        if ($ldap_pagedresults) {
+            $this->ldap_close();
         }
 
         /// preserve our user database
@@ -1411,7 +1440,21 @@ class auth_plugin_ldap extends auth_plugin_base {
 
         $contexts = explode(';', $this->config->contexts);
         if (!empty($this->config->create_context)) {
-              array_push($contexts, $this->config->create_context);
+            array_push($contexts, $this->config->create_context);
+        }
+
+        // Verify if PHP supports LDAP paged results.
+        if ($this->config->ldap_version == '3' &&
+            function_exists('ldap_control_paged_result') &&
+            function_exists('ldap_control_paged_result_response')) {
+
+            $ldap_pagedresults = true;
+            $ldap_pagesize = 100;
+            $ldap_cookie = '';
+            print "Using LDAP paged results with page size of $ldap_pagesize\n";
+        } else {
+            $ldap_pagedresults = false;
+            print "LDAP paged results not supported in PHP\n";
         }
 
         foreach ($contexts as $context) {
@@ -1420,33 +1463,38 @@ class auth_plugin_ldap extends auth_plugin_base {
                 continue;
             }
 
-            if ($this->config->search_sub) {
-                // Use ldap_search to find first user from subtree
-                $ldap_result = ldap_search($ldapconnection, $context,
-                                           $filter,
-                                           array($this->config->user_attribute));
-            } else {
-                // Search only in this context
-                $ldap_result = ldap_list($ldapconnection, $context,
-                                         $filter,
-                                         array($this->config->user_attribute));
-            }
-
-            if(!$ldap_result) {
-                continue;
-            }
-
-            $users = ldap_get_entries_moodle($ldapconnection, $ldap_result);
-
-            // Add found users to list
-            for ($i = 0; $i < count($users); $i++) {
-                $extuser = textlib::convert($users[$i][$this->config->user_attribute][0],
-                                             $this->config->ldapencoding, 'utf-8');
-                array_push($fresult, $extuser);
-            }
+            do {
+                if ($ldap_pagedresults) {
+                    ldap_control_paged_result($ldapconnection, $ldap_pagesize, true, $ldap_cookie);
+                }
+                if ($this->config->search_sub) {
+                    // Use ldap_search to find first user from subtree.
+                    $ldap_result = ldap_search($ldapconnection, $context, $filter, array($this->config->user_attribute));
+                } else {
+                    // Search only in this context.
+                    $ldap_result = ldap_list($ldapconnection, $context, $filter, array($this->config->user_attribute));
+                }
+                if(!$ldap_result) {
+                    continue;
+                }
+                if ($ldap_pagedresults) {
+                    ldap_control_paged_result_response($ldapconnection, $ldap_result, $ldap_cookie);
+                }
+                $users = ldap_get_entries_moodle($ldapconnection, $ldap_result);
+                // Add found users to list.
+                for ($i = 0; $i < count($users); $i++) {
+                    $extuser = textlib::convert($users[$i][$this->config->user_attribute][0],
+                        $this->config->ldapencoding, 'utf-8');
+                    array_push($fresult, $extuser);
+                }
+                unset($ldap_result); // Free mem.
+            } while ($ldap_pagedresults && !empty($ldap_cookie));
         }
-
-        $this->ldap_close();
+        // If LDAP paged results was used, the current connection
+        // must be closed and a new one created.
+        if ($ldap_pagedresults) {
+            $this->ldap_close();
+        }
         return $fresult;
     }
 
