@@ -1173,6 +1173,51 @@ abstract class moodleform {
     }
 
     /**
+     * Use this method to rearrange elements using a $sortorder - called after form has been created.
+     *
+     * @param $sortorder array() sortorder of elements
+     * @param $advanced array() elements that should be set to be advanced
+     */
+    function rearrange_elements($sortorder, $advanced = '') {
+        if (!empty($sortorder)) {
+            $originalelements = $this->_form->_elements;
+            $namedelements = array();
+            $newelements = array();
+            // Get list of elements using name as the key.
+            $i=0;
+            foreach ($originalelements as $id => $element) {
+                if (!empty($element->_attributes['name'])) {
+                    $namedelements[$element->_attributes['name']] = $element;
+                } else if (!empty($element->_name)) {
+                    $namedelements[$element->_name] = $element;
+                } else {
+                    // This element didn't have a name - shouldn't happen but add it to the end so we don't lose it.
+                    $namedelements['AF235A3'.$i] = $element; // Prefix with some random txt so that it doesn't conflict with a real field.
+                    $i++;
+                }
+            }
+            // Get sorted fields.
+            foreach($sortorder as $item) {
+                if (isset($namedelements[$item])) {
+                    $newelements[] = $namedelements[$item];
+                    unset($namedelements[$item]);
+                }
+            }
+            // Now add the fields in the form that weren't included in the sortorder.
+            foreach($namedelements as $item) {
+                $newelements[] = $item;
+            }
+            $this->_form->_elements = $newelements;
+        }
+        if (!empty($advanced)) {
+            // Now handle the advanced settings.
+            foreach($advanced as $field) {
+                $this->_form->setAdvanced($field);
+            }
+        }
+    }
+
+    /**
      * Adds an initialisation call for a standard JavaScript enhancement.
      *
      * This function is designed to add an initialisation call for a JavaScript
