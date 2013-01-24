@@ -299,6 +299,27 @@ if ($user->id == -1 or ($user->id != $USER->id)) {
     echo $OUTPUT->header();
     echo $OUTPUT->heading($userfullname);
 }
+/*
+//Use this code to get the list of elements in the current order to insert into $fieldorder
+
+foreach ($userform->_form->_elements as $element) {
+    if (!empty($element->_attributes['name'])) {
+        echo $element->_attributes['name'].',';
+    } else if (!empty($element->_name)) {
+        echo $element->_name.',';
+    }
+}
+
+// An example of the field order for this page would be:
+// $fieldorder = "id,course,moodle,auth,username,suspended,passwordpolicyinfo,newpassword,preference_auth_forcepasswordchange,firstname,lastname,email,maildisplay,mailformat,maildigest,autosubscribe,trackforums,htmleditor,ajax,screenreader,city,country,timezone,lang,description_editor,moodle_picture,currentpicture,deletepicture,imagefile,imagealt,moodle_interests,interests,moodle_optional,url,icq,skype,aim,yahoo,msn,idnumber,institution,department,phone1,phone2,address,submitbutton,sesskey,_qf__user_editadvanced_form,";
+
+*/
+
+$fieldorder = get_config('userprofileorder', 'forms');
+
+if (!empty($fieldorder)) {
+    $userform->rearrange_elements(explode(',',$fieldorder));
+}
 
 /// Finally display THE form
 $userform->display();
