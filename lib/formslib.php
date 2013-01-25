@@ -1182,7 +1182,7 @@ abstract class moodleform {
         if (!empty($sortorder)) {
             $originalelements = $this->_form->_elements;
             $namedelements = array();
-            $newelements = array();
+
             // Get list of elements using name as the key.
             $i=0;
             foreach ($originalelements as $id => $element) {
@@ -1196,6 +1196,11 @@ abstract class moodleform {
                     $i++;
                 }
             }
+            $newelements = array();
+            // Always add id as the first element.
+            $newelements[] = $namedelements['id'];
+            unset($namedelements['id']);
+
             // Get sorted fields.
             foreach($sortorder as $item) {
                 if (isset($namedelements[$item])) {
