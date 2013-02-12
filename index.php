@@ -153,9 +153,17 @@
     include_course_ajax($SITE, $modnamesused);
 
     if (isloggedin() and !isguestuser() and isset($CFG->frontpageloggedin)) {
-        $frontpagelayout = $CFG->frontpageloggedin;
+        if (isset($PAGE->theme->settings->frontpageloggedin)) {
+            $frontpagelayout = $PAGE->theme->settings->frontpageloggedin;
+        } else {
+            $frontpagelayout = $CFG->frontpageloggedin;
+        }
     } else {
-        $frontpagelayout = $CFG->frontpage;
+        if (isset($PAGE->theme->settings->frontpage)) {
+            $frontpagelayout = $PAGE->theme->settings->frontpage;
+        } else {
+            $frontpagelayout = $CFG->frontpage;
+        }
     }
 
     foreach (explode(',',$frontpagelayout) as $v) {
