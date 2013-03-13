@@ -64,6 +64,7 @@ class mod_assign_generator extends testing_module_generator {
             'teamsubmissiongroupingid'          => 0,
             'blindmarking'                      => 0,
             'markingworkflow'                   => 0,
+            'markingallocation'                 => 0,
             'cmidnumber'                        => ''
         );
 

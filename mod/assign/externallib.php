@@ -96,7 +96,7 @@ class mod_assign_external extends external_api {
             $placeholders = array();
             list($inorequalsql, $placeholders) = $DB->get_in_or_equal($requestedassignmentids, SQL_PARAMS_NAMED);
             $sql = "SELECT ag.id,ag.assignment,ag.userid,ag.timecreated,ag.timemodified,".
-                   "ag.grader,ag.grade,ag.locked,ag.mailed,ag.workflowstate ".
+                   "ag.grader,ag.grade,ag.locked,ag.mailed,ag.workflowstate,ag.allocatedmarker ".
                    "FROM {assign_grades} ag ".
                    "WHERE ag.assignment ".$inorequalsql.
                    " AND ag.timemodified  >= :since".
@@ -116,6 +116,7 @@ class mod_assign_external extends external_api {
                 $grade['locked'] = $rd->locked;
                 $grade['mailed'] = $rd->mailed;
                 $grade['workflowstate'] = $rd->workflowstate;
+                $grade['allocatedmarker'] = $rd->allocatedmarker;
 
                 if (is_null($currentassignmentid) || ($rd->assignment != $currentassignmentid )) {
                     if (!is_null($assignment)) {
@@ -161,15 +162,16 @@ class mod_assign_external extends external_api {
                 'assignmentid'    => new external_value(PARAM_INT, 'assignment id'),
                 'grades'   => new external_multiple_structure(new external_single_structure(
                         array(
-                            'id'            => new external_value(PARAM_INT, 'grade id'),
-                            'userid'        => new external_value(PARAM_INT, 'student id'),
-                            'timecreated'   => new external_value(PARAM_INT, 'grade creation time'),
-                            'timemodified'  => new external_value(PARAM_INT, 'grade last modified time'),
-                            'grader'        => new external_value(PARAM_INT, 'grader'),
-                            'grade'         => new external_value(PARAM_TEXT, 'grade'),
-                            'locked'        => new external_value(PARAM_BOOL, 'locked'),
-                            'mailed'        => new external_value(PARAM_BOOL, 'mailed')
-                            'workflowstate' => new external_value(PARAM_TEXT, 'workflow state'),
+                            'id'              => new external_value(PARAM_INT, 'grade id'),
+                            'userid'          => new external_value(PARAM_INT, 'student id'),
+                            'timecreated'     => new external_value(PARAM_INT, 'grade creation time'),
+                            'timemodified'    => new external_value(PARAM_INT, 'grade last modified time'),
+                            'grader'          => new external_value(PARAM_INT, 'grader'),
+                            'grade'           => new external_value(PARAM_TEXT, 'grade'),
+                            'locked'          => new external_value(PARAM_BOOL, 'locked'),
+                            'mailed'          => new external_value(PARAM_BOOL, 'mailed'),
+                            'workflowstate'   => new external_value(PARAM_TEXT, 'workflow state'),
+                            'allocatedmarker' => new external_value(PARAM_INT, 'allocated marker'),
                         )
                     )
                 )

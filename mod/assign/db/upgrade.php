@@ -232,6 +232,30 @@ function xmldb_assign_upgrade($oldversion) {
     // Moodle v2.4.0 release upgrade line.
     // Put any upgrade step following this.
 
+    if ($oldversion < 2012112903) {
+
+        // Define field markingallocation to be added to assign.
+        $table = new xmldb_table('assign');
+        $field = new xmldb_field('markingallocation', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0', 'markingworkflow');
+
+        // Conditionally launch add field markingallocation.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Define field allocatedmarker to be added to assign_grades.
+        $table = new xmldb_table('assign_grades');
+        $field = new xmldb_field('allocatedmarker', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'workflowstate');
+
+        // Conditionally launch add field allocatedmarker.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Assign savepoint reached.
+        upgrade_mod_savepoint(true, 2012112903, 'assign');
+    }
+
     return true;
 }
 

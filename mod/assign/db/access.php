@@ -133,6 +133,15 @@ $capabilities = array(
         'clonepermissionsfrom' => 'moodle/grade:manage'
     ),
 
-);
+    'mod/assign:manageallocations' => array(
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'moodle/grade:manage'
+    ),
 
+);
 

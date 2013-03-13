@@ -63,7 +63,8 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
                                                   'teamsubmissiongroupingid',
                                                   'blindmarking',
                                                   'revealidentities',
-                                                  'markingworkflow'));
+                                                  'markingworkflow',
+                                                  'markingallocation'));
 
         $submissions = new backup_nested_element('submissions');
 
@@ -85,7 +86,8 @@ class backup_assign_activity_structure_step extends backup_activity_structure_st
                                                  'locked',
                                                  'mailed',
                                                  'extensionduedate',
-                                                 'workflowstate'));
+                                                 'workflowstate',
+                                                 'allocatedmarker'));
 
         $pluginconfigs = new backup_nested_element('plugin_configs');
 
