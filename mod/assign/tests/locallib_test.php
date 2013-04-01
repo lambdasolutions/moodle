@@ -843,4 +843,3 @@ class mod_assign_locallib_testcase extends mod_assign_base_testcase {
                                  'Should not be able to submit after cutoff date.');
     }
 }
-
