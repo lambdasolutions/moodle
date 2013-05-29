@@ -40,6 +40,14 @@ assign_plugin_manager::add_admin_assign_plugin_settings('assignsubmission', $ADM
 assign_plugin_manager::add_admin_assign_plugin_settings('assignfeedback', $ADMIN, $settings, $module);
 
 if ($ADMIN->fulltree) {
+
+    $name = new lang_string('requiremodintro', 'admin');
+    $description = new lang_string('configrequiremodintro', 'admin');
+    $settings->add(new admin_setting_configcheckbox('assign/requiremodintro',
+                                                    $name,
+                                                    $description,
+                                                    1));
+
     $menu = array();
     foreach (get_plugin_list('assignfeedback') as $type => $notused) {
         $visible = !get_config('assignfeedback_' . $type, 'disabled');

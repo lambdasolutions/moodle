@@ -45,6 +45,8 @@ class mod_assign_mod_form extends moodleform_mod {
         global $CFG, $DB, $PAGE;
         $mform = $this->_form;
 
+        $config = get_config('assign');
+
         $mform->addElement('header', 'general', get_string('general', 'form'));
 
         $mform->addElement('text', 'name', get_string('assignmentname', 'assign'), array('size'=>'64'));
@@ -56,7 +58,7 @@ class mod_assign_mod_form extends moodleform_mod {
         $mform->addRule('name', null, 'required', null, 'client');
         $mform->addRule('name', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
 
-        $this->add_intro_editor(true, get_string('description', 'assign'));
+        $this->add_intro_editor($config->requiremodintro, get_string('description', 'assign'));
 
         $ctx = null;
         if ($this->current && $this->current->coursemodule) {
