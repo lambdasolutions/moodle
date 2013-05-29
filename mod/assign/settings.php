@@ -25,6 +25,7 @@
 defined('MOODLE_INTERNAL') || die;
 
 require_once($CFG->dirroot . '/mod/assign/adminlib.php');
+require_once($CFG->dirroot . '/mod/assign/locallib.php');
 
 $ADMIN->add('modules', new admin_category('assignmentplugins',
                 new lang_string('assignmentplugins', 'assign'), $module->is_enabled() === false));
@@ -40,6 +41,8 @@ assign_plugin_manager::add_admin_assign_plugin_settings('assignsubmission', $ADM
 assign_plugin_manager::add_admin_assign_plugin_settings('assignfeedback', $ADMIN, $settings, $module);
 
 if ($ADMIN->fulltree) {
+    $yesno = array(0 => new lang_string('no'),
+                   1 => new lang_string('yes'));
 
     $name = new lang_string('requiremodintro', 'admin');
     $description = new lang_string('configrequiremodintro', 'admin');
@@ -94,4 +97,78 @@ if ($ADMIN->fulltree) {
                                                     $description,
                                                     0));
 
+    $name = new lang_string('modeditdefaults', 'admin');
+    $description = new lang_string('condifmodeditdefaults', 'admin');
+    $settings->add(new admin_setting_heading('assignmodeditdefaults', $name, $description));
+
+    $name = new lang_string('submissiondrafts', 'mod_assign');
+    $description = new lang_string('configsubmissiondrafts', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/submissiondrafts',
+                                                  $name,
+                                                  $description,
+                                                  0,
+                                                  $yesno));
+
+    $options = array(
+        ASSIGN_ATTEMPT_REOPEN_METHOD_NONE => get_string('attemptreopenmethod_none', 'mod_assign'),
+        ASSIGN_ATTEMPT_REOPEN_METHOD_MANUAL => get_string('attemptreopenmethod_manual', 'mod_assign'),
+        ASSIGN_ATTEMPT_REOPEN_METHOD_UNTILPASS => get_string('attemptreopenmethod_untilpass', 'mod_assign')
+    );
+    $name = new lang_string('attemptreopenmethod', 'mod_assign');
+    $description = new lang_string('configattemptreopenmethod', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/attemptreopenmethod',
+                                                  $name,
+                                                  $description,
+                                                  ASSIGN_ATTEMPT_REOPEN_METHOD_NONE,
+                                                  $options));
+
+    $options = array(ASSIGN_UNLIMITED_ATTEMPTS => get_string('unlimitedattempts', 'mod_assign'));
+    $options += array_combine(range(1, 30), range(1, 30));
+    $name = new lang_string('maxattempts', 'mod_assign');
+    $description = new lang_string('configmaxattempts', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/maxattempts',
+                                                  $name,
+                                                  $description,
+                                                  -1,
+                                                  $options));
+
+    $name = new lang_string('teamsubmission', 'mod_assign');
+    $description = new lang_string('configteamsubmission', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/teamsubmission',
+                                                  $name,
+                                                  $description,
+                                                  0,
+                                                  $yesno));
+
+    $name = new lang_string('requireallteammemberssubmit', 'mod_assign');
+    $description = new lang_string('configrequireallteammemberssubmit', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/requireallteammemberssubmit',
+                                                  $name,
+                                                  $description,
+                                                  0,
+                                                  $yesno));
+
+    $name = new lang_string('sendnotifications', 'mod_assign');
+    $description = new lang_string('configsendnotifications', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/sendnotifications',
+                                                  $name,
+                                                  $description,
+                                                  1,
+                                                  $yesno));
+
+    $name = new lang_string('sendlatenotifications', 'mod_assign');
+    $description = new lang_string('configsendlatenotifications', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/sendlatenotifications',
+                                                  $name,
+                                                  $description,
+                                                  1,
+                                                  $yesno));
+
+    $name = new lang_string('blindmarking', 'mod_assign');
+    $description = new lang_string('configblindmarking', 'mod_assign');
+    $settings->add(new admin_setting_configselect('assign/blindmarking',
+                                                  $name,
+                                                  $description,
+                                                  0,
+                                                  $yesno));
 }

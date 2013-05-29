@@ -107,7 +107,7 @@ class mod_assign_mod_form extends moodleform_mod {
         $name = get_string('submissiondrafts', 'assign');
         $mform->addElement('selectyesno', 'submissiondrafts', $name);
         $mform->addHelpButton('submissiondrafts', 'submissiondrafts', 'assign');
-        $mform->setDefault('submissiondrafts', 0);
+        $mform->setDefault('submissiondrafts', $config->submissiondrafts);
 
         if (empty($config->submissionstatement)) {
             $mform->addElement('hidden', 'requiresubmissionstatement', 0);
@@ -129,14 +129,14 @@ class mod_assign_mod_form extends moodleform_mod {
             ASSIGN_ATTEMPT_REOPEN_METHOD_UNTILPASS => get_string('attemptreopenmethod_untilpass', 'mod_assign')
         );
         $mform->addElement('select', 'attemptreopenmethod', get_string('attemptreopenmethod', 'mod_assign'), $options);
-        $mform->setDefault('attemptreopenmethod', ASSIGN_ATTEMPT_REOPEN_METHOD_NONE);
+        $mform->setDefault('attemptreopenmethod', $config->attemptreopenmethod);
         $mform->addHelpButton('attemptreopenmethod', 'attemptreopenmethod', 'mod_assign');
 
         $options = array(ASSIGN_UNLIMITED_ATTEMPTS => get_string('unlimitedattempts', 'mod_assign'));
         $options += array_combine(range(1, 30), range(1, 30));
         $mform->addElement('select', 'maxattempts', get_string('maxattempts', 'mod_assign'), $options);
         $mform->addHelpButton('maxattempts', 'maxattempts', 'assign');
-        $mform->setDefault('maxattempts', -1);
+        $mform->setDefault('maxattempts', $config->maxattempts);
         $mform->disabledIf('maxattempts', 'attemptreopenmethod', 'eq', ASSIGN_ATTEMPT_REOPEN_METHOD_NONE);
 
         $mform->addElement('header', 'groupsubmissionsettings', get_string('groupsubmissionsettings', 'assign'));
@@ -144,12 +144,12 @@ class mod_assign_mod_form extends moodleform_mod {
         $name = get_string('teamsubmission', 'assign');
         $mform->addElement('selectyesno', 'teamsubmission', $name);
         $mform->addHelpButton('teamsubmission', 'teamsubmission', 'assign');
-        $mform->setDefault('teamsubmission', 0);
+        $mform->setDefault('teamsubmission', $config->teamsubmission);
 
         $name = get_string('requireallteammemberssubmit', 'assign');
         $mform->addElement('selectyesno', 'requireallteammemberssubmit', $name);
         $mform->addHelpButton('requireallteammemberssubmit', 'requireallteammemberssubmit', 'assign');
-        $mform->setDefault('requireallteammemberssubmit', 0);
+        $mform->setDefault('requireallteammemberssubmit', $config->requireallteammemberssubmit);
         $mform->disabledIf('requireallteammemberssubmit', 'teamsubmission', 'eq', 0);
         $mform->disabledIf('requireallteammemberssubmit', 'submissiondrafts', 'eq', 0);
 
@@ -171,12 +171,12 @@ class mod_assign_mod_form extends moodleform_mod {
         $name = get_string('sendnotifications', 'assign');
         $mform->addElement('selectyesno', 'sendnotifications', $name);
         $mform->addHelpButton('sendnotifications', 'sendnotifications', 'assign');
-        $mform->setDefault('sendnotifications', 1);
+        $mform->setDefault('sendnotifications', $config->sendnotifications);
 
         $name = get_string('sendlatenotifications', 'assign');
         $mform->addElement('selectyesno', 'sendlatenotifications', $name);
         $mform->addHelpButton('sendlatenotifications', 'sendlatenotifications', 'assign');
-        $mform->setDefault('sendlatenotifications', 1);
+        $mform->setDefault('sendlatenotifications', $config->sendlatenotifications);
         $mform->disabledIf('sendlatenotifications', 'sendnotifications', 'eq', 1);
 
         // Plagiarism enabling form.
@@ -189,7 +189,7 @@ class mod_assign_mod_form extends moodleform_mod {
         $name = get_string('blindmarking', 'assign');
         $mform->addElement('selectyesno', 'blindmarking', $name);
         $mform->addHelpButton('blindmarking', 'blindmarking', 'assign');
-        $mform->setDefault('blindmarking', 0);
+        $mform->setDefault('blindmarking', $config->blindmarking);
         if ($assignment->has_submissions_or_grades() ) {
             $mform->freeze('blindmarking');
         }
