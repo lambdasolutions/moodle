@@ -6089,15 +6089,34 @@ class assign {
                                         $olditemid,
                                         'id',
                                         false);
+        // Modified function to upgrade files stored in turnitin_files tables.
+        $oldcontext = context_module::instance_by_id($oldcontextid);
+        $oldcm = $oldcontext->instanceid;
+        $newcontext = context_module::instance_by_id($newcontextid);
+        $newcm = $newcontext->instanceid;
         foreach ($oldfiles as $oldfile) {
             $filerecord = new stdClass();
             $filerecord->contextid = $newcontextid;
             $filerecord->component = $newcomponent;
             $filerecord->filearea = $newfilearea;
             $filerecord->itemid = $newitemid;
-            $fs->create_file_from_storedfile($filerecord, $oldfile);
+            $newfile = $fs->create_file_from_storedfile($filerecord, $oldfile);
+            // Start Turnitin Upgrade code.
+            $newpathname = $newfile->get_pathnamehash();
+            $oldpathname = $oldfile->get_pathnamehash();
+            if (!empty($oldpathname) && !empty($newpathname)) {
+                $turnitinfiles = $DB->get_recordset('plagiarism_turnitin_files', array('identifier' => $oldpathname, 'cm' => $oldcm));
+                foreach ($turnitinfiles as $tf) {
+                    $tf->cm = $newcm;
+                    $tf->identifier = $newpathname;
+                    $DB->update_record('plagiarism_turnitin_files', $tf);
+                }
+                $turnitinfiles->close();
+            }
             $count += 1;
         }
+        // Now update turnitin config with new cm.
+        $DB->set_field('plagiarism_turnitin_config', 'cm', $newcm, array('cm' => $oldcm));
 
         return $count;
     }
