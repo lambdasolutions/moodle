@@ -118,20 +118,24 @@ function scorm_add_instance($scorm, $mform=null) {
 
     $id = $DB->insert_record('scorm', $scorm);
 
-    /// update course module record - from now on this instance properly exists and all function may be used
+    // Update course module record - from now on this instance properly exists and all function may be used.
     $DB->set_field('course_modules', 'instance', $id, array('id'=>$cmid));
 
-    /// reload scorm instance
+    // Reload scorm instance.
     $record = $DB->get_record('scorm', array('id'=>$id));
 
-    /// store the package and verify
+    // Store the package and verify.
     if ($record->scormtype === SCORM_TYPE_LOCAL) {
-        if ($mform) {
-            $filename = $mform->get_new_filename('packagefile');
+        if ($data = $mform->get_data()) {
+            $fs = get_file_storage();
+            $fs->delete_area_files($context->id, 'mod_scorm', 'package');
+            file_save_draft_area_files($data->packagefile, $context->id, 'mod_scorm', 'package',
+                0, array('subdirs' => 0, 'maxfiles' => 1));
+            // Get filename of zip that was uploaded.
+            $files = $fs->get_area_files($context->id, 'mod_scorm', 'package', 0, '', false);
+            $file = reset($files);
+            $filename = $file->get_filename();
             if ($filename !== false) {
-                $fs = get_file_storage();
-                $fs->delete_area_files($context->id, 'mod_scorm', 'package');
-                $mform->save_stored_file('packagefile', $context->id, 'mod_scorm', 'package', 0, '/', $filename);
                 $record->reference = $filename;
             }
         }
@@ -147,10 +151,10 @@ function scorm_add_instance($scorm, $mform=null) {
         return false;
     }
 
-    // save reference
+    // Save reference.
     $DB->update_record('scorm', $record);
 
-    /// extra fields required in grade related functions
+    // Extra fields required in grade related functions.
     $record->course     = $courseid;
     $record->cmidnumber = $cmidnumber;
     $record->cmid       = $cmid;
@@ -1336,6 +1340,9 @@ function scorm_set_completion($scorm, $userid, $completionstate = COMPLETION_COM
 function scorm_validate_package($file) {
     $packer = get_file_packer('application/zip');
     $errors = array();
+    if ($file->is_external_file()) { // Get zip file so we can check it is correct.
+        $file->import_external_file_contents();
+    }
     $filelist = $file->list_files($packer);
 
     if (!is_array($filelist)) {

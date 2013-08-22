@@ -345,6 +345,7 @@ $string['typelocalsync'] = 'Downloaded package';
 $string['undercontent'] = 'Under content';
 $string['unziperror'] = 'An error occurs during package unzip';
 $string['updatefreq'] = 'Auto-update frequency';
+$string['updatefreq_error'] = 'Auto-update frequency can only be set when the package file is hosted externally';
 $string['updatefreq_help'] = 'This allows the external package to be automatically downloaded and updated';
 $string['updatefreqdesc'] = 'This preference sets the default auto-update frequency of an activity';
 $string['validateascorm'] = 'Validate a package';
