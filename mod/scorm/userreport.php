@@ -317,11 +317,11 @@ if (!empty($b)) {
         echo html_writer::table($table);
     }
     $table = new html_table();
-    $table->head = array(get_string('element', 'scorm'), get_string('elementdefinition', 'scorm'), get_string('value', 'scorm'));
+    $table->head = array(get_string('element', 'scorm'), get_string('value', 'scorm'));
     $table->align = array('left', 'left');
     $table->wrap = array('nowrap', 'wrap');
     $table->width = '100%';
-    $table->size = array('*', '*');
+    $table->size = array('30%', '70%');
 
     $existelements = false;
 
@@ -332,39 +332,38 @@ if (!empty($b)) {
                 $row = array();
                 $string=false;
                 if (stristr($element, '.id') !== false) {
-                    $string="interactionsid";
+                    $string="trackid";
                 } else if (stristr($element, '.result') !== false) {
-                    $string="interactionsresult";
-                } else if (stristr($element, '.student_response') !== false) {
-                    $string="interactionsresponse";
+                    $string="trackresult";
+                } else if (stristr($element, '.student_response') !== false or // SCORM 1.2 value.
+                           stristr($element, '.learner_response') !== false) { // SCORM 2004 value.
+                    $string="trackresponse";
                 } else if (stristr($element, '.type') !== false) {
-                    $string="interactionstype";
+                    $string="tracktype";
                 } else if (stristr($element, '.weighting') !== false) {
-                    $string="interactionsweight";
+                    $string="trackweight";
                 } else if (stristr($element, '.time') !== false) {
-                    $string="interactionstime";
+                    $string="tracktime";
                 } else if (stristr($element, '.correct_responses._count') !== false) {
-                    $string="interactionscorrectcount";
-                } else if (stristr($element, '.learner_response') !== false) {
-                    $string="interactionslearnerresponse";
+                    $string="trackcorrectcount";
                 } else if (stristr($element, '.score.min') !== false) {
-                    $string="interactionsscoremin";
+                    $string="trackscoremin";
                 } else if (stristr($element, '.score.max') !== false) {
-                    $string="interactionsscoremax";
+                    $string="trackscoremax";
                 } else if (stristr($element, '.score.raw') !== false) {
-                    $string="interactionsscoreraw";
+                    $string="trackscoreraw";
                 } else if (stristr($element, '.latency') !== false) {
-                    $string="interactionslatency";
+                    $string="tracklatency";
                 } else if (stristr($element, '.pattern') !== false) {
-                    $string="interactionspattern";
+                    $string="trackpattern";
                 } else if (stristr($element, '.suspend_data') !== false) {
-                    $string="interactionssuspenddata";
+                    $string="tracksuspenddata";
                 }
-                $row[]=$element;
+
                 if (empty($string)) {
-                    $row[]=null;
+                    $row[]=$element;
                 } else {
-                    $row[] = get_string($string, 'scorm');
+                    $row[]=$element.$OUTPUT->help_icon($string, 'scorm');
                 }
                 if (strpos($element, '_time') === false) {
                     $row[] = s($value);
