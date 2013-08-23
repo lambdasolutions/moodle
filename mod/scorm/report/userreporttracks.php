@@ -89,7 +89,7 @@ if (!$table->is_downloading($download)) {
 $table->define_baseurl($PAGE->url);
 $table->define_columns(array('element', 'value'));
 $table->define_headers(array(get_string('element', 'scorm'), get_string('value', 'scorm')));
-$table->set_attribute('class', 'generaltable generalbox boxaligncenter boxwidthwide');
+$table->set_attribute('class', 'generaltable generalbox boxaligncenter scormtrackreport');
 $table->show_download_buttons_at(array(TABLE_P_BOTTOM));
 $table->setup();
 
@@ -97,40 +97,40 @@ foreach ($trackdata as $element => $value) {
     if (substr($element, 0, 3) == 'cmi') {
         $existelements = true;
         $row = array();
-        $string=false;
+        $string = false;
         if (stristr($element, '.id') !== false) {
-            $string="trackid";
+            $string = "trackid";
         } else if (stristr($element, '.result') !== false) {
-            $string="trackresult";
+            $string = "trackresult";
         } else if (stristr($element, '.student_response') !== false or // SCORM 1.2 value.
             stristr($element, '.learner_response') !== false) { // SCORM 2004 value.
-            $string="trackresponse";
+            $string = "trackresponse";
         } else if (stristr($element, '.type') !== false) {
-            $string="tracktype";
+            $string = "tracktype";
         } else if (stristr($element, '.weighting') !== false) {
-            $string="trackweight";
+            $string = "trackweight";
         } else if (stristr($element, '.time') !== false) {
-            $string="tracktime";
+            $string = "tracktime";
         } else if (stristr($element, '.correct_responses._count') !== false) {
-            $string="trackcorrectcount";
+            $string = "trackcorrectcount";
         } else if (stristr($element, '.score.min') !== false) {
-            $string="trackscoremin";
+            $string = "trackscoremin";
         } else if (stristr($element, '.score.max') !== false) {
-            $string="trackscoremax";
+            $string = "trackscoremax";
         } else if (stristr($element, '.score.raw') !== false) {
-            $string="trackscoreraw";
+            $string = "trackscoreraw";
         } else if (stristr($element, '.latency') !== false) {
-            $string="tracklatency";
+            $string = "tracklatency";
         } else if (stristr($element, '.pattern') !== false) {
-            $string="trackpattern";
+            $string = "trackpattern";
         } else if (stristr($element, '.suspend_data') !== false) {
-            $string="tracksuspenddata";
+            $string = "tracksuspenddata";
         }
 
         if (empty($string) || $table->is_downloading()) {
-            $row[]=$element;
+            $row[] = $element;
         } else {
-            $row[]=$element.$OUTPUT->help_icon($string, 'scorm');
+            $row[] = $element.$OUTPUT->help_icon($string, 'scorm');
         }
         if (strpos($element, '_time') === false) {
             $row[] = s($value);
