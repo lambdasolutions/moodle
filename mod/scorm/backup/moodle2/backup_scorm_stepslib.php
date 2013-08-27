@@ -51,7 +51,7 @@ class backup_scorm_activity_structure_step extends backup_activity_structure_ste
 
         $sco = new backup_nested_element('sco', array('id'), array(
             'manifest', 'organization', 'parent', 'identifier',
-            'launch', 'scormtype', 'title'));
+            'launch', 'scormtype', 'title', 'sortorder'));
 
         $scodatas = new backup_nested_element('sco_datas');
 
@@ -133,7 +133,7 @@ class backup_scorm_activity_structure_step extends backup_activity_structure_ste
                 SELECT *
                 FROM {scorm_scoes}
                 WHERE scorm = :scorm
-                ORDER BY id',
+                ORDER BY sortorder, id',
             array('scorm' => backup::VAR_PARENTID));
 
         $scodata->set_source_sql('

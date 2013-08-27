@@ -105,7 +105,7 @@ echo get_string('attempt', 'scorm').': '.$attempt;
 echo '</div>'."\n";
 echo $OUTPUT->box_end();
 
-if ($scoes = $DB->get_records_select('scorm_scoes', "scorm=? ORDER BY id", array($scorm->id))) {
+if ($scoes = $DB->get_records('scorm_scoes', array('scorm' => $scorm->id), 'sortorder, id')) {
     // Print general score data
     $table = new html_table();
     $table->head = array(
