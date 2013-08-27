@@ -72,7 +72,6 @@ $questioncount = get_scorm_question_count($scorm->id);
 
 // Set up the table.
 $table = new flexible_table('mod-scorm-userreport-interactions');
-
 if (!$table->is_downloading($download)) {
 
     // Print the page header.
@@ -96,9 +95,13 @@ if (!$table->is_downloading($download)) {
     echo $output->view_user_heading($user, $course, $PAGE->url, $pattempt, $maxattempt);
 
 }
+$strresponse = get_string('response', 'scorm');
+if ($download == 'excel') {
+    $strresponse .= " __________________________________";
+}
 $table->define_baseurl($PAGE->url);
 $table->define_columns(array('id', 'studentanswer', 'correctanswer', 'result', 'calcweight'));
-$table->define_headers(array(get_string('trackid', 'scorm'), get_string('response', 'scorm'),
+$table->define_headers(array(get_string('trackid', 'scorm'), $strresponse,
     get_string('rightanswer', 'scorm'), get_string('result', 'scorm'),
     get_string('calculatedweight', 'scorm')));
 $table->set_attribute('class', 'generaltable generalbox boxaligncenter boxwidthwide');
