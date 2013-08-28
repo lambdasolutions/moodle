@@ -19,7 +19,7 @@ require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 
 $id = optional_param('id', '', PARAM_INT);       // Course Module ID, or
 $a = optional_param('a', '', PARAM_INT);         // scorm ID
-$organization = optional_param('organization', '', PARAM_INT); // organization ID
+$organization = optional_param('organization', '', PARAM_INT); // organization ID.
 $action = optional_param('action', '', PARAM_ALPHA);
 
 if (!empty($id)) {
@@ -69,7 +69,7 @@ if (!empty($scorm->popup)) {
         has_capability('mod/scorm:skipview', $contextmodule) &&
         !has_capability('mod/scorm:viewreport', $contextmodule)) { // Don't skip users with the capability to view reports.
 
-        // do we launch immediately and redirect the parent back ?
+        // Do we launch immediately and redirect the parent back?
         if ($scorm->skipview == SCORM_SKIPVIEW_ALWAYS || !scorm_has_tracks($scorm->id, $USER->id)) {
             $orgidentifier = '';
             if ($sco = scorm_get_sco($scorm->launch, SCO_ONLY)) {
@@ -78,7 +78,16 @@ if (!empty($scorm->popup)) {
                 } else {
                     $orgidentifier = $sco->organization;
                 }
-                $scoid = $sco->id;
+                // Sanity check sco.
+                if (!empty($sco->launch) && $sco->scorm == $scorm->id) {
+                    $scoid = $sco->id;
+                } else {
+                    // Get first launchable sco.
+                    $sqlselect = 'scorm = ? AND '.$DB->sql_isnotempty('scorm_scoes', 'launch', false, true);
+                    $scoes = $DB->get_records_select('scorm_scoes', $sqlselect, array($scorm->id), 'id', 'id', 0, 1);
+                    $sco = current($scoes);
+                    $scoid = $sco->id;
+                }
             }
             $launch = true;
         }
@@ -110,9 +119,7 @@ if (empty($launch) && (has_capability('mod/scorm:skipview', $contextmodule))) {
     scorm_simple_play($scorm, $USER, $contextmodule, $cm->id);
 }
 
-//
-// Print the page header
-//
+// Print the page header.
 $PAGE->set_title($pagetitle);
 $PAGE->set_heading($course->fullname);
 echo $OUTPUT->header();
@@ -124,7 +131,7 @@ if (!empty($action) && confirm_sesskey() && has_capability('mod/scorm:deleteownr
         echo $OUTPUT->footer();
         exit;
     } else if ($action == 'deleteconfirm') {
-        //delete this users attempts.
+        // Delete this users attempts.
         $DB->delete_records('scorm_scoes_track', array('userid' => $USER->id, 'scormid' => $scorm->id));
         scorm_update_grades($scorm, $USER->id, true);
         echo $OUTPUT->notification(get_string('scormresponsedeleted', 'scorm'), 'notifysuccess');
@@ -134,7 +141,7 @@ if (!empty($action) && confirm_sesskey() && has_capability('mod/scorm:deleteownr
 $currenttab = 'info';
 require($CFG->dirroot . '/mod/scorm/tabs.php');
 
-// Print the main part of the page
+// Print the main part of the page.
 echo $OUTPUT->heading(format_string($scorm->name));
 $attemptstatus = '';
 if (empty($launch) && ($scorm->displayattemptstatus == SCORM_DISPLAY_ATTEMPTSTATUS_ALL ||
