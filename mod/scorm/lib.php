@@ -520,9 +520,9 @@ function scorm_cron () {
     require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 
     $sitetimezone = $CFG->timezone;
-    /// Now see if there are any scorm updates to be done
+    // Now see if there are any scorm updates to be done.
 
-    if (!isset($CFG->scorm_updatetimelast)) {    // To catch the first time
+    if (!isset($CFG->scorm_updatetimelast)) {    // To catch the first time.
         set_config('scorm_updatetimelast', 0);
     }
 
@@ -533,17 +533,17 @@ function scorm_cron () {
 
         set_config('scorm_updatetimelast', $timenow);
 
-        mtrace('Updating scorm packages which require daily update');//We are updating
+        mtrace('Updating scorm packages which require daily update');// We are updating.
 
-        $scormsupdate = $DB->get_records_select('scorm', 'updatefreq = ? AND scormtype <> ?', array(SCORM_UPDATE_EVERYDAY, SCORM_TYPE_LOCAL));
+        $scormsupdate = $DB->get_records('scorm', array('updatefreq' => SCORM_UPDATE_EVERYDAY));
         foreach ($scormsupdate as $scormupdate) {
             scorm_parse($scormupdate, true);
         }
 
-        //now clear out AICC session table with old session data
-        $cfg_scorm = get_config('scorm');
-        if (!empty($cfg_scorm->allowaicchacp)) {
-            $expiretime = time() - ($cfg_scorm->aicchacpkeepsessiondata*24*60*60);
+        // Now clear out AICC session table with old session data.
+        $cfgscorm = get_config('scorm');
+        if (!empty($cfgscorm->allowaicchacp)) {
+            $expiretime = time() - ($cfgscorm->aicchacpkeepsessiondata*24*60*60);
             $DB->delete_records_select('scorm_aicc_session', 'timemodified < ?', array($expiretime));
         }
     }
