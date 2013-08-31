@@ -1884,3 +1884,12 @@ function scorm_check_url($url) {
 
     return true;
 }
+
+// Helper function.
+function scorm_isset($userdata, $param, $ifempty = '') {
+    if (isset($userdata->$param)) {
+        return $userdata->$param;
+    }  else {
+        return $ifempty;
+    }
+}

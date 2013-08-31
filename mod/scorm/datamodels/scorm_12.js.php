@@ -30,7 +30,51 @@ if (isset($userdata->status)) {
 if (!isset($currentorg)) {
     $currentorg = '';
 }
+// Set some vars to use as default values.
+$def = array();
+$def['cmi.core.student_id'] = $userdata->student_id;
+$def['cmi.core.student_name'] = $userdata->student_name;
+$def['cmi.core.credit'] = $userdata->credit;
+$def['cmi.core.entry'] = $userdata->entry;
+$def['cmi.core.lesson_mode'] = $userdata->mode;
+$def['cmi.launch_data'] = scorm_isset($userdata, 'datafromlms');
+$def['cmi.student_data.mastery_score'] = scorm_isset($userdata, 'masteryscore');
+$def['cmi.student_data.max_time_allowed'] = scorm_isset($userdata, 'maxtimeallowed');
+$def['cmi.student_data.time_limit_action'] = scorm_isset($userdata, 'timelimitaction');
+$def['cmi.core.total_time'] = scorm_isset($userdata, 'cmi.core.total_time', '00:00:00');
+
+// Now handle standard userdata items:
+$def['cmi.core.lesson_location'] = scorm_isset($userdata, 'cmi.core.lesson_location');
+$def['cmi.core.lesson_status'] = scorm_isset($userdata, 'cmi.core.lesson_status');
+$def['cmi.core.score.raw'] = scorm_isset($userdata, 'cmi.core.score.raw');
+$def['cmi.core.score.max'] = scorm_isset($userdata, 'cmi.core.score.max');
+$def['cmi.core.score.min'] = scorm_isset($userdata, 'cmi.core.score.min');
+$def['cmi.core.exit'] = scorm_isset($userdata, 'cmi.core.exit');
+$def['cmi.suspend_data'] = scorm_isset($userdata, 'cmi.suspend_data');
+$def['cmi.comments'] = scorm_isset($userdata, 'cmi.comments');
+$def['cmi.student_preference.language'] = scorm_isset($userdata, 'cmi.student_preference.language');
+$def['cmi.student_preference.audio'] = scorm_isset($userdata, 'cmi.student_preference.audio', '0');
+$def['cmi.student_preference.speed'] = scorm_isset($userdata, 'cmi.student_preference.speed', '0');
+$def['cmi.student_preference.text'] = scorm_isset($userdata, 'cmi.student_preference.text', '0');
+
+echo js_writer::set_variable('def', $def);
+
+echo js_writer::set_variable('scormdebugging', scorm_debugging($scorm));
+echo js_writer::set_variable('scormauto', $scorm->auto);
+echo js_writer::set_variable('scormid', $scorm->id);
+echo js_writer::set_variable('cfgwwwroot', $CFG->wwwroot);
+echo js_writer::set_variable('sesskey', sesskey());
+echo js_writer::set_variable('scoid', $scoid);
+echo js_writer::set_variable('attempt', $attempt);
+echo js_writer::set_variable('viewmode', $mode);
+echo js_writer::set_variable('cmid', $id);
+echo js_writer::set_variable('currentorg', $currentorg);
 ?>
+
+var prerequrl = cfgwwwroot + "/mod/scorm/prereqs.php?a="+scormid+"&scoid="+scoid+"&attempt="+attempt+"&mode="+viewmode+"&currentorg="+currentorg+"&sesskey="+sesskey;
+var datamodelurl = cfgwwwroot + "/mod/scorm/datamodel.php";
+var datamodelurlparams = "id="+cmid+"&a="+scormid+"&sesskey="+sesskey+"&attempt="+attempt+"&scoid="+scoid;
+
 //
 // SCORM 1.2 API Implementation
 //
@@ -74,23 +118,23 @@ function SCORMapi1_2() {
         'cmi._children':{'defaultvalue':cmi_children, 'mod':'r', 'writeerror':'402'},
         'cmi._version':{'defaultvalue':'3.4', 'mod':'r', 'writeerror':'402'},
         'cmi.core._children':{'defaultvalue':core_children, 'mod':'r', 'writeerror':'402'},
-        'cmi.core.student_id':{'defaultvalue':'<?php echo $userdata->student_id ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.core.student_name':{'defaultvalue':'<?php echo $userdata->student_name ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.core.lesson_location':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.lesson_location'})?$userdata->{'cmi.core.lesson_location'}:'' ?>', 'format':CMIString256, 'mod':'rw', 'writeerror':'405'},
-        'cmi.core.credit':{'defaultvalue':'<?php echo $userdata->credit ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.core.lesson_status':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.lesson_status'})?$userdata->{'cmi.core.lesson_status'}:'' ?>', 'format':CMIStatus, 'mod':'rw', 'writeerror':'405'},
-        'cmi.core.entry':{'defaultvalue':'<?php echo $userdata->entry ?>', 'mod':'r', 'writeerror':'403'},
+        'cmi.core.student_id':{'defaultvalue':def['cmi.core.student_id'], 'mod':'r', 'writeerror':'403'},
+        'cmi.core.student_name':{'defaultvalue':def['cmi.core.student_name'], 'mod':'r', 'writeerror':'403'},
+        'cmi.core.lesson_location':{'defaultvalue':def['cmi.core.lesson_location'], 'format':CMIString256, 'mod':'rw', 'writeerror':'405'},
+        'cmi.core.credit':{'defaultvalue':def['cmi.core.credit'], 'mod':'r', 'writeerror':'403'},
+        'cmi.core.lesson_status':{'defaultvalue':def['cmi.core.lesson_status'] , 'format':CMIStatus, 'mod':'rw', 'writeerror':'405'},
+        'cmi.core.entry':{'defaultvalue':def['cmi.core.entry'], 'mod':'r', 'writeerror':'403'},
         'cmi.core.score._children':{'defaultvalue':score_children, 'mod':'r', 'writeerror':'402'},
-        'cmi.core.score.raw':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.score.raw'})?$userdata->{'cmi.core.score.raw'}:'' ?>', 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
-        'cmi.core.score.max':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.score.max'})?$userdata->{'cmi.core.score.max'}:'' ?>', 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
-        'cmi.core.score.min':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.score.min'})?$userdata->{'cmi.core.score.min'}:'' ?>', 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
-        'cmi.core.total_time':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.total_time'})?$userdata->{'cmi.core.total_time'}:'00:00:00' ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.core.lesson_mode':{'defaultvalue':'<?php echo $userdata->mode ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.core.exit':{'defaultvalue':'<?php echo isset($userdata->{'cmi.core.exit'})?$userdata->{'cmi.core.exit'}:'' ?>', 'format':CMIExit, 'mod':'w', 'readerror':'404', 'writeerror':'405'},
+        'cmi.core.score.raw':{'defaultvalue':def['cmi.core.score.raw'], 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
+        'cmi.core.score.max':{'defaultvalue':def['cmi.core.score.max'], 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
+        'cmi.core.score.min':{'defaultvalue':def['cmi.core.score.min'], 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
+        'cmi.core.total_time':{'defaultvalue':def['cmi.core.total_time'], 'mod':'r', 'writeerror':'403'},
+        'cmi.core.lesson_mode':{'defaultvalue':def['cmi.core.lesson_mode'], 'mod':'r', 'writeerror':'403'},
+        'cmi.core.exit':{'defaultvalue':def['cmi.core.exit'], 'format':CMIExit, 'mod':'w', 'readerror':'404', 'writeerror':'405'},
         'cmi.core.session_time':{'format':CMITimespan, 'mod':'w', 'defaultvalue':'00:00:00', 'readerror':'404', 'writeerror':'405'},
-        'cmi.suspend_data':{'defaultvalue':'<?php echo isset($userdata->{'cmi.suspend_data'})?$userdata->{'cmi.suspend_data'}:'' ?>', 'format':CMIString4096, 'mod':'rw', 'writeerror':'405'},
-        'cmi.launch_data':{'defaultvalue':'<?php echo isset($userdata->datafromlms)?$userdata->datafromlms:'' ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.comments':{'defaultvalue':'<?php echo isset($userdata->{'cmi.comments'})?$userdata->{'cmi.comments'}:'' ?>', 'format':CMIString4096, 'mod':'rw', 'writeerror':'405'},
+        'cmi.suspend_data':{'defaultvalue':def['cmi.suspend_data'], 'format':CMIString4096, 'mod':'rw', 'writeerror':'405'},
+        'cmi.launch_data':{'defaultvalue':def['cmi.launch_data'], 'mod':'r', 'writeerror':'403'},
+        'cmi.comments':{'defaultvalue':def['cmi.comments'], 'format':CMIString4096, 'mod':'rw', 'writeerror':'405'},
         // deprecated evaluation attributes
         'cmi.evaluation.comments._count':{'defaultvalue':'0', 'mod':'r', 'writeerror':'402'},
         'cmi.evaluation.comments._children':{'defaultvalue':comments_children, 'mod':'r', 'writeerror':'402'},
@@ -107,14 +151,14 @@ function SCORMapi1_2() {
         'cmi.objectives.n.score.max':{'defaultvalue':'', 'pattern':CMIIndex, 'format':CMIDecimal, 'range':score_range, 'mod':'rw', 'writeerror':'405'},
         'cmi.objectives.n.status':{'pattern':CMIIndex, 'format':CMIStatus2, 'mod':'rw', 'writeerror':'405'},
         'cmi.student_data._children':{'defaultvalue':student_data_children, 'mod':'r', 'writeerror':'402'},
-        'cmi.student_data.mastery_score':{'defaultvalue':'<?php echo isset($userdata->masteryscore)?$userdata->masteryscore:'' ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.student_data.max_time_allowed':{'defaultvalue':'<?php echo isset($userdata->maxtimeallowed)?$userdata->maxtimeallowed:'' ?>', 'mod':'r', 'writeerror':'403'},
-        'cmi.student_data.time_limit_action':{'defaultvalue':'<?php echo isset($userdata->timelimitaction)?$userdata->timelimitaction:'' ?>', 'mod':'r', 'writeerror':'403'},
+        'cmi.student_data.mastery_score':{'defaultvalue':def['cmi.student_data.mastery_score'], 'mod':'r', 'writeerror':'403'},
+        'cmi.student_data.max_time_allowed':{'defaultvalue':def['cmi.student_data.max_time_allowed'], 'mod':'r', 'writeerror':'403'},
+        'cmi.student_data.time_limit_action':{'defaultvalue':def['cmi.student_data.time_limit_action'], 'mod':'r', 'writeerror':'403'},
         'cmi.student_preference._children':{'defaultvalue':student_preference_children, 'mod':'r', 'writeerror':'402'},
-        'cmi.student_preference.audio':{'defaultvalue':'0', 'format':CMISInteger, 'range':audio_range, 'mod':'rw', 'writeerror':'405'},
-        'cmi.student_preference.language':{'defaultvalue':'', 'format':CMIString256, 'mod':'rw', 'writeerror':'405'},
-        'cmi.student_preference.speed':{'defaultvalue':'0', 'format':CMISInteger, 'range':speed_range, 'mod':'rw', 'writeerror':'405'},
-        'cmi.student_preference.text':{'defaultvalue':'0', 'format':CMISInteger, 'range':text_range, 'mod':'rw', 'writeerror':'405'},
+        'cmi.student_preference.audio':{'defaultvalue':def['cmi.student_preference.audio'], 'format':CMISInteger, 'range':audio_range, 'mod':'rw', 'writeerror':'405'},
+        'cmi.student_preference.language':{'defaultvalue':def['cmi.student_preference.language'], 'format':CMIString256, 'mod':'rw', 'writeerror':'405'},
+        'cmi.student_preference.speed':{'defaultvalue':def['cmi.student_preference.speed'], 'format':CMISInteger, 'range':speed_range, 'mod':'rw', 'writeerror':'405'},
+        'cmi.student_preference.text':{'defaultvalue':def['cmi.student_preference.text'], 'format':CMISInteger, 'range':text_range, 'mod':'rw', 'writeerror':'405'},
         'cmi.interactions._children':{'defaultvalue':interactions_children, 'mod':'r', 'writeerror':'402'},
         'cmi.interactions._count':{'mod':'r', 'defaultvalue':'0', 'writeerror':'402'},
         'cmi.interactions.n.id':{'pattern':CMIIndex, 'format':CMIIdentifier, 'mod':'w', 'readerror':'404', 'writeerror':'405'},
@@ -178,11 +222,9 @@ function SCORMapi1_2() {
             if (!Initialized) {
                 Initialized = true;
                 errorCode = "0";
-                <?php
-                    if (scorm_debugging($scorm)) {
-                        echo 'LogAPICall("LMSInitialize", param, "", errorCode);';
-                    }
-                ?>
+                if (scormdebugging) {
+                    LogAPICall("LMSInitialize", param, "", errorCode);
+                }
                 return "true";
             } else {
                 errorCode = "101";
@@ -190,11 +232,9 @@ function SCORMapi1_2() {
         } else {
             errorCode = "201";
         }
-        <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSInitialize", param, "", errorCode);';
-            }
-        ?>
+        if (scormdebugging) {
+            LogAPICall("LMSInitialize", param, "", errorCode);
+        }
         return "false";
     }
 
@@ -211,29 +251,25 @@ function SCORMapi1_2() {
                         setTimeout('mod_scorm_launch_prev_sco();',500);
                     }
                 } else {
-                    if (<?php echo $scorm->auto ?> == 1) {
+                    if (scormauto == 1) {
                         setTimeout('mod_scorm_launch_next_sco();',500);
                     }
                 }
-                <?php
-                    if (scorm_debugging($scorm)) {
-                        echo 'LogAPICall("LMSFinish", "AJAXResult", result, 0);';
-                    }
-                ?>
+                if (scormdebugging) {
+                    LogAPICall("LMSFinish", "AJAXResult", result, 0);
+                }
                 result = ('true' == result) ? 'true' : 'false';
                 errorCode = (result == 'true')? '0' : '101';
-                <?php
-                    if (scorm_debugging($scorm)) {
-                        echo 'LogAPICall("LMSFinish", "result", result, 0);';
-                        echo 'LogAPICall("LMSFinish", param, "", 0);';
-                    }
-                ?>
+                if (scormdebugging) {
+                    LogAPICall("LMSFinish", "result", result, 0);
+                    LogAPICall("LMSFinish", param, "", 0);
+                }
+
                 // trigger TOC update
-                var sURL = "<?php echo $CFG->wwwroot; ?>" + "/mod/scorm/prereqs.php?a=<?php echo $scorm->id ?>&scoid=<?php echo $scoid ?>&attempt=<?php echo $attempt ?>&mode=<?php echo $mode ?>&currentorg=<?php echo $currentorg ?>&sesskey=<?php echo sesskey(); ?>";
                 var callback = M.mod_scorm.connectPrereqCallback;
                 YUI().use('io-base', function(Y) {
                     Y.on('io:complete', callback.success, Y);
-                    Y.io(sURL);
+                    Y.io(prerequrl);
                 });
                 return result;
             } else {
@@ -242,11 +278,9 @@ function SCORMapi1_2() {
         } else {
             errorCode = "201";
         }
-        <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSFinish", param, "", errorCode);';
-            }
-        ?>
+        if (scormdebugging) {
+            LogAPICall("LMSFinish", param, "", errorCode);
+        }
         return "false";
     }
 
@@ -265,13 +299,11 @@ function SCORMapi1_2() {
                         while ((i < elementIndexes.length) && (typeof eval(subelement) != "undefined")) {
                             subelement += '.'+elementIndexes[i++];
                         }
-                            if (subelement == element) {
+                        if (subelement == element) {
                             errorCode = "0";
-                            <?php
-                                if (scorm_debugging($scorm)) {
-                                    echo 'LogAPICall("LMSGetValue", element, eval(element), 0);';
-                                }
-                            ?>
+                            if (scormdebugging) {
+                                LogAPICall("LMSGetValue", element, eval(element), 0);
+                            }
                             return eval(element);
                         } else {
                             errorCode = "0"; // Need to check if it is the right errorCode
@@ -306,11 +338,9 @@ function SCORMapi1_2() {
         } else {
             errorCode = "301";
         }
-        <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSGetValue", element, "", errorCode);';
-            }
-        ?>
+        if (scormdebugging) {
+            LogAPICall("LMSGetValue", element, "", errorCode);
+        }
         return "";
     }
 
@@ -376,11 +406,9 @@ function SCORMapi1_2() {
                                     if ((value >= ranges[0]) && (value <= ranges[1])) {
                                         eval(element+'=value;');
                                         errorCode = "0";
-                                        <?php
-                                            if (scorm_debugging($scorm)) {
-                                                echo 'LogAPICall("LMSSetValue", element, value, errorCode);';
-                                            }
-                                        ?>
+                                        if (scormdebugging) {
+                                            LogAPICall("LMSSetValue", element, value, errorCode);
+                                        }
                                         return "true";
                                     } else {
                                         errorCode = eval('datamodel["'+elementmodel+'"].writeerror');
@@ -392,11 +420,9 @@ function SCORMapi1_2() {
                                         eval(element+'=value;');
                                     }
                                     errorCode = "0";
-                                    <?php
-                                        if (scorm_debugging($scorm)) {
-                                            echo 'LogAPICall("LMSSetValue", element, value, errorCode);';
-                                        }
-                                    ?>
+                                    if (scormdebugging) {
+                                        LogAPICall("LMSSetValue", element, value, errorCode);
+                                    }
                                     return "true";
                                 }
                             }
@@ -415,11 +441,9 @@ function SCORMapi1_2() {
         } else {
             errorCode = "301";
         }
-       <?php
-        if (scorm_debugging($scorm)) {
-            echo 'LogAPICall("LMSSetValue", element, value, errorCode);';
+        if (scormdebugging) {
+            LogAPICall("LMSSetValue", element, value, errorCode);
         }
-        ?>
         return "false";
     }
 
@@ -429,30 +453,21 @@ function SCORMapi1_2() {
             if (Initialized) {
                 result = StoreData(cmi,false);
                 // trigger TOC update
-                var sURL = "<?php echo $CFG->wwwroot; ?>" + "/mod/scorm/prereqs.php?a=<?php echo $scorm->id ?>&scoid=<?php echo $scoid ?>&attempt=<?php echo $attempt ?>&mode=<?php echo $mode ?>&currentorg=<?php echo $currentorg ?>&sesskey=<?php echo sesskey(); ?>";
                 var callback = M.mod_scorm.connectPrereqCallback;
                 YUI().use('io-base', function(Y) {
                     Y.on('io:complete', callback.success, Y);
-                    Y.io(sURL);
+                    Y.io(prerequrl);
                 });
-                <?php
-                    if (scorm_debugging($scorm)) {
-                        echo 'LogAPICall("Commit", param, "", 0);';
-                    }
-                ?>
-                <?php
-                    if (scorm_debugging($scorm)) {
-                        echo 'LogAPICall("LMSCommit", "AJAXResult", result, 0);';
-                    }
-                ?>
+                if (scormdebugging) {
+                    LogAPICall("Commit", param, "", 0);
+                    LogAPICall("LMSCommit", "AJAXResult", result, 0);
+                }
                 result = ('true' == result) ? 'true' : 'false';
                 errorCode = (result =='true')? '0' : '101';
-                <?php
-                    if (scorm_debugging($scorm)) {
-                        echo 'LogAPICall("LMSCommit", "result", result, 0);';
-                        echo 'LogAPICall("LMSCommit", "errorCode", errorCode, 0);';
-                    }
-                ?>
+                if (scormdebugging) {
+                    LogAPICall("LMSCommit", "result", result, 0);
+                    LogAPICall("LMSCommit", "errorCode", errorCode, 0);
+                }
                 return result;
             } else {
                 errorCode = "301";
@@ -460,20 +475,16 @@ function SCORMapi1_2() {
         } else {
             errorCode = "201";
         }
-        <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSCommit", param, "", 0);';
-            }
-        ?>
+        if (scormdebugging) {
+            LogAPICall("LMSCommit", param, "", 0);
+        }
         return "false";
     }
 
     function LMSGetLastError () {
-     <?php
-        if (scorm_debugging($scorm)) {
-            echo 'LogAPICall("LMSGetLastError", "", "", errorCode);';
+        if (scormdebugging) {
+            LogAPICall("LMSGetLastError", "", "", errorCode);
         }
-    ?>
         return errorCode;
     }
 
@@ -491,19 +502,15 @@ function SCORMapi1_2() {
             errorString["403"] = "Element is read only";
             errorString["404"] = "Element is write only";
             errorString["405"] = "Incorrect data type";
-            <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSGetErrorString", param,  errorString[param], 0);';
+            if (scormdebugging) {
+                LogAPICall("LMSGetErrorString", param,  errorString[param], 0);
             }
-             ?>
             return errorString[param];
         } else {
-           <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSGetErrorString", param,  "No error string found!", 0);';
+            if (scormdebugging) {
+                LogAPICall("LMSGetErrorString", param,  "No error string found!", 0);
             }
-             ?>
-           return "";
+            return "";
         }
     }
 
@@ -511,11 +518,9 @@ function SCORMapi1_2() {
         if (param == "") {
             param = errorCode;
         }
-        <?php
-            if (scorm_debugging($scorm)) {
-                echo 'LogAPICall("LMSGetDiagnostic", param, param, 0);';
-            }
-        ?>
+        if (scormdebugging) {
+            LogAPICall("LMSGetDiagnostic", param, param, 0);
+        }
         return param;
     }
 
@@ -671,12 +676,9 @@ function SCORMapi1_2() {
         } else {
             datastring = CollectData(data,'cmi');
         }
-        datastring += '&attempt=<?php echo $attempt ?>';
-        datastring += '&scoid=<?php echo $scoid ?>';
 
         var myRequest = NewHttpReq();
-        //alert('going to:' + "<?php p($CFG->wwwroot) ?>/mod/scorm/datamodel.php" + "id=<?php p($id) ?>&a=<?php p($a) ?>&sesskey=<?php echo sesskey() ?>"+datastring);
-        result = DoRequest(myRequest,"<?php p($CFG->wwwroot) ?>/mod/scorm/datamodel.php","id=<?php p($id) ?>&a=<?php p($a) ?>&sesskey=<?php echo sesskey() ?>"+datastring);
+        result = DoRequest(myRequest,datamodelurl,datamodelurlparams+datastring);
         results = String(result).split('\n');
         errorCode = results[1];
         return results[0];
