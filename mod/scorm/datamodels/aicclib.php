@@ -422,7 +422,7 @@ function scorm_aicc_confirm_hacp_session($hacpsession) {
 function scorm_aicc_generate_simple_sco($scorm) {
     global $DB;
     // find the old one
-    $scos = $DB->get_records('scorm_scoes', array('scorm'=>$scorm->id));
+    $scos = $DB->get_records('scorm_scoes', array('scorm' => $scorm->id), 'id');
     if (!empty($scos)) {
         $sco = array_shift($scos);
     } else {

@@ -88,7 +88,7 @@ class mod_scorm_mod_form extends moodleform_mod {
 
         // New local package upload.
         $filemanageroptions = array();
-        $filemanageroptions['accepted_types'] = array('.zip');
+        $filemanageroptions['accepted_types'] = array('.zip', '.xml');
         $filemanageroptions['maxbytes'] = 0;
         $filemanageroptions['maxfiles'] = 1;
         $filemanageroptions['subdirs'] = 0;
@@ -412,6 +412,18 @@ class mod_scorm_mod_form extends moodleform_mod {
                 if (!$file->is_external_file() && !empty($data['updatefreq'])) {
                     // Make sure updatefreq is not set if using normal local file.
                     $errors['updatefreq'] = get_string('updatefreq_error', 'mod_scorm');
+                }
+                if (strtolower($file->get_filename()) == 'imsmanifest.xml') {
+                    if (!$file->is_external_file()) {
+                        $errors['packagefile'] = get_string('aliasonly', 'mod_scorm');
+                    } else {
+                        $repository = repository::get_repository_by_id($file->get_repository_id(), CONTEXT_SYSTEM);
+                        if (!$repository->supports_relative_file()) {
+                            $errors['packagefile'] = get_string('repositorynotsupported', 'mod_scorm');
+                        }
+                    }
+                } else if (strtolower(substr($file->get_filename(), -3)) == 'xml') {
+                    $errors['packagefile'] = get_string('invalidmanifestname', 'mod_scorm');
                 }
             }
 
