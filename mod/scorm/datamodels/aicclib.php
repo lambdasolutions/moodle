@@ -267,7 +267,7 @@ function scorm_parse_aicc($scorm) {
                                                            'identifier'=>$sco->identifier))) {
                 $id = $ss->id;
                 $sco->id = $id;
-                $DB->update_record('scorm_scoes', $sco);
+                $DB->update_record('scorm_scoes',$sco);
                 unset($oldscoes[$id]);
             } else {
                 $id = $DB->insert_record('scorm_scoes', $sco);
@@ -423,17 +423,17 @@ function scorm_aicc_confirm_hacp_session($hacpsession) {
  */
 function scorm_aicc_generate_simple_sco($scorm) {
     global $DB;
-    // Find the oldest one.
+    // find the old one
     $scos = $DB->get_records('scorm_scoes', array('scorm' => $scorm->id), 'id');
     if (!empty($scos)) {
         $sco = array_shift($scos);
     } else {
-        $sco = new stdClass();
+        $sco = new object();
     }
-    // Get rid of old ones.
-    foreach ($scos as $oldsco) {
-        $DB->delete_records('scorm_scoes', array('id' => $oldsco->id));
-        $DB->delete_records('scorm_scoes_track', array('scoid' => $oldsco->id));
+    // get rid of old ones
+    foreach($scos as $oldsco) {
+        $DB->delete_records('scorm_scoes', array('id'=>$oldsco->id));
+        $DB->delete_records('scorm_scoes_track', array('scoid'=>$oldsco->id));
     }
 
     $sco->identifier = 'A1';
@@ -441,10 +441,11 @@ function scorm_aicc_generate_simple_sco($scorm) {
     $sco->organization = '';
     $sco->title = $scorm->name;
     $sco->parent = '/';
-    // Add the HACP signal to the activity launcher.
+    // add the HACP signal to the activity launcher
     if (preg_match('/\?/', $scorm->reference)) {
         $sco->launch = $scorm->reference.'&CMI=HACP';
-    } else {
+    }
+    else {
         $sco->launch = $scorm->reference.'?CMI=HACP';
     }
     $sco->scormtype = 'sco';

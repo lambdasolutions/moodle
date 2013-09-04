@@ -116,13 +116,13 @@ function scorm_add_instance($scorm, $mform=null) {
 
     $id = $DB->insert_record('scorm', $scorm);
 
-    // Update course module record - from now on this instance properly exists and all function may be used.
+    /// update course module record - from now on this instance properly exists and all function may be used
     $DB->set_field('course_modules', 'instance', $id, array('id'=>$cmid));
 
-    // Reload scorm instance.
+    /// reload scorm instance
     $record = $DB->get_record('scorm', array('id'=>$id));
 
-    // Store the package and verify.
+    /// store the package and verify
     if ($record->scormtype === SCORM_TYPE_LOCAL) {
         if ($data = $mform->get_data()) {
             $fs = get_file_storage();
@@ -150,10 +150,10 @@ function scorm_add_instance($scorm, $mform=null) {
         return false;
     }
 
-    // Save reference.
+    // save reference
     $DB->update_record('scorm', $record);
 
-    // Extra fields required in grade related functions.
+    /// extra fields required in grade related functions
     $record->course     = $courseid;
     $record->cmidnumber = $cmidnumber;
     $record->cmid       = $cmid;
@@ -527,9 +527,9 @@ function scorm_cron () {
     require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 
     $sitetimezone = $CFG->timezone;
-    // Now see if there are any scorm updates to be done.
+    /// Now see if there are any scorm updates to be done
 
-    if (!isset($CFG->scorm_updatetimelast)) {    // To catch the first time.
+    if (!isset($CFG->scorm_updatetimelast)) {    // To catch the first time
         set_config('scorm_updatetimelast', 0);
     }
 
@@ -540,17 +540,17 @@ function scorm_cron () {
 
         set_config('scorm_updatetimelast', $timenow);
 
-        mtrace('Updating scorm packages which require daily update');// We are updating.
+        mtrace('Updating scorm packages which require daily update');//We are updating
 
         $scormsupdate = $DB->get_records('scorm', array('updatefreq' => SCORM_UPDATE_EVERYDAY));
         foreach ($scormsupdate as $scormupdate) {
             scorm_parse($scormupdate, true);
         }
 
-        // Now clear out AICC session table with old session data.
-        $cfgscorm = get_config('scorm');
-        if (!empty($cfgscorm->allowaicchacp)) {
-            $expiretime = time() - ($cfgscorm->aicchacpkeepsessiondata*24*60*60);
+        //now clear out AICC session table with old session data
+        $cfg_scorm = get_config('scorm');
+        if (!empty($cfg_scorm->allowaicchacp)) {
+            $expiretime = time() - ($cfg_scorm->aicchacpkeepsessiondata*24*60*60);
             $DB->delete_records_select('scorm_aicc_session', 'timemodified < ?', array($expiretime));
         }
     }
@@ -961,6 +961,22 @@ function scorm_pluginfile($course, $cm, $context, $filearea, $args, $forcedownlo
         $fullpath = "/$context->id/mod_scorm/package/0/$relativepath";
         $lifetime = 0; // no caching here
 
+    } else if ($filearea === 'imsmanifest') { // This isn't a real filearea, it's a url parameter for this type of package.
+        $revision = (int)array_shift($args); // Prevents caching problems - ignored here.
+        $relativepath = implode('/', $args);
+
+        // Get imsmanifest file.
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($context->id, 'mod_scorm', 'package', 0, '', false);
+        $file = reset($files);
+
+        // Check that the package file is an imsmanifest.xml file - if not then this method is not allowed.
+        $packagefilename = $file->get_filename();
+        if (strtolower($packagefilename) !== 'imsmanifest.xml') {
+            return false;
+        }
+
+        $file->send_relative_file($relativepath);
     } else {
         return false;
     }
