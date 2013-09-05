@@ -122,7 +122,7 @@ class core_blog_renderer extends plugin_renderer_base {
         // Uniquehash is used as a link to an external blog.
         if (!empty($entry->uniquehash)) {
             $o .= $this->output->container_start('externalblog');
-            $o .= html_writer::link($entry->uniquehash, get_string('linktooriginalentry', 'blog'));
+            $o .= html_writer::link(clean_param($entry->uniquehash, PARAM_URL), get_string('linktooriginalentry', 'blog'));
             $o .= $this->output->container_end();
         }
 

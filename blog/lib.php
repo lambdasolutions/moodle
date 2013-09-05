@@ -198,7 +198,7 @@ function blog_sync_external_entries($externalblog) {
         $newentry->userid = $externalblog->userid;
         $newentry->module = 'blog_external';
         $newentry->content = $externalblog->id;
-        $newentry->uniquehash = $entry->get_permalink();
+        $newentry->uniquehash = clean_param($entry->get_permalink(), PARAM_URL);
         $newentry->publishstate = 'site';
         $newentry->format = FORMAT_HTML;
         // Clean subject of html, just in case
