@@ -80,10 +80,8 @@ if ($newattempt !== 'off') {
     $url->param('newattempt', $newattempt);
 }
 $PAGE->set_url($url);
-$forcejs = get_config('scorm', 'forcejavascript');
-if (!empty($forcejs)) {
-    $PAGE->add_body_class('forcejavascript');
-}
+$PAGE->add_body_class('forcejavascript'); // SCORM requires JavaScript.
+
 $collapsetocwinsize = get_config('scorm', 'collapsetocwinsize');
 if (empty($collapsetocwinsize)) {
     // Set as default window size to collapse TOC.
@@ -269,7 +267,6 @@ if (empty($scorm->popup) || $displaymode == 'popup') {
     $PAGE->requires->js_init_call('M.mod_scorm.init', array($scorm->nav, $scorm->navpositionleft, $scorm->navpositiontop, $scorm->hidetoc,
                                                             $collapsetocwinsize, $result->toctitle, $name, $sco->id, $adlnav), false, $jsmodule);
 }
-if (!empty($forcejs)) {
-    echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "generalbox boxaligncenter forcejavascriptmessage");
-}
+
+echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "generalbox boxaligncenter forcejavascriptmessage");
 echo $OUTPUT->footer();
