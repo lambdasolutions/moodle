@@ -193,7 +193,7 @@ $string['lastattemptlockdesc'] = 'If enabled, a student is prevented from launch
 $string['location'] = 'Show the location bar';
 $string['max'] = 'Max score';
 $string['maximumattempts'] = 'Number of attempts';
-$string['maximumattempts_help'] = 'This setting enables the number of attempts to be restricted. It is only applicable for SCORM 1.2 and AICC packages.';
+$string['maximumattempts_help'] = 'This setting enables the number of attempts to be restricted.';
 $string['maximumattemptsdesc'] = 'This preference sets the default maximum attempts for an activity';
 $string['maximumgradedesc'] = 'This preference sets the default maximum grade for an activity';
 $string['menubar'] = 'Show the menu bar';
@@ -203,7 +203,7 @@ $string['missingparam'] = 'A required parameter is missing or wrong';
 $string['missing_tag'] = 'Missing tag {$a->tag}';
 $string['mode'] = 'Mode';
 $string['modulename'] = 'SCORM package';
-$string['modulename_help'] = 'A SCORM package is a collection of files which are packaged according to an agreed standard for learning objects. The SCORM activity module enables SCORM or AICC packages to be uploaded as a zip file and added to a course.
+$string['modulename_help'] = 'A SCORM package is a collection of files which are packaged according to an agreed standard for learning objects. The SCORM activity module enables SCORM, TCAPI or AICC packages to be uploaded as a zip file and added to a course.
 
 Content is usually displayed over several pages, with navigation between the pages. There are various options for displaying content in a pop-up window, with a table of contents, with navigation buttons etc. SCORM activities generally include questions, with grades being recorded in the gradebook.
 
@@ -287,10 +287,17 @@ $string['scorm:skipview'] = 'Skip overview';
 $string['scormtype'] = 'Type';
 $string['scormtype_help'] = 'This setting determines how the package is included in the course. There are up to 4 options:
 
-* Uploaded package - Enables a SCORM package to be chosen via the file picker
-* External SCORM manifest - Enables an imsmanifest.xml URL to be specified. Note: If the URL has a different domain name than your site, then "Downloaded package" is a better option, since otherwise grades are not saved.
-* Downloaded package - Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external SCORM package is updated.
+* Uploaded package - Enables a package file to be chosen via the file picker.
+* External manifest - Enables an imsmanifest.xml/tincan.xml URL to be specified. Note: For SCORM, if the URL has a different domain name than your site, then "Downloaded package" is a better option, since otherwise grades are not saved.
+* Downloaded package - Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external package is updated.
 * Local IMS content repository - Enables a package to be selected from within an IMS repository
+* External AICC URL - this URL is the launch URL for a single AICC Activity.  A psuedo package will be constructed around this.';
+$string['scormtype_help'] = 'This setting determines how the package is included in the course. There are up to 4 options:
+
+* Uploaded package - Enables a SCORM/TCAPI package to be chosen via the file picker
+* External SCORM/TCAPI manifest - Enables an imsmanifest.xml/tincan.xml URL to be specified. Note: For SCORM, if the URL has a different domain name than your site, then "Downloaded package" is a better option, since otherwise grades are not saved.
+* Downloaded package - Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external SCORM/TCAPI package is updated.
+* Local IMS content repository - Enables a package to be selected from within an IMS repository. Note: TCAPI not supported.
 * External AICC URL - this URL is the launch URL for a single AICC Activity.  A psuedo package will be constructed around this.';
 $string['scorm:viewreport'] = 'View reports';
 $string['scorm:viewscores'] = 'View scores';
@@ -350,3 +357,6 @@ Notes on handling of multiple attempts:
 $string['whatgradedesc'] = 'Whether the highest, average (mean), first or last completed attempt is recorded in the gradebook if multiple attempts are allowed.';
 $string['width'] = 'Width';
 $string['window'] = 'Window';
+
+
+
