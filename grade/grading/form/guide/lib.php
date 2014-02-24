@@ -821,10 +821,13 @@ class gradingform_guide_instance extends gradingform_instance {
                 if (isset($record['remark'])) {
                     $newrecord['remark'] = $record['remark'];
                 }
+                if (isset($record['satisfactory'])) {
+                    $newrecord['satisfactory'] = $record['satisfactory'];
+                }
                 $DB->insert_record('gradingform_guide_fillings', $newrecord);
             } else {
                 $newrecord = array('id' => $currentgrade['criteria'][$criterionid]['id']);
-                foreach (array('score', 'remark'/*, 'remarkformat' TODO */) as $key) {
+                foreach (array('score', 'remark', 'satisfactory'/*, 'remarkformat' TODO */) as $key) {
                     if (isset($record[$key]) && $currentgrade['criteria'][$criterionid][$key] != $record[$key]) {
                         $newrecord[$key] = $record[$key];
                     }
