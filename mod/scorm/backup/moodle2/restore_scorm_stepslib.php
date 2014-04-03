@@ -184,16 +184,38 @@ class restore_scorm_activity_structure_step extends restore_activity_structure_s
     }
 
     protected function after_execute() {
-        global $DB;
+        global $DB, $CFG;
 
-        // Add scorm related files, no need to match by itemname (just internally handled context)
+        // Add scorm related files, no need to match by itemname (just internally handled context).
         $this->add_related_files('mod_scorm', 'intro', null);
         $this->add_related_files('mod_scorm', 'content', null);
         $this->add_related_files('mod_scorm', 'package', null);
 
-        // Fix launch param in scorm table to use new sco id.
         $scormid = $this->get_new_parentid('scorm');
         $scorm = $DB->get_record('scorm', array('id' => $scormid));
+
+        // Check for scos that have sortorder set incorrectly (pre 2.6 backup)
+        $invalidscos = $DB->get_records('scorm_scoes', array('scorm' => $scormid, 'sortorder' => '0'), 'id');
+        if (!empty($invalidscos)) {
+            // Check if any of the scoes have a sortorder.
+            $hassort = $DB->record_exists_select('scorm_scoes', 'scorm = ? AND sortorder > 0', array($scormid));
+            if ($hassort) {
+                // This is a strange situation - we can't work out the correct sortorder without investigating the SCORM manifest.
+                // Force a complete parse of this SCORM.
+                require_once($CFG->dirroot.'/mod/scorm/locallib.php');
+                scorm_parse($scorm, true);
+            } else {
+                // This is an old SCORM relying on the id for the sortorder.
+                $sortorder = 1;
+                foreach ($invalidscos as $sco) {
+                    $sco->sortorder = $sortorder;
+                    $DB->update_record('scorm_scoes', $sco);
+                    $sortorder++;
+                }
+            }
+        }
+
+        // Fix launch param in scorm table to use new sco id.
         $scorm->launch = $this->get_mappingid('scorm_sco', $scorm->launch, '');
         if (empty($scorm->launch)) {
             // This scorm has an invalid launch param - we need to calculate it and get the first launchable sco.
