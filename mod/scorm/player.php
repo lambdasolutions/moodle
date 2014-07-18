@@ -165,7 +165,7 @@ $completion = new completion_info($course);
 $completion->set_module_viewed($cm);
 
 // Print the page header.
-if (empty($scorm->popup) || $displaymode=='popup') {
+if ($scorm->popup != 1 || $displaymode=='popup') {
     $exitlink = '<a href="'.$CFG->wwwroot.'/course/view.php?id='.$scorm->course.'" title="'.$strexit.'">'.$strexit.'</a> ';
     $PAGE->set_button($exitlink);
 }
@@ -184,6 +184,7 @@ echo $OUTPUT->header();
 if ($displaymode !== 'popup') {
     echo $OUTPUT->heading(format_string($scorm->name));
 }
+
 
 $PAGE->requires->string_for_js('navigation', 'scorm');
 $PAGE->requires->string_for_js('toc', 'scorm');
@@ -213,7 +214,7 @@ if ($scorm->hidetoc == SCORM_TOC_POPUP or $mode=='browse' or $mode=='review') {
 ?>
             <div id="toctree">
                 <?php
-                if (empty($scorm->popup) || $displaymode == 'popup') {
+                if ($scorm->popup != 1 || $displaymode == 'popup') {
                     echo $result->toc;
                 } else {
                     //Added incase javascript popups are blocked we don't provide a direct link to the pop-up as JS communication can fail - the user must disable their pop-up blocker.
@@ -230,7 +231,7 @@ if ($scorm->hidetoc == SCORM_TOC_POPUP or $mode=='browse' or $mode=='review') {
                 </noscript>
 <?php
 if ($result->prerequisites) {
-    if ($scorm->popup != 0 && $displaymode !=='popup') {
+    if ($scorm->popup == 1 && $displaymode !=='popup') {
         // Clean the name for the window as IE is fussy
         $name = preg_replace("/[^A-Za-z0-9]/", "", $scorm->name);
         if (!$name) {
@@ -258,7 +259,7 @@ if ($result->prerequisites) {
 $scoes = scorm_get_toc_object($USER, $scorm, $currentorg, $sco->id, $mode, $attempt);
 $adlnav = scorm_get_adlnav_json($scoes['scoes']);
 
-if (empty($scorm->popup) || $displaymode == 'popup') {
+if ($scorm->popup != 1 || $displaymode == 'popup') {
     if (!isset($result->toctitle)) {
         $result->toctitle = get_string('toc', 'scorm');
     }

@@ -64,7 +64,7 @@ $context = context_course::instance($course->id);
 $contextmodule = context_module::instance($cm->id);
 
 $launch = false; // Does this automatically trigger a launch based on skipview.
-if (!empty($scorm->popup)) {
+if ($scorm->popup == 1) {
     $orgidentifier = '';
     $scoid = 0;
     if (empty($preventskip) && $scorm->skipview >= SCORM_SKIPVIEW_FIRST &&
@@ -177,7 +177,8 @@ if (!empty($forcejs)) {
     echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "generalbox boxaligncenter forcejavascriptmessage");
 }
 
-if (!empty($scorm->popup)) {
+// Simple-Popup - changed from if (!empty($scorm->popup)) {
+if ($scorm->popup == 1) {
     $PAGE->requires->js_init_call('M.mod_scormform.init');
 }
 

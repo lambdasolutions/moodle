@@ -217,7 +217,13 @@ $LMS_api = (scorm_version_check($scorm->version, SCORM_12) || empty($scorm->vers
 
        function doredirect() {
             if (myGetAPIHandle() != null) {
-                location = "<?php echo $result ?>";
+                <?php
+                if ($scorm->popup == 2) {
+                    echo 'openContentWindow();';
+                } else {
+                    echo 'location = "'. $result .'";';
+		        }
+                ?>
             }
             else {
                 document.body.innerHTML = "<p><?php echo get_string('activityloading', 'scorm');?> <span id='countdown'><?php echo $delayseconds ?></span> <?php echo get_string('numseconds', 'moodle', '');?>. &nbsp; <img src='<?php echo $OUTPUT->pix_url('wait', 'scorm') ?>'><p>";
@@ -229,11 +235,41 @@ $LMS_api = (scorm_version_check($scorm->version, SCORM_12) || empty($scorm->vers
                                                 } else {
                                                     clearInterval(timer);
                                                     document.body.innerHTML = "<p><?php echo get_string('activitypleasewait', 'scorm');?></p>";
-                                                    location = "<?php echo $result ?>";
-                                                }
+                                    				<?php 
+                                    				/*
+                                    				 * Simple-Popup mods start
+                                    				 * - Provided logic to manage popup window through iframe on player.php page when using Simple Popup option.
+                                    				 */
+                                    				if ($scorm->popup == 2)
+                                    					echo 'openContentWindow();';
+                                    				else
+                                    				    echo 'location = "'. $result .'";';
+                                    				?>
+												}
                                             }, 1000);
             }
         }
+    	function openContentWindow() {
+    		cWin = window.top.open("<?php echo $result ?>","scorm_content_<?php echo $scorm->id; ?>");
+    	    monitorContentWindow();
+    	}
+    	function monitorContentWindow() {
+    		if (cWin != null) cWin.focus();
+    			document.body.innerHTML = "<?php echo get_string('popup_simple_notice', 'scorm'); ?>"
+    	        window.top.onbeforeunload = function() { if (cWin != null && !cWin.closed) return "<?php echo get_string('popup_simple_closenotice', 'scorm'); ?>" };
+    	        window.top.onunload = function() { if (cWin != null && !cWin.closed) cWin.close(); };
+    	        setTimeout(checkContentWindowOpen,500);
+    	    }
+    	    function checkContentWindowOpen() {
+    	        if (cWin == null) {
+    	        	document.body.innerHTML = '<?php echo get_string('popup_simple_popupblockednotice', 'scorm'); ?><p><a href="javascript:openContentWindow();" onclick="openContentWindow();"><?php echo get_string('popup_simple_popupmanuallaunch', 'scorm'); ?></a></p>';
+    	        } else if (cWin.closed) {
+    	        	document.body.innerHTML = "<?php echo get_string('popup_simple_redirectingnotice', 'scorm'); ?>&nbsp;<img src='<?php echo $OUTPUT->pix_url('wait', 'scorm') ?>'></p>";
+    	        	setTimeout((function(){window.top.location = "<?php echo $CFG->wwwroot.'/course/view.php?id='.$scorm->course; ?>";}),2000);
+    	        } else {
+    	        	setTimeout(checkContentWindowOpen,2000);
+    	        }
+    	    }
         //]]>
         </script>
         <noscript>
