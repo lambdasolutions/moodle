@@ -110,7 +110,20 @@ class block_course_overview_renderer extends plugin_renderer_base {
                 $courseurl = new moodle_url('/course/view.php', array('id' => $course->id));
                 $coursefullname = format_string(get_course_display_name_for_list($course), true, $course->id);
                 $link = html_writer::link($courseurl, $coursefullname, $attributes);
-                $html .= $this->output->heading($link, 2, 'title');
+                // FORTIS BC Code change to add Completion info to title.
+                Global $USER;
+                $completionstring = '';
+                //check completion enabled
+                $completioninfo = new completion_info($course);
+                if (completion_info::is_enabled_for_site() && $completioninfo->is_enabled()) {
+                    if ($completioninfo->is_course_complete($USER->id)) {
+                        $completionstring = html_writer::span('('.get_string('coursecomplete', 'completion').')', 'completionstatus');
+                    } else {
+                        $completionstring = html_writer::span('('.get_string('inprogress', 'completion').')', 'completionstatus');
+                    }
+                }
+                $html .= $this->output->heading($link.$completionstring, 2, 'title');
+                // END of FortisBC Changes.
             } else {
                 $html .= $this->output->heading(html_writer::link(
                     new moodle_url('/auth/mnet/jump.php', array('hostid' => $course->hostid, 'wantsurl' => '/course/view.php?id='.$course->remoteid)),
