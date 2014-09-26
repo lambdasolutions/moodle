@@ -325,12 +325,21 @@ function forum_supports($feature) {
         case FEATURE_RATE:                    return true;
         case FEATURE_BACKUP_MOODLE2:          return true;
         case FEATURE_SHOW_DESCRIPTION:        return true;
+        case FEATURE_ADVANCED_GRADING:        return true;
         case FEATURE_PLAGIARISM:              return true;
 
         default: return null;
     }
 }
 
+/**
+ * Lists all gradable areas for the advanced grading methods gramework
+ *
+ * @return array('string' => 'string') An array with area names as keys and descriptions as values
+ */
+function forum_grading_areas_list() {
+    return array('posts' => get_string('posts', 'forum'));
+}
 
 /**
  * Obtains the automatic completion state for this forum based on any conditions
@@ -3106,6 +3115,22 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
 
     $modcontext = context_module::instance($cm->id);
 
+    // Cache the check to see if users can grade these posts due to mod/forum:grade capability.
+    static $advancedgrading;
+    $showgradinglink = false;
+    if (!empty($advancedgrading[$forum->id])) {
+        $showgradinglink = true;
+    } else if (has_capability('mod/forum:grade', $modcontext)) {
+        $gradingman = get_grading_manager($modcontext, 'mod_forum', 'posts');
+        $method = $gradingman->get_active_method();
+        if (!empty($method)) {
+            $advancedgrading[$forum->id] = true;
+            $showgradinglink = true;
+        }
+    }
+
+
+
     $post->course = $course->id;
     $post->forum  = $forum->id;
     $post->message = file_rewrite_pluginfile_urls($post->message, 'pluginfile.php', $modcontext->id, 'mod_forum', 'post', $post->id);
@@ -3227,6 +3252,11 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
 
     // Prepare an array of commands
     $commands = array();
+
+    // If grading methods are used, show ability to grade this post.
+    if ($showgradinglink) {
+        $commands[] = array('url'=>'', 'text'=> get_string('grade', 'mod_forum'));
+    }
 
     // SPECIAL CASE: The front page can display a news item post to non-logged in users.
     // Don't display the mark read / unread controls in this case.
@@ -7631,4 +7661,53 @@ function forum_get_context($forumid, $context = null) {
     }
 
     return $context;
+}
+
+
+/**
+ * Method returning an instance of the forum grading manager - we use a forum class to help override various settings.
+ *
+ * There are basically ways how to use this factory method. If the area record
+ * id is known to the caller, get the manager for that area by providing just
+ * the id. If the area record id is not know, the context, component and area name
+ * can be provided. Note that null values are allowed in the second case as the context,
+ * component and the area name can be set explicitly later.
+ *
+ * @category grading
+ * @example $manager = get_grading_manager($areaid);
+ * @example $manager = get_grading_manager(context_system::instance());
+ * @example $manager = get_grading_manager($context, 'mod_assignment', 'submission');
+ * @param stdClass|int|null $context_or_areaid if $areaid is passed, no other parameter is needed
+ * @param string|null $component the frankenstyle name of the component
+ * @param string|null $area the name of the gradable area
+ * @return mod_forum_grading_manager
+ */
+function get_forum_grading_manager($context_or_areaid = null, $component = null, $area = null) {
+
+    $manager = new mod_forum_grading_manager();
+
+    if (is_object($context_or_areaid)) {
+        $context = $context_or_areaid;
+    } else {
+        $context = null;
+
+        if (is_numeric($context_or_areaid)) {
+            $manager->load($context_or_areaid);
+            return $manager;
+        }
+    }
+
+    if (!is_null($context)) {
+        $manager->set_context($context);
+    }
+
+    if (!is_null($component)) {
+        $manager->set_component($component);
+    }
+
+    if (!is_null($area)) {
+        $manager->set_area($area);
+    }
+
+    return $manager;
 }
