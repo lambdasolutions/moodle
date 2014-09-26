@@ -46,7 +46,7 @@ class mod_forum_grading_manager extends grading_manager {
      */
     public static function available_methods($includenone = true) {
         if ($includenone) {
-            $list = array('' => get_string('gradingmethodnone', 'mod_forum'));
+            $list = array('none' => get_string('gradingmethodnone', 'mod_forum'));
         } else {
             $list = array();
         }

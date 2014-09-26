@@ -338,7 +338,8 @@ function forum_supports($feature) {
  * @return array('string' => 'string') An array with area names as keys and descriptions as values
  */
 function forum_grading_areas_list() {
-    return array('posts' => get_string('posts', 'forum'));
+    return array('forum' => get_string('gradeforum', 'forum'),
+                 'posts' => get_string('gradeposts', 'forum'));
 }
 
 /**

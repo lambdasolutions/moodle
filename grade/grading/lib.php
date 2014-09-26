@@ -279,7 +279,7 @@ class grading_manager {
     public static function available_methods($includenone = true) {
 
         if ($includenone) {
-            $list = array('' => get_string('gradingmethodnone', 'core_grading'));
+            $list = array('none' => get_string('gradingmethodnone', 'core_grading'));
         } else {
             $list = array();
         }
@@ -400,7 +400,7 @@ class grading_manager {
         $this->ensure_isset(array('context', 'component', 'area'));
 
         // make sure the passed method is empty or a valid plugin name
-        if (empty($method)) {
+        if (empty($method) || $method === 'none') {
             $method = null;
         } else {
             if ('gradingform_'.$method !== clean_param('gradingform_'.$method, PARAM_COMPONENT)) {

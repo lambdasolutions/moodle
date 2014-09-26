@@ -305,7 +305,7 @@ function edit_module_post_actions($moduleinfo, $course) {
         $showgradingmanagement = false;
         foreach ($gradingman->get_available_areas() as $areaname => $aretitle) {
             $formfield = 'advancedgradingmethod_'.$areaname;
-            if (isset($moduleinfo->{$formfield})) {
+            if (isset($moduleinfo->{$formfield}) && $moduleinfo->{$formfield} !== 'none') {
                 $gradingman->set_area($areaname);
                 $methodchanged = $gradingman->set_active_method($moduleinfo->{$formfield});
                 if (empty($moduleinfo->{$formfield})) {
