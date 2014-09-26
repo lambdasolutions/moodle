@@ -103,6 +103,7 @@ abstract class moodleform_mod extends moodleform {
 
         $this->_features->gradecat          = ($this->_features->outcomes or $this->_features->hasgrades);
         $this->_features->advancedgrading   = plugin_supports('mod', $this->_modname, FEATURE_ADVANCED_GRADING, false);
+        $this->_features->selfgrade         = plugin_supports('mod', $this->_modname, FEATURE_SELF_GRADING, false);
     }
 
     /**
@@ -388,6 +389,10 @@ abstract class moodleform_mod extends moodleform {
             $mform->addElement('date_time_selector', 'assesstimefinish', get_string('to'));
             $mform->disabledIf('assesstimefinish', 'assessed', 'eq', 0);
             $mform->disabledIf('assesstimefinish', 'ratingtime');
+            if ($this->_features->advancedgrading) {
+                // We need to disable ratings if grading is enabled.
+                $mform->disabledIf('assessed', "grade[modgrade_type]", 'noteq', 'none');
+            }
         }
 
         //doing this here means splitting up the grade related settings on the lesson settings page
@@ -599,7 +604,7 @@ abstract class moodleform_mod extends moodleform {
             }
 
             //if supports grades and grades arent being handled via ratings
-            if (!$this->_features->rating) {
+            if ($this->_features->advancedgrading || !$this->_features->rating) {
                 $mform->addElement('modgrade', 'grade', get_string('grade'));
                 $mform->addHelpButton('grade', 'modgrade', 'grades');
                 $mform->setDefault('grade', $CFG->gradepointdefault);
@@ -637,6 +642,11 @@ abstract class moodleform_mod extends moodleform {
                         get_string('gradecategoryonmodform', 'grades'),
                         grade_get_categories_menu($COURSE->id, $this->_outcomesused));
                 $mform->addHelpButton('gradecat', 'gradecategoryonmodform', 'grades');
+            }
+
+            if ($this->_features->selfgrade) {
+                $mform->addElement('selectyesno', 'selfgrade', get_string('selfgrade', 'grades'), 0);
+                $mform->addHelpButton('selfgrade', 'selfgrade', 'grades');
             }
         }
     }

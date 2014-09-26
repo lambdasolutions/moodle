@@ -44,7 +44,7 @@ class backup_forum_activity_structure_step extends backup_activity_structure_ste
             'maxbytes', 'maxattachments', 'forcesubscribe', 'trackingtype',
             'rsstype', 'rssarticles', 'timemodified', 'warnafter',
             'blockafter', 'blockperiod', 'completiondiscussions', 'completionreplies',
-            'completionposts', 'displaywordcount'));
+            'completionposts', 'displaywordcount', 'grade'));
 
         $discussions = new backup_nested_element('discussions');
 
@@ -86,6 +86,10 @@ class backup_forum_activity_structure_step extends backup_activity_structure_ste
         $track = new backup_nested_element('track', array('id'), array(
             'userid'));
 
+        $grades = new backup_nested_element('grades');
+
+        $grade = new backup_nested_element('grade', array('id'), array('userid', 'timecreated', 'timemodified', 'grader', 'grade', 'postid'));
+
         // Build the tree
 
         $forum->add_child($discussions);
@@ -102,6 +106,9 @@ class backup_forum_activity_structure_step extends backup_activity_structure_ste
 
         $forum->add_child($trackedprefs);
         $trackedprefs->add_child($track);
+
+        $forum->add_child($grades);
+        $grades->add_child($grade);
 
         $discussion->add_child($posts);
         $posts->add_child($post);
@@ -137,6 +144,8 @@ class backup_forum_activity_structure_step extends backup_activity_structure_ste
                                                       'ratingarea' => backup_helper::is_sqlparam('post'),
                                                       'itemid'     => backup::VAR_PARENTID));
             $rating->set_source_alias('rating', 'value');
+
+            $grade->set_source_table('forum_grades', array('forum' => backup::VAR_PARENTID));
         }
 
         // Define id annotations
@@ -158,6 +167,12 @@ class backup_forum_activity_structure_step extends backup_activity_structure_ste
         $read->annotate_ids('user', 'userid');
 
         $track->annotate_ids('user', 'userid');
+
+        $grade->annotate_ids('user', 'userid');
+
+        $grade->annotate_ids('user', 'grader');
+
+        $grade->annotate_ids('forum_post', 'postid');
 
         // Define file annotations
 
