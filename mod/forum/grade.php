@@ -24,10 +24,11 @@ require_once('../../config.php');
 require_once($CFG->dirroot.'/mod/forum/gradeform.php');
 require_once($CFG->dirroot.'/grade/grading/lib.php');
 require_once($CFG->dirroot . '/mod/forum/renderable.php');
+require_once($CFG->dirroot . '/mod/forum/lib.php');
 
 $id = required_param('id', PARAM_INT); // Course Module ID.
 $userid = required_param('userid', PARAM_INT); // User id.
-$postid = optional_param('post', 0, PARAM_INT); // Post id.
+$postid = optional_param('postid', 0, PARAM_INT); // Post id.
 
 $params = array();
 $params['id'] = $id;
@@ -40,6 +41,10 @@ $course = get_course($cm->course);
 $forum = $DB->get_record("forum", array("id" => $cm->instance), '*', MUST_EXIST);
 
 $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
+if (!empty($postid)) {
+    $post = forum_get_post_full($postid);
+    $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
+}
 
 require_course_login($course, true, $cm);
 
@@ -67,6 +72,9 @@ $renderer = $PAGE->get_renderer('mod_forum');
 
 
 echo $OUTPUT->header();
+if (!empty($post)) {
+    forum_print_post($post, $discussion, $forum, $cm, $course);
+}
 
 echo $renderer->render(new forum_form('gradingform', $mform));
 

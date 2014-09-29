@@ -3106,7 +3106,7 @@ function forum_make_mail_post($course, $cm, $forum, $discussion, $post, $userfro
  * @return void
  */
 function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=false, $reply=false, $link=false,
-                          $footer="", $highlight="", $postisread=null, $dummyifcantsee=true, $istracked=null, $return=false) {
+                          $footer="", $highlight="", $postisread=null, $dummyifcantsee=true, $istracked=null, $return=false, $showgrade = false) {
     global $USER, $CFG, $OUTPUT;
 
     require_once($CFG->libdir . '/filelib.php');
@@ -3119,18 +3119,18 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     // Cache the check to see if users can grade these posts due to mod/forum:grade capability.
     static $advancedgrading;
     $showgradinglink = false;
-    if (!empty($advancedgrading[$forum->id])) {
-        $showgradinglink = true;
-    } else if (has_capability('mod/forum:grade', $modcontext)) {
-        $gradingman = get_grading_manager($modcontext, 'mod_forum', 'posts');
-        $method = $gradingman->get_active_method();
-        if (!empty($method)) {
-            $advancedgrading[$forum->id] = true;
+    if ($showgrade) {
+        if (!empty($advancedgrading[$forum->id])) {
             $showgradinglink = true;
+        } else if (has_capability('mod/forum:grade', $modcontext)) {
+            $gradingman = get_grading_manager($modcontext, 'mod_forum', 'posts');
+            $method = $gradingman->get_active_method();
+            if (!empty($method)) {
+                $advancedgrading[$forum->id] = true;
+                $showgradinglink = true;
+            }
         }
     }
-
-
 
     $post->course = $course->id;
     $post->forum  = $forum->id;
@@ -5561,7 +5561,7 @@ function forum_print_discussion($course, $cm, $forum, $discussion, $post, $mode,
     $postread = !empty($post->postread);
 
     forum_print_post($post, $discussion, $forum, $cm, $course, $ownpost, $reply, false,
-                         '', '', $postread, true, $forumtracked);
+                         '', '', $postread, true, $forumtracked, false, true);
 
     switch ($mode) {
         case FORUM_MODE_FLATOLDEST :
@@ -5617,7 +5617,7 @@ function forum_print_posts_flat($course, &$cm, $forum, $discussion, $post, $mode
         $postread = !empty($post->postread);
 
         forum_print_post($post, $discussion, $forum, $cm, $course, $ownpost, $reply, $link,
-                             '', '', $postread, true, $forumtracked);
+                             '', '', $postread, true, $forumtracked, false, true);
     }
 }
 
@@ -5650,7 +5650,7 @@ function forum_print_posts_threaded($course, &$cm, $forum, $discussion, $parent,
                 $postread = !empty($post->postread);
 
                 forum_print_post($post, $discussion, $forum, $cm, $course, $ownpost, $reply, $link,
-                                     '', '', $postread, true, $forumtracked);
+                                     '', '', $postread, true, $forumtracked, false, true);
             } else {
                 if (!forum_user_can_see_post($forum, $discussion, $post, NULL, $cm)) {
                     echo "</div>\n";
@@ -5708,7 +5708,7 @@ function forum_print_posts_nested($course, &$cm, $forum, $discussion, $parent, $
             $postread = !empty($post->postread);
 
             forum_print_post($post, $discussion, $forum, $cm, $course, $ownpost, $reply, $link,
-                                 '', '', $postread, true, $forumtracked);
+                                 '', '', $postread, true, $forumtracked, false, true);
             forum_print_posts_nested($course, $cm, $forum, $discussion, $post, $reply, $forumtracked, $posts);
             echo "</div>\n";
         }
