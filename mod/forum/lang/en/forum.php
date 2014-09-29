@@ -414,6 +414,7 @@ $string['rssarticles'] = 'Number of RSS recent articles';
 $string['rssarticles_help'] = 'This setting specifies the number of articles (either discussions or posts) to include in the RSS feed. Between 5 and 20 generally acceptable.';
 $string['rsstype'] = 'RSS feed for this activity';
 $string['rsstype_help'] = 'To enable the RSS feed for this activity, select either discussions or posts to be included in the feed.';
+$string['savechanges'] = 'Save changes';
 $string['search'] = 'Search';
 $string['searchdatefrom'] = 'Posts must be newer than this';
 $string['searchdateto'] = 'Posts must be older than this';

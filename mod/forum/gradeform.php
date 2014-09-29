@@ -45,8 +45,12 @@ class mod_forum_grade_form extends moodleform {
     public function definition() {
         $mform = $this->_form;
 
-        list($forum, $data, $params, $context) = $this->_customdata;
-        $userid = $params['userid'];
+        list($forum, $data, $params) = $this->_customdata;
+        $userid  = $params['userid'];
+        $postid  = $params['postid'];
+        $context = $params['context'];
+        $cmid    = $params['cmid'];
+
         // Visible elements.
         $gradingdisabled = false;
         $gradinginstance = mod_forum_get_grading_instance($userid, $data->grade, $gradingdisabled, $context, 'posts');
@@ -70,6 +74,25 @@ class mod_forum_grade_form extends moodleform {
         if ($data) {
             $this->set_data($data);
         }
+        // Hidden params.
+        $mform->addElement('hidden', 'id', $cmid);
+        $mform->setType('id', PARAM_INT);
+        $mform->addElement('hidden', 'postid', $postid);
+        $mform->setType('postid', PARAM_INT);
+        $mform->addElement('hidden', 'userid', $userid);
+        $mform->setType('userid', PARAM_INT);
+
+        $mform->addElement('hidden', 'action', 'submitgrade');
+        $mform->setType('action', PARAM_ALPHA);
+
+        $buttonarray=array();
+        $name = get_string('savechanges', 'forum');
+        $buttonarray[] = $mform->createElement('submit', 'savegrade', $name);
+
+        $mform->addGroup($buttonarray, 'navar', '', array(' '), false);
+
+        // The grading form does not work well with shortforms.
+        $mform->setDisableShortforms();
     }
 
 }

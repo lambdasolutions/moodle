@@ -29,6 +29,7 @@ require_once($CFG->dirroot . '/mod/forum/lib.php');
 $id = required_param('id', PARAM_INT); // Course Module ID.
 $userid = required_param('userid', PARAM_INT); // User id.
 $postid = optional_param('postid', 0, PARAM_INT); // Post id.
+$action = optional_param('action', '', PARAM_ALPHA);
 
 $params = array();
 $params['id'] = $id;
@@ -54,16 +55,24 @@ $PAGE->set_context($context);
 // Need mod/forum:grade capability.
 require_capability('mod/forum:grade', $context);
 
-$params = array('userid' => $user->id);
+$params = array('userid' => $user->id,
+                'context' => $context,
+                'postid' => $postid,
+                'cmid' => $cm->id);
 $data = new stdClass();
 $data->grade = '';
 
-$formparams = array($forum, $data, $params, $context);
+$formparams = array($forum, $data, $params);
 $mform = new mod_forum_grade_form(null,
     $formparams,
     'post',
     '',
     array('class'=>'gradeform'));
+
+if ($action === 'submitgrade') {
+
+}
+$formdata = $mform->get_data();
 
 $PAGE->set_title($forum->name);
 $PAGE->set_heading($course->fullname);

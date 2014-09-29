@@ -7756,3 +7756,41 @@ function mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $cont
     }
     return $gradinginstance;
 }
+
+/**
+ * Apply a grade from a grading form to a user
+ *
+ * @param stdClass $formdata - the data from the form
+ * @param int $userid - the user to apply the grade to
+ * @param int $attemptnumber - The attempt number to apply the grade to.
+ * @return void
+ */
+function forum_apply_grade_to_user($formdata, $userid, $attemptnumber) {
+    global $USER, $CFG, $DB;
+
+    $grade = $this->get_user_grade($userid, true, $attemptnumber);
+    $gradingdisabled = $this->grading_disabled($userid);
+    $gradinginstance = $this->get_grading_instance($userid, $grade, $gradingdisabled);
+    if (!$gradingdisabled) {
+        if ($gradinginstance) {
+            $grade->grade = $gradinginstance->submit_and_get_grade($formdata->advancedgrading,
+                $grade->id);
+        } else {
+            // Handle the case when grade is set to No Grade.
+            if (isset($formdata->grade)) {
+                $grade->grade = grade_floatval(unformat_float($formdata->grade));
+            }
+        }
+    }
+    $grade->grader= $USER->id;
+
+    $adminconfig = $this->get_admin_config();
+    $gradebookplugin = $adminconfig->feedback_plugin_for_gradebook;
+
+    $this->update_grade($grade, !empty($formdata->addattempt));
+    // Note the default if not provided for this option is true (e.g. webservices).
+    // This is for backwards compatibility.
+    if (!isset($formdata->sendstudentnotifications) || $formdata->sendstudentnotifications) {
+        $this->notify_grade_modified($grade);
+    }
+}
