@@ -3256,7 +3256,8 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
 
     // If grading methods are used, show ability to grade this post.
     if ($showgradinglink) {
-        $commands[] = array('url'=>'', 'text'=> get_string('grade', 'mod_forum'));
+        $url = new moodle_url('/mod/forum/grade.php', array('id' => $cm->id, 'postid' => $post->id, 'userid' => $post->userid));
+        $commands[] = array('url' => $url, 'text' => get_string('grade', 'mod_forum'));
     }
 
     // SPECIAL CASE: The front page can display a news item post to non-logged in users.
@@ -7711,4 +7712,47 @@ function get_forum_grading_manager($context_or_areaid = null, $component = null,
     }
 
     return $manager;
+}
+
+/**
+ * Get an instance of a grading form if advanced grading is enabled.
+ * This is specific to the forum, marker and student.
+ *
+ * @param int $userid - The student userid
+ * @param stdClass|false $grade - The grade record
+ * @param bool $gradingdisabled
+ * @return mixed gradingform_instance|null $gradinginstance
+ */
+function mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context, $area = 'posts') {
+    global $USER;
+
+    $grademenu = make_grades_menu(0);
+    $allowgradedecimals = false;
+
+    $advancedgradingwarning = false;
+    $gradingmanager = get_grading_manager($context, 'mod_forum', $area);
+    $gradinginstance = null;
+    if ($gradingmethod = $gradingmanager->get_active_method()) {
+        $controller = $gradingmanager->get_controller($gradingmethod);
+        if ($controller->is_form_available()) {
+            $itemid = null;
+            if ($grade) {
+                $itemid = $grade->id;
+            }
+            if ($gradingdisabled && $itemid) {
+                $gradinginstance = $controller->get_current_instance($USER->id, $itemid);
+            } else if (!$gradingdisabled) {
+                $instanceid = optional_param('advancedgradinginstanceid', 0, PARAM_INT);
+                $gradinginstance = $controller->get_or_create_instance($instanceid,
+                    $USER->id,
+                    $itemid);
+            }
+        } else {
+            $advancedgradingwarning = $controller->form_unavailable_notification();
+        }
+    }
+    if ($gradinginstance) {
+        $gradinginstance->get_controller()->set_grade_range($grademenu, $allowgradedecimals);
+    }
+    return $gradinginstance;
 }
