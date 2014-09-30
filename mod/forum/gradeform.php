@@ -81,6 +81,8 @@ class mod_forum_grade_form extends moodleform {
         $mform->setType('postid', PARAM_INT);
         $mform->addElement('hidden', 'userid', $userid);
         $mform->setType('userid', PARAM_INT);
+        $mform->addElement('hidden', 'cmid', $cmid);
+        $mform->setType('cmid', PARAM_INT);
 
         $mform->addElement('hidden', 'action', 'submitgrade');
         $mform->setType('action', PARAM_ALPHA);

@@ -7765,12 +7765,13 @@ function mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $cont
  * @param int $attemptnumber - The attempt number to apply the grade to.
  * @return void
  */
-function forum_apply_grade_to_user($formdata, $userid, $attemptnumber) {
+function forum_apply_grade_to_user($formdata, $userid) {
     global $USER, $CFG, $DB;
 
-    $grade = $this->get_user_grade($userid, true, $attemptnumber);
-    $gradingdisabled = $this->grading_disabled($userid);
-    $gradinginstance = $this->get_grading_instance($userid, $grade, $gradingdisabled);
+    $gradingdisabled = false;
+    $context = context_module::instance($formdata->cmid);
+    $grade = null;
+    $gradinginstance = mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context);
     if (!$gradingdisabled) {
         if ($gradinginstance) {
             $grade->grade = $gradinginstance->submit_and_get_grade($formdata->advancedgrading,
@@ -7781,16 +7782,5 @@ function forum_apply_grade_to_user($formdata, $userid, $attemptnumber) {
                 $grade->grade = grade_floatval(unformat_float($formdata->grade));
             }
         }
-    }
-    $grade->grader= $USER->id;
-
-    $adminconfig = $this->get_admin_config();
-    $gradebookplugin = $adminconfig->feedback_plugin_for_gradebook;
-
-    $this->update_grade($grade, !empty($formdata->addattempt));
-    // Note the default if not provided for this option is true (e.g. webservices).
-    // This is for backwards compatibility.
-    if (!isset($formdata->sendstudentnotifications) || $formdata->sendstudentnotifications) {
-        $this->notify_grade_modified($grade);
     }
 }

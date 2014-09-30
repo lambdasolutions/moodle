@@ -70,9 +70,13 @@ $mform = new mod_forum_grade_form(null,
     array('class'=>'gradeform'));
 
 if ($action === 'submitgrade') {
-
+    $formdata = $mform->get_data();
+    if ($formdata) {
+        forum_apply_grade_to_user($formdata, $userid);
+        echo $OUTPUT->notify('gradesaved', 'forum');
+    }
 }
-$formdata = $mform->get_data();
+
 
 $PAGE->set_title($forum->name);
 $PAGE->set_heading($course->fullname);
