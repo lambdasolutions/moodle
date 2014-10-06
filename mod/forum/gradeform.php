@@ -43,6 +43,7 @@ class mod_forum_grade_form extends moodleform {
      * Define the form - called by parent constructor.
      */
     public function definition() {
+        global $OUTPUT;
         $mform = $this->_form;
 
         list($forum, $data, $params) = $this->_customdata;
@@ -54,7 +55,12 @@ class mod_forum_grade_form extends moodleform {
         // Visible elements.
         $gradingdisabled = false;
         $grade = forum_get_user_grade($userid, true, $forum->id, $postid);
-        $gradinginstance = mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context, 'posts');
+        if (empty($postid)) {
+            $area = "forum";
+        } else {
+            $area = "posts";
+        }
+        $gradinginstance = mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context, $area);
 
         $mform->addElement('header', 'gradeheader', get_string('grade'));
         if ($gradinginstance) {
@@ -68,8 +74,6 @@ class mod_forum_grade_form extends moodleform {
                 $mform->addElement('hidden', 'advancedgradinginstanceid', $gradinginstance->get_id());
                 $mform->setType('advancedgradinginstanceid', PARAM_INT);
             }
-        } else {
-            // TODO: Use simple direct grading.
         }
 
         if ($data) {

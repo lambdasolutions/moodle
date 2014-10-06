@@ -168,6 +168,8 @@ function forum_update_instance($forum, $mform) {
 
     $oldforum = $DB->get_record('forum', array('id'=>$forum->id));
 
+    $cm         = get_coursemodule_from_instance('forum', $forum->id);
+
     // MDL-3942 - if the aggregation type or scale (i.e. max grade) changes then recalculate the grades for the entire forum
     // if  scale changes - do we need to recheck the ratings, if ratings higher than scale how do we want to respond?
     // for count and sum aggregation types the grade we check to make sure they do not exceed the scale (i.e. max score) when calculating the grade
@@ -207,7 +209,6 @@ function forum_update_instance($forum, $mform) {
             print_error('cannotfindfirstpost', 'forum');
         }
 
-        $cm         = get_coursemodule_from_instance('forum', $forum->id);
         $modcontext = context_module::instance($cm->id, MUST_EXIST);
 
         $post = $DB->get_record('forum_posts', array('id'=>$discussion->firstpost), '*', MUST_EXIST);
@@ -238,7 +239,7 @@ function forum_update_instance($forum, $mform) {
             \mod_forum\subscriptions::subscribe_user($user->id, $forum, $modcontext);
         }
     }
-
+    $forum->cmidnumber = $cm->id;
     forum_grade_item_update($forum);
 
     return true;
@@ -1742,10 +1743,22 @@ function forum_grade_item_update($forum, $grades=NULL) {
     if (!function_exists('grade_update')) { //workaround for buggy PHP versions
         require_once($CFG->libdir.'/gradelib.php');
     }
-
-    $context = context_module::instance($forum->cmidnumber);
-    $sql = "contextid = ? AND component = ? AND ". $DB->sql_isnotempty('grading_areas', 'activemethod', true, false);
-    $advancedgrading = $DB->record_exists_select('grading_areas', $sql, array($context->id, 'mod_forum'));
+    $advancedgrading = false;
+    // If this is a new activity, cm doesn't exist yet but the $forum object contains advanced grading items so check those.
+    if (empty($forum->cmidnumber)) {
+        $areas = forum_grading_areas_list();
+        foreach ($areas as $area => $name) {
+            $formparamname = 'advancedgradingmethod_'.$area;
+            if (!empty($forum->$formparamname)) {
+                $advancedgrading = true;
+            }
+        }
+    } else {
+        // Grading settings are not stored in the forum table so we need to check elsewhere.
+        $context = context_module::instance($forum->cmidnumber);
+        $sql = "contextid = ? AND component = ? AND ". $DB->sql_isnotempty('grading_areas', 'activemethod', true, false);
+        $advancedgrading = $DB->record_exists_select('grading_areas', $sql, array($context->id, 'mod_forum'));
+    }
 
     $params = array('itemname'=>$forum->name, 'idnumber'=>$forum->cmidnumber);
 
@@ -7736,7 +7749,7 @@ function get_forum_grading_manager($context_or_areaid = null, $component = null,
 function mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context, $area = 'posts') {
     global $USER;
 
-    $grademenu = make_grades_menu(0);
+    $grademenu = make_grades_menu(100); // TODO: allow grade range to be set.
     $allowgradedecimals = false;
 
     $advancedgradingwarning = false;
@@ -7809,6 +7822,7 @@ function forum_apply_grade_to_user($formdata, $userid) {
     $gradefinal = new stdClass();
     $gradefinal->userid   = $userid;
     $gradefinal->rawgrade = $gradetotal / $gradecount;
+
     forum_grade_item_update($forum, $gradefinal);
 
     // TODO: Trigger event on grade save.

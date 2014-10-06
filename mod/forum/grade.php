@@ -42,10 +42,6 @@ $course = get_course($cm->course);
 $forum = $DB->get_record("forum", array("id" => $cm->instance), '*', MUST_EXIST);
 
 $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
-if (!empty($postid)) {
-    $post = forum_get_post_full($postid);
-    $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
-}
 
 require_course_login($course, true, $cm);
 
@@ -54,6 +50,31 @@ $PAGE->set_context($context);
 
 // Need mod/forum:grade capability.
 require_capability('mod/forum:grade', $context);
+
+// Check advanced grading is enabled for this forum.
+$sql = "contextid = ? AND component = ? AND ". $DB->sql_isnotempty('grading_areas', 'activemethod', true, false);
+$advancedgrading = $DB->get_records_select_menu('grading_areas', $sql, array($context->id, 'mod_forum'), '', 'areaname, activemethod');
+
+if (!empty($postid) && !empty($advancedgrading['posts'])) {
+    $post = forum_get_post_full($postid);
+    $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
+} else if (!empty($advancedgrading['forum'])) {
+    // Grade all posts from this user.
+    $postid = 0; // Grading posts is not enabled but fall back to grading forum.
+
+    $allnames = get_all_user_name_fields(true, 'u');
+    $posts = $DB->get_records_sql("SELECT p.*, $allnames, u.email, u.picture, u.imagealt
+                                     FROM {forum_posts} p
+                                          LEFT JOIN {user} u ON p.userid = u.id
+                                          LEFT JOIN {forum_discussions} d ON d.id = p.discussion
+                                    WHERE d.forum = ?
+                                 ORDER BY p.discussion, p.created", array($forum->id));
+} else {
+    echo $OUTPUT->header();
+    echo $OUTPUT->notification(get_string('advancedgradingnotsetup', 'forum'));
+    echo $OUTPUT->footer();
+    exit;
+}
 
 $params = array('userid' => $user->id,
                 'context' => $context,
@@ -72,7 +93,6 @@ $mform = new mod_forum_grade_form(null,
 if ($action === 'submitgrade') {
     $formdata = $mform->get_data();
     if ($formdata) {
-        $formdata->advancedgradingmethod_posts = true;
         forum_apply_grade_to_user($formdata, $userid);
         $url = new moodle_url('/mod/forum/discuss.php', array('d' => $discussion->id, '#p' => $postid));
         redirect($url, get_string('gradesaved', 'forum'), 1);
@@ -87,10 +107,20 @@ $renderer = $PAGE->get_renderer('mod_forum');
 
 
 echo $OUTPUT->header();
-if (!empty($post)) {
-    forum_print_post($post, $discussion, $forum, $cm, $course);
-}
 
 echo $renderer->render(new forum_form('gradingform', $mform));
+
+if (!empty($post)) {
+    forum_print_post($post, $discussion, $forum, $cm, $course);
+} else if (!empty($posts)) {
+    $discussions = array();
+    foreach ($posts as $post) {
+        if (!isset($discussions[$post->discussion])) {
+            $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
+            $discussions[$discussion->id] = $discussion;
+        }
+        forum_print_post($post, $discussions[$post->discussion], $forum, $cm, $course);
+    }
+}
 
 echo $OUTPUT->footer($course);

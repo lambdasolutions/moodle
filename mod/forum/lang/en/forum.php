@@ -27,6 +27,7 @@ $string['activityoverview'] = 'There are new forum posts';
 $string['addanewdiscussion'] = 'Add a new discussion topic';
 $string['addanewquestion'] = 'Add a new question';
 $string['addanewtopic'] = 'Add a new topic';
+$string['advancedgradingnotsetup'] = 'Advanced grading is not configured.';
 $string['advancedsearch'] = 'Advanced search';
 $string['allforums'] = 'All forums';
 $string['allowdiscussions'] = 'Can a {$a} post to this forum?';
