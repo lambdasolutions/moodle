@@ -279,6 +279,7 @@ function forum_delete_instance($id) {
     $DB->delete_records('forum_digests', array('forum' => $forum->id));
     $DB->delete_records('forum_subscriptions', array('forum'=>$forum->id));
     $DB->delete_records('forum_discussion_subs', array('forum' => $forum->id));
+    $DB->delete_records('forum_grades', array('forum' => $forum->id));
 
     if ($discussions = $DB->get_records('forum_discussions', array('forum'=>$forum->id))) {
         foreach ($discussions as $discussion) {
