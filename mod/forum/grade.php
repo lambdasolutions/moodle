@@ -33,6 +33,7 @@ $action = optional_param('action', '', PARAM_ALPHA);
 
 $params = array();
 $params['id'] = $id;
+$params['userid'] = $userid;
 
 $PAGE->set_url('/mod/forum/grade.php', $params);
 
@@ -58,6 +59,7 @@ $advancedgrading = $DB->get_records_select_menu('grading_areas', $sql, array($co
 if (!empty($postid) && !empty($advancedgrading['posts'])) {
     $post = forum_get_post_full($postid);
     $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
+    $area = "posts";
 } else if (!empty($advancedgrading['forum'])) {
     // Grade all posts from this user.
     $postid = 0; // Grading posts is not enabled but fall back to grading forum.
@@ -70,6 +72,7 @@ if (!empty($postid) && !empty($advancedgrading['posts'])) {
                                           RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                                     WHERE d.forum = ?
                                  ORDER BY p.discussion, p.created", array($forum->id));
+    $area = "forum";
 } else {
     echo $OUTPUT->header();
     echo $OUTPUT->notification(get_string('advancedgradingnotsetup', 'forum'));
@@ -94,8 +97,13 @@ $mform = new mod_forum_grade_form(null,
 if ($action === 'submitgrade') {
     $formdata = $mform->get_data();
     if ($formdata) {
-        forum_apply_grade_to_user($formdata, $userid);
-        $url = new moodle_url('/mod/forum/discuss.php', array('d' => $discussion->id, '#p' => $postid));
+        forum_apply_grade_to_user($formdata, $userid, $area);
+        if (!empty($postid)) {
+            $url = new moodle_url('/mod/forum/discuss.php', array('d' => $discussion->id, '#p' => $postid));
+        } else {
+            // TODO: think about a better place to redirect to.
+            $url = $CFG->wwwroot;
+        }
         redirect($url, get_string('gradesaved', 'forum'), 1);
     }
 }
@@ -108,6 +116,12 @@ $renderer = $PAGE->get_renderer('mod_forum');
 
 
 echo $OUTPUT->header();
+if (!empty($post)) {
+    // Check to see if we should display a link to allow grading all this users posts.
+    if (!empty($advancedgrading['forum'])) {
+        echo $OUTPUT->single_button($PAGE->url, get_string('gradeoverall', 'forum'), 'post');
+    }
+}
 
 echo $renderer->render(new forum_form('gradingform', $mform));
 

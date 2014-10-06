@@ -3477,7 +3477,6 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         if ($showgradinglink) {
             $url = new moodle_url('/mod/forum/grade.php', array('id' => $cm->id, 'postid' => $post->id, 'userid' => $post->userid));
             $grade = html_writer::tag('a', get_string('grade')." ", array('href' => $url)).$post->grade;
-
         } else {
             $grade = get_string('grade').": ".$post->grade;
         }
@@ -7795,16 +7794,17 @@ function mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $cont
  * @param stdClass $formdata - the data from the form
  * @param int $userid - the user to apply the grade to
  * @param int $attemptnumber - The attempt number to apply the grade to.
+ * @param string $area - the grading area to apply the grade to.
  * @return void
  */
-function forum_apply_grade_to_user($formdata, $userid) {
+function forum_apply_grade_to_user($formdata, $userid, $area) {
     global $DB;
 
     $context = context_module::instance($formdata->cmid);
     $forum = $DB->get_record('forum', array('id' => $formdata->forumid), '*', MUST_EXIST);
     $forum->cmidnumber = $formdata->cmid;
     $grade = forum_get_user_grade($userid, true, $formdata->forumid, $formdata->postid);
-    $gradinginstance = mod_forum_get_grading_instance($userid, $grade, false, $context);
+    $gradinginstance = mod_forum_get_grading_instance($userid, $grade, false, $context, $area);
     if ($gradinginstance) {
         $grade->grade = $gradinginstance->submit_and_get_grade($formdata->advancedgrading, $grade->id);
         $result = $DB->update_record('forum_grades', $grade);
