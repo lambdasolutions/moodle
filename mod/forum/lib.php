@@ -1861,7 +1861,7 @@ function forum_get_post_full($postid) {
                              FROM {forum_posts} p
                                   JOIN {forum_discussions} d ON p.discussion = d.id
                                   LEFT JOIN {user} u ON p.userid = u.id
-                                  RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
+                                  LEFT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                             WHERE p.id = ?", array($postid));
 }
 
@@ -1896,7 +1896,7 @@ function forum_get_all_discussion_posts($discussionid, $sort, $tracking=false) {
     if (!$posts = $DB->get_records_sql("SELECT p.*, $allnames, u.email, u.picture, u.imagealt $tr_sel, g.grade
                                      FROM {forum_posts} p
                                           LEFT JOIN {user} u ON p.userid = u.id
-                                          RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
+                                          LEFT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                                           $tr_join
                                     WHERE p.discussion = ?
                                  ORDER BY $sort", $params)) {
@@ -2274,7 +2274,7 @@ function forum_get_user_posts($forumid, $userid) {
                                    JOIN {forum_discussions} d ON d.forum = f.id
                                    JOIN {forum_posts} p       ON p.discussion = d.id
                                    JOIN {user} u              ON u.id = p.userid
-                                   RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
+                                   LEFT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                              WHERE f.id = ?
                                    AND p.userid = ?
                                    $timedsql

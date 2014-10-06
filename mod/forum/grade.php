@@ -69,7 +69,7 @@ if (!empty($postid) && !empty($advancedgrading['posts'])) {
                                      FROM {forum_posts} p
                                           LEFT JOIN {user} u ON p.userid = u.id
                                           LEFT JOIN {forum_discussions} d ON d.id = p.discussion
-                                          RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
+                                          LEFT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                                     WHERE d.forum = ?
                                  ORDER BY p.discussion, p.created", array($forum->id));
     $area = "forum";
