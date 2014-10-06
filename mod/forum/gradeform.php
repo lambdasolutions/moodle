@@ -53,7 +53,8 @@ class mod_forum_grade_form extends moodleform {
 
         // Visible elements.
         $gradingdisabled = false;
-        $gradinginstance = mod_forum_get_grading_instance($userid, $data->grade, $gradingdisabled, $context, 'posts');
+        $grade = forum_get_user_grade($userid, true, $forum->id, $postid);
+        $gradinginstance = mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context, 'posts');
 
         $mform->addElement('header', 'gradeheader', get_string('grade'));
         if ($gradinginstance) {
@@ -83,6 +84,8 @@ class mod_forum_grade_form extends moodleform {
         $mform->setType('userid', PARAM_INT);
         $mform->addElement('hidden', 'cmid', $cmid);
         $mform->setType('cmid', PARAM_INT);
+        $mform->addElement('hidden', 'forumid', $forum->id);
+        $mform->setType('forumid', PARAM_INT);
 
         $mform->addElement('hidden', 'action', 'submitgrade');
         $mform->setType('action', PARAM_ALPHA);

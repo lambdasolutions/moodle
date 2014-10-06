@@ -73,7 +73,8 @@ if ($action === 'submitgrade') {
     $formdata = $mform->get_data();
     if ($formdata) {
         forum_apply_grade_to_user($formdata, $userid);
-        echo $OUTPUT->notify('gradesaved', 'forum');
+        $url = new moodle_url('/mod/forum/discuss.php', array('d' => $discussion->id, '#p' => $postid));
+        redirect($url, get_string('gradesaved', 'forum'), 1);
     }
 }
 

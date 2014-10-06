@@ -7771,7 +7771,7 @@ function forum_apply_grade_to_user($formdata, $userid) {
 
     $gradingdisabled = false;
     $context = context_module::instance($formdata->cmid);
-    $grade = null;
+    $grade = forum_get_user_grade($userid, true, $formdata->forumid, $formdata->postid);
     $gradinginstance = mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context);
     if (!$gradingdisabled) {
         if ($gradinginstance) {
@@ -7784,4 +7784,47 @@ function forum_apply_grade_to_user($formdata, $userid) {
             }
         }
     }
+}
+
+
+
+
+/**
+ * This will retrieve a grade object from the db, optionally creating it if required.
+ *
+ * @param int $userid The user we are grading
+ * @param bool $create If true the grade will be created if it does not exist
+ * @param int $postid The post to retrieve the grade for. 0 means the overal forum grade.
+ * @return stdClass The grade record
+ */
+function forum_get_user_grade($userid, $create, $forumid, $postid=0) {
+    global $DB, $USER;
+
+    // If the userid is not null then use userid.
+    if (!$userid) {
+        $userid = $USER->id;
+    }
+
+    $params = array('forum'=>$forumid, 'userid' => $userid, 'postid' => $postid);
+
+    $grade = $DB->get_record('forum_grades', $params);
+
+    if (!empty($grade)) {
+        return $grade;
+    }
+    if ($create) {
+        $grade = new stdClass();
+        $grade->forum   = $forumid;
+        $grade->userid       = $userid;
+        $grade->timecreated = time();
+        $grade->timemodified = $grade->timecreated;
+        $grade->grade = -1;
+        $grade->grader = $USER->id;
+        $grade->postid = $postid;
+
+        $gid = $DB->insert_record('forum_grades', $grade);
+        $grade->id = $gid;
+        return $grade;
+    }
+    return false;
 }
