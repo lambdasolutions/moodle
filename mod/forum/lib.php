@@ -1857,10 +1857,11 @@ function forum_get_post_full($postid) {
     global $CFG, $DB;
 
     $allnames = get_all_user_name_fields(true, 'u');
-    return $DB->get_record_sql("SELECT p.*, d.forum, $allnames, u.email, u.picture, u.imagealt
+    return $DB->get_record_sql("SELECT p.*, d.forum, $allnames, u.email, u.picture, u.imagealt, g.grade
                              FROM {forum_posts} p
                                   JOIN {forum_discussions} d ON p.discussion = d.id
                                   LEFT JOIN {user} u ON p.userid = u.id
+                                  RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                             WHERE p.id = ?", array($postid));
 }
 
@@ -1892,9 +1893,10 @@ function forum_get_all_discussion_posts($discussionid, $sort, $tracking=false) {
 
     $allnames = get_all_user_name_fields(true, 'u');
     $params[] = $discussionid;
-    if (!$posts = $DB->get_records_sql("SELECT p.*, $allnames, u.email, u.picture, u.imagealt $tr_sel
+    if (!$posts = $DB->get_records_sql("SELECT p.*, $allnames, u.email, u.picture, u.imagealt $tr_sel, g.grade
                                      FROM {forum_posts} p
                                           LEFT JOIN {user} u ON p.userid = u.id
+                                          RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                                           $tr_join
                                     WHERE p.discussion = ?
                                  ORDER BY $sort", $params)) {
@@ -2267,11 +2269,12 @@ function forum_get_user_posts($forumid, $userid) {
     }
 
     $allnames = get_all_user_name_fields(true, 'u');
-    return $DB->get_records_sql("SELECT p.*, d.forum, $allnames, u.email, u.picture, u.imagealt
+    return $DB->get_records_sql("SELECT p.*, d.forum, $allnames, u.email, u.picture, u.imagealt, g.grade
                               FROM {forum} f
                                    JOIN {forum_discussions} d ON d.forum = f.id
                                    JOIN {forum_posts} p       ON p.discussion = d.id
                                    JOIN {user} u              ON u.id = p.userid
+                                   RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                              WHERE f.id = ?
                                    AND p.userid = ?
                                    $timedsql
@@ -3277,11 +3280,6 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     // Prepare an array of commands
     $commands = array();
 
-    // If grading methods are used, show ability to grade this post.
-    if ($showgradinglink) {
-        $url = new moodle_url('/mod/forum/grade.php', array('id' => $cm->id, 'postid' => $post->id, 'userid' => $post->userid));
-        $commands[] = array('url' => $url, 'text' => get_string('grade', 'mod_forum'));
-    }
 
     // SPECIAL CASE: The front page can display a news item post to non-logged in users.
     // Don't display the mark read / unread controls in this case.
@@ -3473,6 +3471,17 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     // Output ratings
     if (!empty($post->rating)) {
         $output .= html_writer::tag('div', $OUTPUT->render($post->rating), array('class'=>'forum-post-rating'));
+    }
+
+    if ($showgradinglink || (!empty($post->grade) && $USER->id === $postuser->id)) {
+        if ($showgradinglink) {
+            $url = new moodle_url('/mod/forum/grade.php', array('id' => $cm->id, 'postid' => $post->id, 'userid' => $post->userid));
+            $grade = html_writer::tag('a', get_string('grade')." ", array('href' => $url)).$post->grade;
+
+        } else {
+            $grade = get_string('grade').": ".$post->grade;
+        }
+        $output .= html_writer::tag('div', $grade, array('class'=>'forum-post-grade'));
     }
 
     // Output the commands

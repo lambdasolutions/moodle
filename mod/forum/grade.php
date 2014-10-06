@@ -63,10 +63,11 @@ if (!empty($postid) && !empty($advancedgrading['posts'])) {
     $postid = 0; // Grading posts is not enabled but fall back to grading forum.
 
     $allnames = get_all_user_name_fields(true, 'u');
-    $posts = $DB->get_records_sql("SELECT p.*, $allnames, u.email, u.picture, u.imagealt
+    $posts = $DB->get_records_sql("SELECT p.*, $allnames, u.email, u.picture, u.imagealt, g.grade
                                      FROM {forum_posts} p
                                           LEFT JOIN {user} u ON p.userid = u.id
                                           LEFT JOIN {forum_discussions} d ON d.id = p.discussion
+                                          RIGHT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
                                     WHERE d.forum = ?
                                  ORDER BY p.discussion, p.created", array($forum->id));
 } else {
