@@ -1738,14 +1738,23 @@ function forum_update_grades($forum, $userid=0, $nullifnone=true) {
  * @return int 0 if ok
  */
 function forum_grade_item_update($forum, $grades=NULL) {
-    global $CFG;
+    global $CFG, $DB;
     if (!function_exists('grade_update')) { //workaround for buggy PHP versions
         require_once($CFG->libdir.'/gradelib.php');
     }
 
+    $context = context_module::instance($forum->cmidnumber);
+    $sql = "contextid = ? AND component = ? AND ". $DB->sql_isnotempty('grading_areas', 'activemethod', true, false);
+    $advancedgrading = $DB->record_exists_select('grading_areas', $sql, array($context->id, 'mod_forum'));
+
     $params = array('itemname'=>$forum->name, 'idnumber'=>$forum->cmidnumber);
 
-    if (!$forum->assessed or $forum->scale == 0) {
+    if ($advancedgrading) {
+        $params['gradetype'] = GRADE_TYPE_VALUE;
+        $params['grademax']  = 100;
+        $params['grademin']  = 0;
+
+    } else if (!$forum->assessed or $forum->scale == 0) {
         $params['gradetype'] = GRADE_TYPE_NONE;
 
     } else if ($forum->scale > 0) {
@@ -7767,23 +7776,42 @@ function mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $cont
  * @return void
  */
 function forum_apply_grade_to_user($formdata, $userid) {
-    global $USER, $CFG, $DB;
+    global $DB;
 
-    $gradingdisabled = false;
     $context = context_module::instance($formdata->cmid);
+    $forum = $DB->get_record('forum', array('id' => $formdata->forumid), '*', MUST_EXIST);
+    $forum->cmidnumber = $formdata->cmid;
     $grade = forum_get_user_grade($userid, true, $formdata->forumid, $formdata->postid);
-    $gradinginstance = mod_forum_get_grading_instance($userid, $grade, $gradingdisabled, $context);
-    if (!$gradingdisabled) {
-        if ($gradinginstance) {
-            $grade->grade = $gradinginstance->submit_and_get_grade($formdata->advancedgrading,
-                $grade->id);
-        } else {
-            // Handle the case when grade is set to No Grade.
-            if (isset($formdata->grade)) {
-                $grade->grade = grade_floatval(unformat_float($formdata->grade));
-            }
+    $gradinginstance = mod_forum_get_grading_instance($userid, $grade, false, $context);
+    if ($gradinginstance) {
+        $grade->grade = $gradinginstance->submit_and_get_grade($formdata->advancedgrading, $grade->id);
+        $result = $DB->update_record('forum_grades', $grade);
+    } else {
+        // Handle the case when grade is set to No Grade.
+        if (isset($formdata->grade)) {
+            $grade->grade = grade_floatval(unformat_float($formdata->grade));
+            $result = $DB->update_record('forum_grades', $grade);
         }
     }
+    // TODO: Check if only forum grading enabled and just save existing grade to improve perf.
+
+    // Now get all grades for this forum, aggregate them and pass to gradebook.
+    // Currently we only support a simple average of all grades received.
+    $grades = $DB->get_recordset('forum_grades', array('forum' => $forum->id, 'userid' => $userid));
+    $gradecount = 0;
+    $gradetotal = 0;
+
+    foreach ($grades as $g) {
+        $gradetotal = $gradetotal + $g->grade;
+        $gradecount++;
+    }
+
+    $gradefinal = new stdClass();
+    $gradefinal->userid   = $userid;
+    $gradefinal->rawgrade = $gradetotal / $gradecount;
+    forum_grade_item_update($forum, $gradefinal);
+
+    // TODO: Trigger event on grade save.
 }
 
 

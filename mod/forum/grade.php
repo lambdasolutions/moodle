@@ -72,6 +72,7 @@ $mform = new mod_forum_grade_form(null,
 if ($action === 'submitgrade') {
     $formdata = $mform->get_data();
     if ($formdata) {
+        $formdata->advancedgradingmethod_posts = true;
         forum_apply_grade_to_user($formdata, $userid);
         $url = new moodle_url('/mod/forum/discuss.php', array('d' => $discussion->id, '#p' => $postid));
         redirect($url, get_string('gradesaved', 'forum'), 1);
