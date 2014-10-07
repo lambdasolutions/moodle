@@ -656,6 +656,8 @@ class core_moodlelib_testcase extends advanced_testcase {
         $this->assertSame('john@doe', clean_param('john@doe', PARAM_USERNAME));
         $this->assertSame('johndoe', clean_param('john~doe', PARAM_USERNAME));
         $this->assertSame('johndoe', clean_param('john´doe', PARAM_USERNAME));
+        $this->assertSame(clean_param('john# $%&()+_^', PARAM_USERNAME), 'john_');
+        $this->assertSame(clean_param(' john# $%&()+_^ ', PARAM_USERNAME), 'john_');
         $this->assertSame(clean_param('john#$%&() ', PARAM_USERNAME), 'john');
         $this->assertSame('johnd', clean_param('JOHNdóé ', PARAM_USERNAME));
         $this->assertSame(clean_param('john.,:;-_/|\ñÑ[]A_X-,D {} ~!@#$%^&*()_+ ?><[] ščřžžý ?ýá?ý??doe ', PARAM_USERNAME), 'john.-_a_x-d@_doe');
@@ -664,7 +666,8 @@ class core_moodlelib_testcase extends advanced_testcase {
         $CFG->extendedusernamechars = true;
         $this->assertSame('john_doe', clean_param('john_doe', PARAM_USERNAME));
         $this->assertSame('john@doe', clean_param('john@doe', PARAM_USERNAME));
-        $this->assertSame(clean_param('john# $%&()+_^', PARAM_USERNAME), 'john#$%&()+_^');
+        $this->assertSame(clean_param('john# $%&()+_^', PARAM_USERNAME), 'john# $%&()+_^');
+        $this->assertSame(clean_param(' john# $%&()+_^ ', PARAM_USERNAME), 'john# $%&()+_^');
         $this->assertSame('john~doe', clean_param('john~doe', PARAM_USERNAME));
         $this->assertSame('john´doe', clean_param('joHN´doe', PARAM_USERNAME));
         $this->assertSame('johndoe', clean_param('johnDOE', PARAM_USERNAME));
@@ -2798,5 +2801,30 @@ class core_moodlelib_testcase extends advanced_testcase {
 
         $count = count_words('one…two ブルース … カンベッル');
         $this->assertEquals(4, $count);
+    }
+    /**
+     * Tests the getremoteaddr() function.
+     */
+    public function test_getremoteaddr() {
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '';
+        $noip = getremoteaddr('1.1.1.1');
+        $this->assertEquals('1.1.1.1', $noip);
+
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '';
+        $noip = getremoteaddr();
+        $this->assertEquals('0.0.0.0', $noip);
+
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1';
+        $singleip = getremoteaddr();
+        $this->assertEquals('127.0.0.1', $singleip);
+
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,127.0.0.2';
+        $twoip = getremoteaddr();
+        $this->assertEquals('127.0.0.1', $twoip);
+
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,127.0.0.2, 127.0.0.3';
+        $threeip = getremoteaddr();
+        $this->assertEquals('127.0.0.1', $threeip);
+
     }
 }
