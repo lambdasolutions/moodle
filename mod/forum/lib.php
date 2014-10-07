@@ -1739,33 +1739,21 @@ function forum_update_grades($forum, $userid=0, $nullifnone=true) {
  * @return int 0 if ok
  */
 function forum_grade_item_update($forum, $grades=NULL) {
-    global $CFG, $DB;
+    global $CFG;
     if (!function_exists('grade_update')) { //workaround for buggy PHP versions
         require_once($CFG->libdir.'/gradelib.php');
-    }
-    $advancedgrading = false;
-    // If this is a new activity, cm doesn't exist yet but the $forum object contains advanced grading items so check those.
-    if (empty($forum->cmidnumber)) {
-        $areas = forum_grading_areas_list();
-        foreach ($areas as $area => $name) {
-            $formparamname = 'advancedgradingmethod_'.$area;
-            if (!empty($forum->$formparamname)) {
-                $advancedgrading = true;
-            }
-        }
-    } else {
-        // Grading settings are not stored in the forum table so we need to check elsewhere.
-        $context = context_module::instance($forum->cmidnumber);
-        $sql = "contextid = ? AND component = ? AND ". $DB->sql_isnotempty('grading_areas', 'activemethod', true, false);
-        $advancedgrading = $DB->record_exists_select('grading_areas', $sql, array($context->id, 'mod_forum'));
     }
 
     $params = array('itemname'=>$forum->name, 'idnumber'=>$forum->cmidnumber);
 
-    if ($advancedgrading) {
+    if ($forum->grade > 0) {
         $params['gradetype'] = GRADE_TYPE_VALUE;
-        $params['grademax']  = 100;
+        $params['grademax']  = $forum->grade;
         $params['grademin']  = 0;
+
+    } else if ($forum->grade < 0) {
+        $params['gradetype'] = GRADE_TYPE_SCALE;
+        $params['scaleid']   = -$forum->grade;
 
     } else if (!$forum->assessed or $forum->scale == 0) {
         $params['gradetype'] = GRADE_TYPE_NONE;
