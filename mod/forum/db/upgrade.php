@@ -232,5 +232,21 @@ function xmldb_forum_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2014082100.2, 'forum');
     }
 
+    if ($oldversion < 2014082100.3) {
+
+        // Define field grade to be added to forum.
+        $table = new xmldb_table('forum');
+        $field = new xmldb_field('grade', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'displaywordcount');
+
+        // Conditionally launch add field grade.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Forum savepoint reached.
+        upgrade_mod_savepoint(true, 2014082100.3, 'forum');
+    }
+
+
     return true;
 }
