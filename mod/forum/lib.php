@@ -3473,10 +3473,13 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
         $output .= html_writer::tag('div', $OUTPUT->render($post->rating), array('class'=>'forum-post-rating'));
     }
 
-    if ($showgradinglink || (!empty($post->grade) && $USER->id === $postuser->id)) {
+    if ($showgradinglink || (isset($post->grade) && $post->grade >= 0 && $USER->id === $postuser->id)) {
         if ($showgradinglink) {
             $url = new moodle_url('/mod/forum/grade.php', array('id' => $cm->id, 'postid' => $post->id, 'userid' => $post->userid));
-            $grade = html_writer::tag('a', get_string('grade')." ", array('href' => $url)).$post->grade;
+            $grade = html_writer::tag('a', get_string('grade')." ", array('href' => $url));
+            if ($post->grade >= 0) {
+                $grade .= $post->grade;
+            }
         } else {
             $grade = get_string('grade').": ".$post->grade;
         }
@@ -7824,8 +7827,10 @@ function forum_apply_grade_to_user($formdata, $userid, $area) {
     $gradetotal = 0;
 
     foreach ($grades as $g) {
-        $gradetotal = $gradetotal + $g->grade;
-        $gradecount++;
+        if ($g->grade >= 0) { // Only valid grades included in calculations.
+            $gradetotal = $gradetotal + $g->grade;
+            $gradecount++;
+        }
     }
 
     $gradefinal = new stdClass();
