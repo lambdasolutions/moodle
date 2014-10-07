@@ -58,6 +58,10 @@ $advancedgrading = $DB->get_records_select_menu('grading_areas', $sql, array($co
 
 if (!empty($postid) && !empty($advancedgrading['posts'])) {
     $post = forum_get_post_full($postid);
+    if ($post->userid != $userid) {
+        // This shouldn't happen.
+        error("invalid user");
+    }
     $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
     $area = "posts";
 } else if (!empty($advancedgrading['forum'])) {
@@ -70,8 +74,8 @@ if (!empty($postid) && !empty($advancedgrading['posts'])) {
                                           LEFT JOIN {user} u ON p.userid = u.id
                                           LEFT JOIN {forum_discussions} d ON d.id = p.discussion
                                           LEFT JOIN {forum_grades} g ON g.postid = p.id AND g.userid = p.userid
-                                    WHERE d.forum = ?
-                                 ORDER BY p.discussion, p.created", array($forum->id));
+                                    WHERE d.forum = ? AND u.id = ?
+                                 ORDER BY p.discussion, p.created", array($forum->id, $userid));
     $area = "forum";
 } else {
     echo $OUTPUT->header();
@@ -101,8 +105,7 @@ if ($action === 'submitgrade') {
         if (!empty($postid)) {
             $url = new moodle_url('/mod/forum/discuss.php', array('d' => $discussion->id, '#p' => $postid));
         } else {
-            // TODO: think about a better place to redirect to.
-            $url = $CFG->wwwroot;
+            $url = new moodle_url('/mod/forum/view.php', array('id' => $id));
         }
         redirect($url, get_string('gradesaved', 'forum'), 1);
     }
@@ -134,8 +137,12 @@ if (!empty($post)) {
             $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
             $discussions[$discussion->id] = $discussion;
         }
-        forum_print_post($post, $discussions[$post->discussion], $forum, $cm, $course);
+        forum_print_post($post, $discussions[$post->discussion], $forum, $cm, $course, false, false,
+                         false, "", "", null, true, null, false, true);
+
     }
+} else {
+    echo $OUTPUT->notification(get_string('nopoststograde', 'forum'));
 }
 
 echo $OUTPUT->footer($course);
