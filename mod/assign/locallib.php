@@ -472,6 +472,11 @@ class assign {
                 $action = 'redirect';
                 $nextpageparams['action'] = 'grading';
             }
+        } else if ($action == 'submitselfgrade') {
+            $action = 'redirect';
+            if ($this->process_save_grade($mform)) {
+                $nextpageparams['action'] = 'saveselfgradingresult';
+            }
         } else if ($action == 'quickgrade') {
             $message = $this->process_save_quick_grades();
             $action = 'quickgradingresult';
@@ -503,6 +508,9 @@ class assign {
         } else if ($action == 'savegradingresult') {
             $message = get_string('gradingchangessaved', 'assign');
             $o .= $this->view_savegrading_result($message);
+        } else if ($action == 'saveselfgradingresult') {
+            $message = get_string('gradingchangessaved', 'assign');
+            $o .= $this->view_savegrading_result($message, 'view');
         } else if ($action == 'quickgradingresult') {
             $mform = null;
             $o .= $this->view_quickgrading_result($message);
@@ -598,6 +606,7 @@ class assign {
         if (empty($update->markingworkflow)) { // If marking workflow is disabled, make sure allocation is disabled.
             $update->markingallocation = 0;
         }
+        $update->selfgrade = $formdata->selfgrade;
 
         $returnid = $DB->insert_record('assign', $update);
         $this->instance = $DB->get_record('assign', array('id'=>$returnid), '*', MUST_EXIST);
@@ -951,6 +960,7 @@ class assign {
         if (empty($update->markingworkflow)) { // If marking workflow is disabled, make sure allocation is disabled.
             $update->markingallocation = 0;
         }
+        $update->selfgrade = $formdata->selfgrade;
 
         $result = $DB->update_record('assign', $update);
         $this->instance = $DB->get_record('assign', array('id'=>$update->id), '*', MUST_EXIST);
@@ -2335,7 +2345,7 @@ class assign {
      * @param string $message - The message to display
      * @return string
      */
-    protected function view_savegrading_result($message) {
+    protected function view_savegrading_result($message, $action = 'grading') {
         $o = '';
         $o .= $this->get_renderer()->render(new assign_header($this->get_instance(),
                                                       $this->get_context(),
@@ -2344,7 +2354,7 @@ class assign {
                                                       get_string('savegradingresult', 'assign')));
         $gradingresult = new assign_gradingmessage(get_string('savegradingresult', 'assign'),
                                                    $message,
-                                                   $this->get_course_module()->id);
+                                                   $this->get_course_module()->id, false, null, $action);
         $o .= $this->get_renderer()->render($gradingresult);
         $o .= $this->view_footer();
         return $o;
@@ -2784,15 +2794,25 @@ class assign {
      * @return string
      */
     protected function view_single_grade_page($mform) {
-        global $DB, $CFG;
+        global $DB, $CFG, $USER;
 
         $o = '';
         $instance = $this->get_instance();
 
         require_once($CFG->dirroot . '/mod/assign/gradeform.php');
 
+        // If userid is passed - we are only grading a single student.
+        $useridlistid = optional_param('useridlistid', time(), PARAM_INT);
+        $userid = optional_param('userid', 0, PARAM_INT);
+        $attemptnumber = optional_param('attemptnumber', -1, PARAM_INT);
+
         // Need submit permission to submit an assignment.
-        require_capability('mod/assign:grade', $this->context);
+        if (empty($userid) || ($userid != $USER->id) || empty($instance->selfgrade)) {
+            require_capability('mod/assign:grade', $this->context);
+            $rownum = required_param('rownum', PARAM_INT);
+        } else {
+            $rownum = 0;
+        }
 
         $header = new assign_header($instance,
                                     $this->get_context(),
@@ -2801,11 +2821,7 @@ class assign {
                                     get_string('grading', 'assign'));
         $o .= $this->get_renderer()->render($header);
 
-        // If userid is passed - we are only grading a single student.
-        $rownum = required_param('rownum', PARAM_INT);
-        $useridlistid = optional_param('useridlistid', time(), PARAM_INT);
-        $userid = optional_param('userid', 0, PARAM_INT);
-        $attemptnumber = optional_param('attemptnumber', -1, PARAM_INT);
+
 
         $cache = cache::make_from_params(cache_store::MODE_SESSION, 'mod_assign', 'useridlist');
         if (!$userid) {
@@ -4060,9 +4076,16 @@ class assign {
         $grade = $this->get_user_grade($USER->id, false);
         $submission = $this->get_user_submission($USER->id, false);
 
+        if (!empty($this->instance->selfgrade)) {
+            $urlparams = array('id' => $this->coursemodule->id, 'action' => 'grade', 'userid' => $USER->id);
+            $o .= $this->output->single_button(new moodle_url('/mod/assign/view.php', $urlparams),
+                get_string('grademysubmission', 'assign'), 'get');
+        }
+
         if ($this->can_view_submission($USER->id)) {
             $o .= $this->view_student_summary($USER, true);
         }
+
 
         $o .= $this->view_footer();
 
@@ -5742,6 +5765,9 @@ class assign {
         $userid = $useridlist[$rownum];
         $grade = $this->get_user_grade($userid, false, $attemptnumber);
 
+        $selfgrading = false;
+
+
         $submission = null;
         if ($this->get_instance()->teamsubmission) {
             $submission = $this->get_group_submission($userid, 0, false, $attemptnumber);
@@ -5937,8 +5963,12 @@ class assign {
         } else {
             $mform->setDefault('sendstudentnotifications', $this->get_instance()->sendstudentnotifications);
         }
-
-        $mform->addElement('hidden', 'action', 'submitgrade');
+        if (empty($userid) || ($userid != $USER->id) || empty($settings->selfgrade)) {
+            $mform->addElement('hidden', 'action', 'submitgrade');
+        } else {
+            // This must be a self-grading event.
+            $mform->addElement('hidden', 'action', 'submitselfgrade');
+        }
         $mform->setType('action', PARAM_ALPHA);
 
         $buttonarray=array();
@@ -6516,11 +6546,15 @@ class assign {
      * @return bool - was the grade saved
      */
     public function save_grade($userid, $data) {
-
-        // Need grade permission.
-        require_capability('mod/assign:grade', $this->context);
+        global $USER;
 
         $instance = $this->get_instance();
+
+        // Need grade permission when self-grading not enabled.
+        if (empty($userid) || ($userid != $USER->id) || empty($instance->selfgrade)) {
+            require_capability('mod/assign:grade', $this->context);
+        }
+
         $submission = null;
         if ($instance->teamsubmission) {
             $submission = $this->get_group_submission($userid, 0, false, $data->attemptnumber);
