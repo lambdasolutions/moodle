@@ -106,5 +106,8 @@ if ($ADMIN->fulltree) {
 
     $settings->add(new admin_setting_configcheckbox('forum_enabletimedposts', get_string('timedposts', 'forum'),
                        get_string('configenabletimedposts', 'forum'), 0));
+
+    $settings->add(new admin_setting_configduration('forum_selfgradelockout', get_string('selfgradelockout', 'forum'),
+                       get_string('configselfgradelockout', 'forum'), 60*60*4));
 }
 

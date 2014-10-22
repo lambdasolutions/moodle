@@ -3313,13 +3313,15 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     static $str;
 
     $modcontext = context_module::instance($cm->id);
-
-    $showgradinglink = false;
+    $showgradinglinkfrom = 0;
     // Cache the check to see if users can grade these posts due to mod/forum:grade capability.
     // Or if it is the users own post and selfgrading is enabled.
-    if ($forum->grade > 0 && (has_capability('mod/forum:grade', $modcontext) ||
-                              ($forum->selfgrade && $USER->id == $post->userid))) {
-        $showgradinglink = true;
+    if ($forum->grade > 0) {
+        if (has_capability('mod/forum:grade', $modcontext)) {
+            $showgradinglinkfrom = 1;
+        } else if ($forum->selfgrade && $USER->id == $post->userid) {
+            $showgradinglinkfrom = $post->created + $CFG->forum_selfgradelockout;
+        }
     }
 
     $post->course = $course->id;
@@ -3634,14 +3636,19 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     if (!empty($post->rating)) {
         $output .= html_writer::tag('div', $OUTPUT->render($post->rating), array('class'=>'forum-post-rating'));
     }
-
-    if ($showgradinglink || (isset($post->grade) && $post->grade >= 0 && $USER->id === $postuser->id)) {
+    $now = time();
+    if ((!empty($showgradinglinkfrom) && $showgradinglinkfrom <= $now) ||
+         (isset($post->grade) && $post->grade >= 0 && $USER->id === $postuser->id)) {
         $url = new moodle_url('/mod/forum/grade.php', array('id' => $cm->id, 'postid' => $post->id, 'userid' => $post->userid));
         $grade = html_writer::tag('a', get_string('grade')." ", array('href' => $url));
         if ($post->grade >= 0) {
             $grade .= $post->grade;
         }
         $output .= html_writer::tag('div', $grade, array('class'=>'forum-post-grade'));
+    } else if ($showgradinglinkfrom > $now) {
+        // show message to say that self grading will be avaialble soon.
+        $grademessage = get_string('selfgradingwillopen', 'forum', userdate($showgradinglinkfrom));
+        $output .= html_writer::tag('div', $grademessage, array('class'=>'forum-post-grade'));
     }
 
     // Output the commands
