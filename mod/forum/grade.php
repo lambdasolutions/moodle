@@ -68,6 +68,13 @@ if (!empty($postid) && !empty($advancedgrading['posts'])) {
         // This shouldn't happen.
         error("invalid user");
     }
+
+    // If self-grading is enabled and current user is marking, check locktime
+    if ($forum->selfgrade && $userid == $USER->id) {
+        if(($post->created + $CFG->forum_selfgradelockout) >= time()) {
+            $cangrade = false;
+        }
+    }
     $discussion = $DB->get_record('forum_discussions', array('id' => $post->discussion));
     $area = "posts";
 } else if (!empty($advancedgrading['forum'])) {
