@@ -70,6 +70,13 @@ if ($ADMIN->fulltree) {
                                                     $description,
                                                     $default));
 
+    $name = new lang_string('selfgradelockout', 'mod_assign');
+    $description = new lang_string('selfgradelockout_help', 'mod_assign');
+    $settings->add(new admin_setting_configduration('assign_selfgradelockout',
+        $name,
+        $description,
+        60*60*4));
+
     $name = new lang_string('defaultsettings', 'mod_assign');
     $description = new lang_string('defaultsettings_help', 'mod_assign');
     $settings->add(new admin_setting_heading('defaultsettings', $name, $description));
