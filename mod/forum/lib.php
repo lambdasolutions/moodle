@@ -3317,10 +3317,10 @@ function forum_print_post($post, $discussion, $forum, &$cm, $course, $ownpost=fa
     // Cache the check to see if users can grade these posts due to mod/forum:grade capability.
     // Or if it is the users own post and selfgrading is enabled.
     if ($forum->grade > 0) {
-        if (has_capability('mod/forum:grade', $modcontext)) {
-            $showgradinglinkfrom = 1;
-        } else if ($forum->selfgrade && $USER->id == $post->userid) {
+        if ($forum->selfgrade && $USER->id == $post->userid) {
             $showgradinglinkfrom = $post->created + $CFG->forum_selfgradelockout;
+        } else if (has_capability('mod/forum:grade', $modcontext)) {
+            $showgradinglinkfrom = 1;
         }
     }
 
