@@ -644,12 +644,12 @@ class report extends \mod_scorm\report {
 function get_scorm_objectives($scormid) {
     global $DB;
     $objectives = array();
-    $params = array();
-    $select = "scormid = ? AND ";
-    $select .= $DB->sql_like("element", "?", false);
-    $params[] = $scormid;
-    $params[] = "cmi.objectives_%.id";
-    $rs = $DB->get_recordset_select("scorm_scoes_track", $select, $params, 'value', 'DISTINCT value, scoid');
+    // The value field is a text field so we need to substr to help Oracle.
+    $sql = 'SELECT DISTINCT '. $DB->sql_substr('value', 1, 50). ' as value, scoid
+              FROM {scorm_scoes_track}
+             WHERE scormid = ? AND ' . $DB->sql_like("element", "?", false).
+         ' ORDER BY value';
+    $rs = $DB->get_recordset_sql($sql, array($scormid, "cmi.objectives_%.id"));
     if ($rs->valid()) {
         foreach ($rs as $record) {
             $objectives[$record->scoid][] = $record->value;
