@@ -204,6 +204,11 @@ class report extends \mod_scorm\report {
                     $columns[] = 'right' . $id;
                     $headers[] = get_string('rightanswerx', 'scormreport_interactions', $id);
                 }
+                if (scorm_version_check($scorm->version, SCORM_13)) {
+                    $columns[] = 'description' . $id;
+                    $headers[] = "Description";
+
+                }
             }
 
             if (!$download) {
@@ -493,7 +498,12 @@ class report extends \mod_scorm\report {
                                 // Interaction data.
                                 for ($i = 0; $i < $questioncount; $i++) {
                                     if ($displayoptions['qtext']) {
-                                        $element = 'cmi.interactions_'.$i.'.id';
+                                        if (scorm_version_check($scorm->version, SCORM_13)) {
+                                            $element = 'cmi.interactions'.$i.'.id';
+                                        } else {
+                                            $element = 'cmi.interactions_'.$i.'.id';
+                                        }
+
                                         if (isset($trackdata->$element)) {
                                             $row[] = s($trackdata->$element);
                                         } else {
@@ -501,7 +511,12 @@ class report extends \mod_scorm\report {
                                         }
                                     }
                                     if ($displayoptions['resp']) {
-                                        $element = 'cmi.interactions_'.$i.'.student_response';
+                                        if (scorm_version_check($scorm->version, SCORM_13)) {
+                                            $element = 'cmi.interactions'.$i.'.learner_response';
+                                        } else {
+                                            $element = 'cmi.interactions_'.$i.'.student_response';
+                                        }
+
                                         if (isset($trackdata->$element)) {
                                             $row[] = s($trackdata->$element);
                                         } else {
@@ -510,7 +525,12 @@ class report extends \mod_scorm\report {
                                     }
                                     if ($displayoptions['right']) {
                                         $j = 0;
-                                        $element = 'cmi.interactions_'.$i.'.correct_responses_'.$j.'.pattern';
+                                        if (scorm_version_check($scorm->version, SCORM_13)) {
+                                            $element = 'cmi.interactions'.$i.'.correct_responses'.$j.'.pattern';
+                                        } else {
+                                            $element = 'cmi.interactions_'.$i.'.correct_responses_'.$j.'.pattern';
+                                        }
+
                                         $rightans = '';
                                         if (isset($trackdata->$element)) {
                                             while (isset($trackdata->$element)) {
@@ -519,9 +539,22 @@ class report extends \mod_scorm\report {
                                                 }
                                                 $rightans .= s($trackdata->$element);
                                                 $j++;
-                                                $element = 'cmi.interactions_'.$i.'.correct_responses_'.$j.'.pattern';
+                                                if (scorm_version_check($scorm->version, SCORM_13)) {
+                                                    $element = 'cmi.interactions'.$i.'.correct_responses'.$j.'.pattern';
+                                                } else {
+                                                    $element = 'cmi.interactions_'.$i.'.correct_responses_'.$j.'.pattern';
+                                                }
                                             }
                                             $row[] = $rightans;
+                                        } else {
+                                            $row[] = '&nbsp;';
+                                        }
+                                    }
+                                    // If this is a SCORM 2004 package add a column for interaction description.
+                                    if (scorm_version_check($scorm->version, SCORM_13)) {
+                                        $element = 'cmi.interactions'.$i.'.description';
+                                        if (isset($trackdata->$element)) {
+                                            $row[] = s($trackdata->$element);
                                         } else {
                                             $row[] = '&nbsp;';
                                         }
