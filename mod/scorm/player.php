@@ -155,7 +155,15 @@ $completion->set_module_viewed($cm);
 
 // Print the page header.
 if (empty($scorm->popup) || $displaymode == 'popup') {
-    $exitlink = html_writer::link($CFG->wwwroot.'/course/view.php?id='.$scorm->course, $strexit, array('title' => $strexit));
+    // Redirect back to the correct section if one section per page is being used.
+    $courseformat = course_get_format($course)->get_course();
+    $sectionid = '';
+    if (isset($courseformat->coursedisplay) && $courseformat->coursedisplay == COURSE_DISPLAY_MULTIPAGE) {
+        $sectionid = $cm->sectionnum;
+    }
+    $exiturl = new moodle_url('/course/view.php', array('id' => $scorm->course, 'sectionid' => $sectionid));
+
+    $exitlink = html_writer::link($exiturl, $strexit, array('title' => $strexit));
     $PAGE->set_button($exitlink);
 }
 
