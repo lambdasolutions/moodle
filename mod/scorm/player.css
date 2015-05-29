@@ -1,0 +1,8 @@
+body {
+    background-color: white!important;
+}
+
+html body table tbody tr td {
+    vertical-align: top!important;
+    horiz-align: left!important;
+}

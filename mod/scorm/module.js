@@ -195,6 +195,7 @@ M.mod_scorm.init = function(Y, nav_display, navposition_left, navposition_top, h
                 scorm_fixnav();
             }
             scorm_tree_node.openAll();
+            M.mod_scorm.applyplayercss();
         };
 
         mod_scorm_activate_item = scorm_activate_item;
@@ -785,10 +786,32 @@ M.mod_scorm.init = function(Y, nav_display, navposition_left, navposition_top, h
     });
 };
 
+M.mod_scorm.applyplayercss = function () {
+    // Custom Css file to insert directly into player.
+    // TODO: make this a standard config setting rather than a file.
+    var csslink = document.createElement("link");
+    csslink.href = M.cfg.wwwroot + "/mod/scorm/player.css";  csslink .rel = "stylesheet";
+    csslink .type = "text/css";
+
+    var doc=document.getElementById("scorm_object");
+    // Add custom css to normal SCORM frame
+    if (doc !== undefined) {
+        doc.contentWindow.document.body.appendChild(csslink);
+        // Some SCORM packages contain their own frameset, target specific frame in some content to add the css to as well.
+        // TODO: allow this to be a configurable list of frame names or ids.
+        var doc2 = doc.contentWindow.document.getElementsByName("scormdriver_content")[0];
+        if (doc2 !== undefined) {
+            doc2.contentWindow.document.body.appendChild(csslink);
+        }
+    }
+}
+
 M.mod_scorm.connectPrereqCallback = {
 
     success: function(id, o) {
         if (o.responseText !== undefined) {
+            // get normal SCORM Frame
+            M.mod_scorm.applyplayercss();
             var snode = null,
                 stitle = null;
             if (scorm_tree_node && o.responseText) {
