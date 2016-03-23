@@ -105,7 +105,7 @@ function xmldb_scorm_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2016021000, 'scorm');
     }
 
-    // New table structure for scorm_scoes_track
+    // New table structure.
     if ($oldversion < 2016032300) {
         // Define table scorm_scoes_attempt to be created.
         $table = new xmldb_table('scorm_scoes_attempt');

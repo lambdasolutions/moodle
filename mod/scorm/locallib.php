@@ -593,7 +593,7 @@ function scorm_insert_track($userid, $scormid, $scoid, $attempt, $element, $valu
  */
 function scorm_has_tracks($scormid, $userid) {
     global $DB;
-    return $DB->record_exists('scorm_scoes_track', array('userid' => $userid, 'scormid' => $scormid));
+    return $DB->record_exists('scorm_scoes_attempt', array('userid' => $userid, 'scormid' => $scormid));
 }
 
 function scorm_get_tracks($scoid, $userid, $attempt='') {
@@ -621,7 +621,7 @@ function scorm_get_tracks($scoid, $userid, $attempt='') {
 /**
  * helper function to return a formatted list of interactions for reports.
  *
- * @param array $trackdata the records from scorm_scoes_track table
+ * @param array $trackdata the user tracking records from the database
  * @return object formatted list of interactions
  */
 function scorm_format_interactions($trackdata) {
@@ -1281,7 +1281,7 @@ function scorm_get_attempt_status($user, $scorm, $cm='') {
     if (!empty($cm)) {
         $context = context_module::instance($cm->id);
         if (has_capability('mod/scorm:deleteownresponses', $context) &&
-            $DB->record_exists('scorm_scoes_track', array('userid' => $user->id, 'scormid' => $scorm->id))) {
+            $DB->record_exists('scorm_scoes_attempt', array('userid' => $user->id, 'scormid' => $scorm->id))) {
             // Check to see if any data is stored for this user.
             $deleteurl = new moodle_url($PAGE->url, array('action' => 'delete', 'sesskey' => sesskey()));
             $result .= $OUTPUT->single_button($deleteurl, get_string('deleteallattempts', 'scorm'));
@@ -1404,15 +1404,13 @@ function scorm_delete_responses($attemptids, $scorm) {
  *
  * @return bool true suceeded
  */
-function scorm_delete_attempt($userid, $scorm, $attemptid) {
-    global $DB;
-
-    $DB->delete_records('scorm_scoes_track', array('userid' => $userid, 'scormid' => $scorm->id, 'attempt' => $attemptid));
+function scorm_delete_attempt($userid, $scorm, $attempt) {
+    scorm_delete_user_data(array('scormid' => $scorm->id, 'userid' => $userid, 'attempt' => $attempt));
     $cm = get_coursemodule_from_instance('scorm', $scorm->id);
 
     // Trigger instances list viewed event.
     $event = \mod_scorm\event\attempt_deleted::create(array(
-         'other' => array('attemptid' => $attemptid),
+         'other' => array('attempt' => $attempt),
          'context' => context_module::instance($cm->id),
          'relateduserid' => $userid
     ));
@@ -2234,4 +2232,29 @@ function scorm_launch_sco($scorm, $sco, $cm, $context, $scourl) {
     $event->add_record_snapshot('scorm', $scorm);
     $event->add_record_snapshot('scorm_scoes', $sco);
     $event->trigger();
+}
+
+
+/**
+ * Function to delete user data
+ *
+ * @param  array $params  list of params required for deletion
+ * @since Moodle 3.1
+ */
+function scorm_delete_user_data(array $params) {
+    global $DB;
+
+    $attempts = $DB->get_records('scorm_scoes_attempt', $params, '', 'id');
+    foreach ($attempts as $attempt) {
+        $params2 = array('attemptid' => $attempt->id);
+        if (isset($params['element'])) { // We want to delete a specific element.
+            $params2['element'] = $DB->get_field('scorm_scoes_element', 'id', array('element' => $params['element']));
+        }
+        $DB->delete_records('scorm_scoes_value', $params2);
+    }
+    if (!isset($params['element'])) {
+        // If element is set we are deleting a specific element - not all.
+        $DB->delete_records('scorm_scoes_attempt', $params);    
+    }
+    
 }

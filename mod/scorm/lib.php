@@ -273,9 +273,7 @@ function scorm_delete_instance($id) {
     $result = true;
 
     // Delete any dependent records.
-    if (! $DB->delete_records('scorm_scoes_track', array('scormid' => $scorm->id))) {
-        $result = false;
-    }
+    scorm_delete_user_data(array('scormid' => $scorm->id));
     if ($scoes = $DB->get_records('scorm_scoes', array('scorm' => $scorm->id))) {
         foreach ($scoes as $sco) {
             if (! $DB->delete_records('scorm_scoes_data', array('scoid' => $sco->id))) {
@@ -576,22 +574,19 @@ function scorm_get_user_grades($scorm, $userid=0) {
 
     $grades = array();
     if (empty($userid)) {
-        $scousers = $DB->get_records_select('scorm_scoes_track', "scormid=? GROUP BY userid",
-                                            array($scorm->id), "", "userid,null");
-        if ($scousers) {
-            foreach ($scousers as $scouser) {
-                $grades[$scouser->userid] = new stdClass();
-                $grades[$scouser->userid]->id         = $scouser->userid;
-                $grades[$scouser->userid]->userid     = $scouser->userid;
-                $grades[$scouser->userid]->rawgrade = scorm_grade_user($scorm, $scouser->userid);
-            }
-        } else {
-            return false;
-        }
+        $sql = "SELECT DISTINCT userid 
+                FROM {scorm_scoes_attempt} WHERE scormid = ?";
+        $scousers = $DB->get_recordset_sql($sql, array($scorm->id));
 
+        foreach ($scousers as $scouser) {
+            $grades[$scouser->userid] = new stdClass();
+            $grades[$scouser->userid]->id         = $scouser->userid;
+            $grades[$scouser->userid]->userid     = $scouser->userid;
+            $grades[$scouser->userid]->rawgrade = scorm_grade_user($scorm, $scouser->userid);
+        }
+        $scousers->close();
     } else {
-        $preattempt = $DB->get_records_select('scorm_scoes_track', "scormid=? AND userid=? GROUP BY userid",
-                                                array($scorm->id, $userid), "", "userid,null");
+        $preattempt = $DB->record_exists('scorm_scoes_attempt', array('scormid' => $scorm->id, 'userid' => $userid));
         if (!$preattempt) {
             return false; // No attempt yet.
         }
@@ -599,6 +594,10 @@ function scorm_get_user_grades($scorm, $userid=0) {
         $grades[$userid]->id         = $userid;
         $grades[$userid]->userid     = $userid;
         $grades[$userid]->rawgrade = scorm_grade_user($scorm, $userid);
+    }
+
+    if (empty($grades)) {
+        return false;
     }
 
     return $grades;
@@ -801,17 +800,18 @@ function scorm_reset_gradebook($courseid, $type='') {
  * @return array status array
  */
 function scorm_reset_userdata($data) {
-    global $CFG, $DB;
+    global $DB;
 
     $componentstr = get_string('modulenameplural', 'scorm');
     $status = array();
 
     if (!empty($data->reset_scorm)) {
-        $scormssql = "SELECT s.id
-                         FROM {scorm} s
-                        WHERE s.course=?";
 
-        $DB->delete_records_select('scorm_scoes_track', "scormid IN ($scormssql)", array($data->courseid));
+        $scorms = $DB->get_recordset('scorm', array('course' => $data->courseid));
+        foreach ($scorms as $scorm) {
+            scorm_delete_user_data(array('scormid' => $scorm->id));
+        }
+        $scorms->close();
 
         // Remove all grades from gradebook.
         if (empty($data->reset_gradebook_grades)) {

@@ -171,7 +171,7 @@ class report extends \mod_scorm\report {
                     \user_picture::fields('u', array('idnumber'), 'userid') .
                     get_extra_user_fields_sql($coursecontext, 'u', '', array('email', 'idnumber')) . ' ';
 
-            // This part is the same for all cases - join users and scorm_scoes_track tables.
+            // This part is the same for all cases - join users and user tracking tables.
             $from = 'FROM {user} u ';
             $from .= 'LEFT JOIN {scorm_scoes_track} st ON st.userid = u.id AND st.scormid = '.$scorm->id;
             switch ($attemptsmode) {

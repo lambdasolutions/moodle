@@ -384,8 +384,8 @@ function scorm_seq_set($what, $scoid, $userid, $attempt=0, $value='true') {
 
     // Set passed activity to active or not.
     if ($value == false) {
-        $DB->delete_records('scorm_scoes_track', array('scoid' => $scoid, 'userid' => $userid,
-                                                        'attempt' => $attempt, 'element' => $what));
+        scorm_delete_user_data(array('scoid' => $scoid, 'userid' => $userid,
+            'attempt' => $attempt, 'element' => $what));
     } else {
         scorm_insert_track($userid, $sco->scorm, $sco->id, $attempt, $what, $value);
     }
@@ -891,8 +891,6 @@ function scorm_seq_rollup_rule_check ($sco, $userid, $action) {
         foreach ($rolluprules as $rolluprule) {
             foreach ($children as $child) {
 
-                /*$tracked = $DB->get_records('scorm_scoes_track', array('scoid'=>$child->id, 'userid'=>$userid));
-                if ($tracked && $tracked->attemp != 0) {*/
                 $child = scorm_get_sco ($child);
                 if (!isset($child->tracked) || ($child->tracked == 1)) {
                     if (scorm_seq_check_child ($child, $action, $userid)) {

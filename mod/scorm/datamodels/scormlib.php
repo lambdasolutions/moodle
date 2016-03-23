@@ -711,7 +711,7 @@ function scorm_parse_scorm(&$scorm, $manifest) {
             foreach ($olditems as $olditem) {
                 $DB->delete_records('scorm_scoes', array('id' => $olditem->id));
                 $DB->delete_records('scorm_scoes_data', array('scoid' => $olditem->id));
-                $DB->delete_records('scorm_scoes_track', array('scoid' => $olditem->id));
+                scorm_delete_user_data(array('scoid' => $olditem->id));
                 $DB->delete_records('scorm_seq_objective', array('scoid' => $olditem->id));
                 $DB->delete_records('scorm_seq_mapinfo', array('scoid' => $olditem->id));
                 $DB->delete_records('scorm_seq_ruleconds', array('scoid' => $olditem->id));
