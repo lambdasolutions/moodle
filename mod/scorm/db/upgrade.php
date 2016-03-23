@@ -105,5 +105,117 @@ function xmldb_scorm_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2016021000, 'scorm');
     }
 
+    // New table structure for scorm_scoes_track
+    if ($oldversion < 2016032300) {
+        // Define table scorm_scoes_attempt to be created.
+        $table = new xmldb_table('scorm_scoes_attempt');
+
+        // Adding fields to table scorm_scoes_attempt.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('scormid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('scoid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('attempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '1');
+
+        // Adding keys to table scorm_scoes_attempt.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('user', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
+        $table->add_key('scorm', XMLDB_KEY_FOREIGN, array('scormid'), 'scorm', array('id'));
+        $table->add_key('scoe', XMLDB_KEY_FOREIGN, array('scoid'), 'scorm_scoes', array('id'));
+
+        // Conditionally launch create table for scorm_scoes_attempt.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table scorm_scoes_element to be created.
+        $table = new xmldb_table('scorm_scoes_element');
+
+        // Adding fields to table scorm_scoes_element.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('element', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table scorm_scoes_element.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Adding indexes to table scorm_scoes_element.
+        $table->add_index('element', XMLDB_INDEX_UNIQUE, array('element'));
+
+        // Conditionally launch create table for scorm_scoes_element.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table scorm_scoes_value to be created.
+        $table = new xmldb_table('scorm_scoes_value');
+
+        // Adding fields to table scorm_scoes_value.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('attemptid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('elementid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('value', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table scorm_scoes_value.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('attempt', XMLDB_KEY_FOREIGN, array('attemptid'), 'scorm_scoes_attempt', array('id'));
+        $table->add_key('element', XMLDB_KEY_FOREIGN, array('elementid'), 'scorm_scoes_element', array('id'));
+
+        // Conditionally launch create table for scorm_scoes_value.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2016032300, 'scorm');
+    }
+
+    if ($oldversion < 2016032301) {
+
+        // Add temporary trackid field to the scorm_scoes_attempt table to help speed up the data migration.
+        $table = new xmldb_table('scorm_scoes_attempt');
+        $field = new xmldb_field('trackid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'attempt');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $trans = $DB->start_delegated_transaction();
+
+        // First grab all elements and store those.
+        $sql = "INSERT INTO {scorm_scoes_element} (element)
+                    SELECT DISTINCT element FROM {scorm_scoes_track}";
+        $DB->execute($sql);
+
+        // Now store all data in the scorm_scoes_attempt table
+        $sql = "INSERT INTO {scorm_scoes_attempt} (userid, scormid, scoid, attempt, trackid)
+                    SELECT userid, scormid, scoid, attempt, id as trackid FROM {scorm_scoes_track}";
+        $DB->execute($sql);
+
+        // Now store all translated data in the scorm_scoes_value table.
+        $sql = "INSERT INTO {scorm_scoes_value} (attemptid, elementid, value, timemodified)
+                SELECT a.id as attemptid, e.id as elementid, t.value as value, t.timemodified
+                  FROM {scorm_scoes_track} t
+                  JOIN {scorm_scoes_element} e ON e.element = t.element
+                  JOIN {scorm_scoes_attempt} a ON t.id = a.trackid";
+        $DB->execute($sql);
+
+        $trans->allow_commit();
+
+        $table = new xmldb_table('scorm_scoes_attempt');
+        $field = new xmldb_field('trackid');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Drop old table scorm_scoes_track.
+        $table = new xmldb_table('scorm_scoes_track');
+
+        // Conditionally launch drop table for scorm_scoes_track.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Scorm savepoint reached.
+        upgrade_mod_savepoint(true, 2016032301, 'scorm');
+    }
+
     return true;
 }
