@@ -607,8 +607,13 @@ function scorm_get_tracks($scoid, $userid, $attempt='') {
             $attempt = 1;
         }
     }
-    if ($tracks = $DB->get_records('scorm_scoes_track', array('userid' => $userid, 'scoid' => $scoid,
-                                                              'attempt' => $attempt), 'element ASC')) {
+    $sql = "SELECT a.id, a.userid, a.scormid, a.scoid, a.attempt, v.value, v.timemodified, e.element
+              FROM {scorm_scoes_attempt} a
+              JOIN {scorm_scoes_value} v ON v.attemptid = a.id
+              JOIN {scorm_scoes_element} e ON e.id = v.elementid
+             WHERE a.userid = ? AND a.scoid = ? AND a.attempt = ?
+          ORDER BY e.element ASC";
+    if ($tracks = $DB->get_records_sql($sql, array($userid, $scoid, $attempt))) {
         $usertrack = scorm_format_interactions($tracks);
         $usertrack->userid = $userid;
         $usertrack->scoid = $scoid;
@@ -825,7 +830,7 @@ function scorm_get_last_attempt($scormid, $userid) {
 
     // Find the last attempt number for the given user id and scorm id.
     $sql = "SELECT MAX(attempt)
-              FROM {scorm_scoes_track}
+              FROM {scorm_scoes_attempt}
              WHERE userid = ? AND scormid = ?";
     $lastattempt = $DB->get_field_sql($sql, array($userid, $scormid));
     if (empty($lastattempt)) {
@@ -847,11 +852,13 @@ function scorm_get_last_completed_attempt($scormid, $userid) {
     global $DB;
 
     // Find the last completed attempt number for the given user id and scorm id.
-    $sql = "SELECT MAX(attempt)
-              FROM {scorm_scoes_track}
+    $sql = "SELECT MAX(a.attempt)
+              FROM {scorm_scoes_attempt} a
              WHERE userid = ? AND scormid = ?
-               AND (".$DB->sql_compare_text('value')." = ".$DB->sql_compare_text('?')." OR ".
-                      $DB->sql_compare_text('value')." = ".$DB->sql_compare_text('?').")";
+             JOIN {scorm_scoes_value} v ON v.attemptid = a.id
+             JOIN {scorm_scoes_element} e ON e.id = v.elementid
+               AND (".$DB->sql_compare_text('v.value')." = ".$DB->sql_compare_text('?')." OR ".
+                      $DB->sql_compare_text('v.value')." = ".$DB->sql_compare_text('?').")";
     $lastattempt = $DB->get_field_sql($sql, array($userid, $scormid, 'completed', 'passed'));
     if (empty($lastattempt)) {
         return '1';
@@ -1317,17 +1324,30 @@ function scorm_get_attempt_count($userid, $scorm, $returnobjects = false, $ignor
         $params = array('userid' => $userid, 'scormid' => $scorm->id);
         if ($ignoremissingcompletion) { // Exclude attempts that don't have the completion element requested.
             $params['element'] = $element;
+            $sql = "SELECT DISTINCT a.attempt AS attemptnumber
+              FROM {scorm_scoes_attempt} a
+              JOIN {scorm_scoes_value} v ON v.attemptid = a.id
+              JOIN {scorm_scoes_element} e ON e.id = v.elementid
+             WHERE a.userid = :userid AND a.scormid = :scormid AND e.element = :element ORDER BY a.attempt";
+            $attempts = $DB->get_records_sql($sql, $params);
+        } else {
+            $attempts = $DB->get_records('scorm_scoes_attempt', $params, 'attempt', 'DISTINCT attempt AS attemptnumber');
         }
-        $attempts = $DB->get_records('scorm_scoes_track', $params, 'attempt', 'DISTINCT attempt AS attemptnumber');
+
         return $attempts;
     } else {
         $params = array($userid, $scorm->id);
-        $sql = "SELECT COUNT(DISTINCT attempt)
-                  FROM {scorm_scoes_track}
-                 WHERE userid = ? AND scormid = ?";
         if ($ignoremissingcompletion) { // Exclude attempts that don't have the completion element requested.
-            $sql .= ' AND element = ?';
-            $params[] = $element;
+            $params['element'] = $element;
+            $sql = "SELECT COUNT(DISTINCT a.attempt)
+                      FROM {scorm_scoes_attempt} a
+                      JOIN {scorm_scoes_value} v ON v.attemptid = a.id
+                      JOIN {scorm_scoes_element} e ON e.id = v.elementid
+                     WHERE a.userid = :userid AND a.scormid = :scormid AND e.element = :element";
+        } else {
+            $sql = "SELECT COUNT(DISTINCT attempt)
+                      FROM {scorm_scoes_attempt}
+                     WHERE userid = ? AND scormid = ?";
         }
 
         $attemptscount = $DB->count_records_sql($sql, $params);
@@ -2256,5 +2276,15 @@ function scorm_delete_user_data(array $params) {
         // If element is set we are deleting a specific element - not all.
         $DB->delete_records('scorm_scoes_attempt', $params);    
     }
-    
+}
+function scorm_get_value($scormid, $userid, $attempt, $element) {
+    global $DB;
+
+    $sql = "SELECT v.*
+              FROM {scorm_scoes_value} v
+              JOIN {scorm_scoes_attempt} a ON a.id = v.attemptid
+              JOIN {scorm_scoes_element} e ON e.id = v.elementid
+             WHERE a.scormid = ? AND a.userid = $userid AND a.attempt = ? AND e.element = ?";
+    $params = array($scormid, $userid, $attempt, $element);
+    return $DB->get_record_sql($sql, $params);
 }
