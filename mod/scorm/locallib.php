@@ -593,7 +593,7 @@ function scorm_insert_track($userid, $scormid, $scoid, $attempt, $element, $valu
  */
 function scorm_has_tracks($scormid, $userid) {
     global $DB;
-    return $DB->record_exists('scorm_scoes_attempt', array('userid' => $userid, 'scormid' => $scormid));
+    return $DB->record_exists('scorm_attempt', array('userid' => $userid, 'scormid' => $scormid));
 }
 
 function scorm_get_tracks($scoid, $userid, $attempt='') {
@@ -607,11 +607,11 @@ function scorm_get_tracks($scoid, $userid, $attempt='') {
             $attempt = 1;
         }
     }
-    $sql = "SELECT a.id, a.userid, a.scormid, a.scoid, a.attempt, v.value, v.timemodified, e.element
-              FROM {scorm_scoes_attempt} a
+    $sql = "SELECT a.id, a.userid, a.scormid, v.scoid, a.attempt, v.value, v.timemodified, e.element
+              FROM {scorm_attempt} a
               JOIN {scorm_scoes_value} v ON v.attemptid = a.id
               JOIN {scorm_scoes_element} e ON e.id = v.elementid
-             WHERE a.userid = ? AND a.scoid = ? AND a.attempt = ?
+             WHERE a.userid = ? AND v.scoid = ? AND a.attempt = ?
           ORDER BY e.element ASC";
     if ($tracks = $DB->get_records_sql($sql, array($userid, $scoid, $attempt))) {
         $usertrack = scorm_format_interactions($tracks);
@@ -830,7 +830,7 @@ function scorm_get_last_attempt($scormid, $userid) {
 
     // Find the last attempt number for the given user id and scorm id.
     $sql = "SELECT MAX(attempt)
-              FROM {scorm_scoes_attempt}
+              FROM {scorm_attempt}
              WHERE userid = ? AND scormid = ?";
     $lastattempt = $DB->get_field_sql($sql, array($userid, $scormid));
     if (empty($lastattempt)) {
@@ -853,7 +853,7 @@ function scorm_get_last_completed_attempt($scormid, $userid) {
 
     // Find the last completed attempt number for the given user id and scorm id.
     $sql = "SELECT MAX(a.attempt)
-              FROM {scorm_scoes_attempt} a
+              FROM {scorm_attempt} a
              WHERE userid = ? AND scormid = ?
              JOIN {scorm_scoes_value} v ON v.attemptid = a.id
              JOIN {scorm_scoes_element} e ON e.id = v.elementid
@@ -1288,7 +1288,7 @@ function scorm_get_attempt_status($user, $scorm, $cm='') {
     if (!empty($cm)) {
         $context = context_module::instance($cm->id);
         if (has_capability('mod/scorm:deleteownresponses', $context) &&
-            $DB->record_exists('scorm_scoes_attempt', array('userid' => $user->id, 'scormid' => $scorm->id))) {
+            $DB->record_exists('scorm_attempt', array('userid' => $user->id, 'scormid' => $scorm->id))) {
             // Check to see if any data is stored for this user.
             $deleteurl = new moodle_url($PAGE->url, array('action' => 'delete', 'sesskey' => sesskey()));
             $result .= $OUTPUT->single_button($deleteurl, get_string('deleteallattempts', 'scorm'));
@@ -1325,13 +1325,13 @@ function scorm_get_attempt_count($userid, $scorm, $returnobjects = false, $ignor
         if ($ignoremissingcompletion) { // Exclude attempts that don't have the completion element requested.
             $params['element'] = $element;
             $sql = "SELECT DISTINCT a.attempt AS attemptnumber
-              FROM {scorm_scoes_attempt} a
+              FROM {scorm_attempt} a
               JOIN {scorm_scoes_value} v ON v.attemptid = a.id
               JOIN {scorm_scoes_element} e ON e.id = v.elementid
              WHERE a.userid = :userid AND a.scormid = :scormid AND e.element = :element ORDER BY a.attempt";
             $attempts = $DB->get_records_sql($sql, $params);
         } else {
-            $attempts = $DB->get_records('scorm_scoes_attempt', $params, 'attempt', 'DISTINCT attempt AS attemptnumber');
+            $attempts = $DB->get_records('scorm_attempt', $params, 'attempt', 'DISTINCT attempt AS attemptnumber');
         }
 
         return $attempts;
@@ -1340,13 +1340,13 @@ function scorm_get_attempt_count($userid, $scorm, $returnobjects = false, $ignor
         if ($ignoremissingcompletion) { // Exclude attempts that don't have the completion element requested.
             $params['element'] = $element;
             $sql = "SELECT COUNT(DISTINCT a.attempt)
-                      FROM {scorm_scoes_attempt} a
+                      FROM {scorm_attempt} a
                       JOIN {scorm_scoes_value} v ON v.attemptid = a.id
                       JOIN {scorm_scoes_element} e ON e.id = v.elementid
                      WHERE a.userid = :userid AND a.scormid = :scormid AND e.element = :element";
         } else {
             $sql = "SELECT COUNT(DISTINCT attempt)
-                      FROM {scorm_scoes_attempt}
+                      FROM {scorm_attempt}
                      WHERE userid = ? AND scormid = ?";
         }
 
@@ -2264,7 +2264,7 @@ function scorm_launch_sco($scorm, $sco, $cm, $context, $scourl) {
 function scorm_delete_user_data(array $params) {
     global $DB;
 
-    $attempts = $DB->get_records('scorm_scoes_attempt', $params, '', 'id');
+    $attempts = $DB->get_records('scorm_attempt', $params, '', 'id');
     foreach ($attempts as $attempt) {
         $params2 = array('attemptid' => $attempt->id);
         if (isset($params['element'])) { // We want to delete a specific element.
@@ -2274,7 +2274,7 @@ function scorm_delete_user_data(array $params) {
     }
     if (!isset($params['element'])) {
         // If element is set we are deleting a specific element - not all.
-        $DB->delete_records('scorm_scoes_attempt', $params);    
+        $DB->delete_records('scorm_attempt', $params);    
     }
 }
 function scorm_get_value($scormid, $userid, $attempt, $element) {
@@ -2282,7 +2282,7 @@ function scorm_get_value($scormid, $userid, $attempt, $element) {
 
     $sql = "SELECT v.*
               FROM {scorm_scoes_value} v
-              JOIN {scorm_scoes_attempt} a ON a.id = v.attemptid
+              JOIN {scorm_attempt} a ON a.id = v.attemptid
               JOIN {scorm_scoes_element} e ON e.id = v.elementid
              WHERE a.scormid = ? AND a.userid = $userid AND a.attempt = ? AND e.element = ?";
     $params = array($scormid, $userid, $attempt, $element);

@@ -78,7 +78,7 @@ function get_scorm_question_count($scormid) {
     $sql = "SELECT DISTINCT e.id, e.element
               FROM {scorm_scoes_element} e
               JOIN {scorm_scoes_value} v ON e.id = v.elementid
-              JOIN {scorm_scoes_attempt} a ON a.id = v.attemptid
+              JOIN {scorm_attempt} a ON a.id = v.attemptid
              WHERE a.scormid = ? AND ". $DB->sql_like("element", "?", false) .
         " ORDER BY e.element";
 

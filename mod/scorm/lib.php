@@ -575,7 +575,7 @@ function scorm_get_user_grades($scorm, $userid=0) {
     $grades = array();
     if (empty($userid)) {
         $sql = "SELECT DISTINCT userid 
-                FROM {scorm_scoes_attempt} WHERE scormid = ?";
+                FROM {scorm_attempt} WHERE scormid = ?";
         $scousers = $DB->get_recordset_sql($sql, array($scorm->id));
 
         foreach ($scousers as $scouser) {
@@ -586,7 +586,7 @@ function scorm_get_user_grades($scorm, $userid=0) {
         }
         $scousers->close();
     } else {
-        $preattempt = $DB->record_exists('scorm_scoes_attempt', array('scormid' => $scorm->id, 'userid' => $userid));
+        $preattempt = $DB->record_exists('scorm_attempt', array('scormid' => $scorm->id, 'userid' => $userid));
         if (!$preattempt) {
             return false; // No attempt yet.
         }
