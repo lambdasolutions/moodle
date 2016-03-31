@@ -64,6 +64,12 @@ $observers = array(
         'eventname'   => '\core\event\course_module_completion_updated',
         'callback'    => 'core_competency\api::observe_course_module_completion_updated',
     ),
+
+    // Badges.
+    array(
+        'eventname'   => '\core\event\cohort_member_added',
+        'callback'    => 'core_badges_observer::cohort_criteria_review',
+    )
 );
 
 // List of all events triggered by Moodle can be found using Events list report.

@@ -199,6 +199,7 @@ class badge {
                     BADGE_CRITERIA_TYPE_MANUAL,
                     BADGE_CRITERIA_TYPE_COURSESET,
                     BADGE_CRITERIA_TYPE_PROFILE,
+                    BADGE_CRITERIA_TYPE_COHORT,
             );
         }
 
