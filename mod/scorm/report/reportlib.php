@@ -73,7 +73,7 @@ function scorm_report_list($context) {
  */
 function get_scorm_question_count($scormid) {
     global $DB;
-    $count = 0;
+    $bysco = array();
     $params = array();
     $select = "scormid = ? AND ";
     $select .= $DB->sql_like("element", "?", false);
@@ -84,13 +84,17 @@ function get_scorm_question_count($scormid) {
     if ($rs->valid()) {
         foreach ($rs as $record) {
             $num = trim(str_ireplace($keywords, '', $record->element));
-            if (is_numeric($num) && $num > $count) {
-                $count = $num;
+            if (is_numeric($num) && (empty($bysco[$record->scoid]) || $num > $bysco[$record->scoid])) {
+                $bysco[$record->scoid] = $num;
             }
         }
+
         // Done as interactions start at 0 (do only if we have something to report).
-        $count++;
+        foreach ($bysco as $scoid => $value) {
+            $bysco[$scoid] = $value + 1;
+        }
     }
     $rs->close(); // Closing recordset.
-    return $count;
+
+    return $bysco;
 }
