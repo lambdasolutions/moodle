@@ -67,10 +67,6 @@ $event->add_record_snapshot('course_modules', $cm);
 $event->add_record_snapshot('scorm', $scorm);
 $event->trigger();
 
-$trackdata = $DB->get_records('scorm_scoes_track', array('userid' => $user->id, 'scormid' => $scorm->id,
-    'attempt' => $attempt));
-$usertrack = scorm_format_interactions($trackdata);
-
 $questioncount = get_scorm_question_count($scorm->id);
 
 $courseshortname = format_string($course->shortname, true,
@@ -112,50 +108,57 @@ $table->set_attribute('class', 'generaltable generalbox boxaligncenter boxwidthw
 
 $table->show_download_buttons_at(array(TABLE_P_BOTTOM));
 $table->setup();
+foreach ($questioncount as $scoid => $qcount) {
+    $trackdata = $DB->get_records('scorm_scoes_track',
+        array('userid' => $user->id, 'scormid' => $scorm->id,
+              'attempt' => $attempt, 'scoid' => $scoid));
+    $usertrack = scorm_format_interactions($trackdata);
 
-for ($i = 0; $i < $questioncount; $i++) {
-    $row = array();
-    $element = 'cmi.interactions_'.$i.'.id';
-    if (isset($usertrack->$element)) {
-        $row[] = s($usertrack->$element);
-
-        $element = 'cmi.interactions_'.$i.'.student_response';
+    for ($i = 0; $i < $qcount; $i++) {
+        $row = array();
+        $element = 'cmi.interactions_' . $i . '.id';
         if (isset($usertrack->$element)) {
             $row[] = s($usertrack->$element);
-        } else {
-            $row[] = '&nbsp;';
-        }
 
-        $j = 0;
-        $element = 'cmi.interactions_'.$i.'.correct_responses_'.$j.'.pattern';
-        $rightans = '';
-        if (isset($usertrack->$element)) {
-            while (isset($usertrack->$element)) {
-                if ($j > 0) {
-                    $rightans .= ',';
-                }
-                $rightans .= s($usertrack->$element);
-                $j++;
-                $element = 'cmi.interactions_'.$i.'.correct_responses_'.$j.'.pattern';
-            }
-            $row[] = $rightans;
-        } else {
-            $row[] = '&nbsp;';
-        }
-        $element = 'cmi.interactions_'.$i.'.result';
-        $weighting = 'cmi.interactions_'.$i.'.weighting';
-        if (isset($usertrack->$element)) {
-            $row[] = s($usertrack->$element);
-            if ($usertrack->$element == 'correct' &&
-                isset($usertrack->$weighting)) {
-                $row[] = s($usertrack->$weighting);
+            $element = 'cmi.interactions_' . $i . '.student_response';
+            if (isset($usertrack->$element)) {
+                $row[] = s($usertrack->$element);
             } else {
-                $row[] = '0';
+                $row[] = '&nbsp;';
             }
-        } else {
-            $row[] = '&nbsp;';
+
+            $j = 0;
+            $element = 'cmi.interactions_' . $i . '.correct_responses_' . $j . '.pattern';
+            $rightans = '';
+            if (isset($usertrack->$element)) {
+                while (isset($usertrack->$element)) {
+                    if ($j > 0) {
+                        $rightans .= ',';
+                    }
+                    $rightans .= s($usertrack->$element);
+                    $j++;
+                    $element = 'cmi.interactions_' . $i . '.correct_responses_' . $j . '.pattern';
+                }
+                $row[] = $rightans;
+            } else {
+                $row[] = '&nbsp;';
+            }
+            $element = 'cmi.interactions_' . $i . '.result';
+            $weighting = 'cmi.interactions_' . $i . '.weighting';
+            if (isset($usertrack->$element)) {
+                $row[] = s($usertrack->$element);
+                if ($usertrack->$element == 'correct' &&
+                    isset($usertrack->$weighting)
+                ) {
+                    $row[] = s($usertrack->$weighting);
+                } else {
+                    $row[] = '0';
+                }
+            } else {
+                $row[] = '&nbsp;';
+            }
+            $table->add_data($row);
         }
-        $table->add_data($row);
     }
 }
 
