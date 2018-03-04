@@ -1,5 +1,12 @@
 This files describes API changes in the mod_scorm code.
 
+=== 3.5 ===
+* Force new attempt setting no longer a boolean - now accepts 3 values:
+  No
+  When previous attempt completed, passed or failed - (Same as previous behaviour)
+  Always - (new option)
+  See MDL-32585 for more details.
+
 === 3.3.2 ===
 
 * scorm_refresh_events() Now takes two additional parameters to refine the update to a specific instance. This function
