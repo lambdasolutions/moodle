@@ -123,5 +123,18 @@ function xmldb_scorm_upgrade($oldversion) {
     // Automatically generated Moodle v3.2.0 release upgrade line.
     // Put any upgrade step following this.
 
+    if ($oldversion < 2016120502) {
+
+        // Changing precision of field completionscorerequired on table scorm to (10).
+        $table = new xmldb_table('scorm');
+        $field = new xmldb_field('completionscorerequired', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'completionstatusrequired');
+
+        // Launch change of precision for field completionscorerequired.
+        $dbman->change_field_precision($table, $field);
+
+        // Scorm savepoint reached.
+        upgrade_mod_savepoint(true, 2016120502, 'scorm');
+    }
+
     return true;
 }
