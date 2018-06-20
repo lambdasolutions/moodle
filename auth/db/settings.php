@@ -95,6 +95,7 @@ if ($ADMIN->fulltree) {
     $passtype["sha1"]        = get_string("sha1", "auth");
     $passtype["saltedcrypt"] = get_string("auth_dbsaltedcrypt", "auth_db");
     $passtype["internal"]    = get_string("internal", "auth");
+    $passtype["bcrypt"]      = get_string("bcrypt","auth_db");
 
     $settings->add(new admin_setting_configselect('auth_db/passtype',
         new lang_string('auth_dbpasstype_key', 'auth_db'), new lang_string('auth_dbpasstype', 'auth_db'), 'plaintext', $passtype));

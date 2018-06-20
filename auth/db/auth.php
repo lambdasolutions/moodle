@@ -138,6 +138,8 @@ class auth_plugin_db extends auth_plugin_base {
                 return (strtolower($fromdb) == sha1($extpassword));
             } else if ($this->config->passtype === 'saltedcrypt') {
                 return password_verify($extpassword, $fromdb);
+            } else if ($this->config->passtype === 'bcrypt') {
+                return password_verify($extpassword, $fromdb);;
             } else {
                 return false;
             }
