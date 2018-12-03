@@ -15,33 +15,31 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Block LP capabilities.
+ * Lp block upgrade.
  *
  * @package    block_lp
- * @copyright  2016 Frédéric Massart - FMCorz.net
+ * @copyright  2018 Catalyst IT
+ * @author     Dan Marsden
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$capabilities = array(
+/**
+ * Handles upgrading instances of this block.
+ *
+ * @param int $oldversion
+ * @param object $block
+ */
+function xmldb_block_lp_upgrade($oldversion, $block) {
+    global $CFG, $DB;
 
-    // Whether or not the user can add the block.
-    'block/lp:addinstance' => array(
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-            'manager' => CAP_ALLOW
-        ),
-        'clonepermissionsfrom' => 'moodle/site:manageblocks'
-    ),
+    if ($oldversion < 2018121900) {
+        // Delete all references to unused capability block/lp:view.
+        $DB->delete_records('role_capabilities', array('capability' => 'block/lp:view'));
 
-    // Whether or not the user can add the block on their dashboard.
-    'block/lp:myaddinstance' => array(
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array(
-            'user' => CAP_ALLOW
-        )
-    ),
-);
+        upgrade_block_savepoint(true, 2018121900, 'lp');
+    }
+
+    return true;
+}
